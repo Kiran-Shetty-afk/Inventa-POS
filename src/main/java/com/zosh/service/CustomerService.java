@@ -18,6 +18,10 @@ public interface CustomerService {
 
     List<Customer> getAllCustomers();
 
+    List<Customer> getCustomersByBranchId(Long branchId);
+
+    List<Customer> getCustomersByStoreId(Long storeId);
+
     List<Customer> searchCustomer(String keyword);
 
     Customer addLoyaltyPoints(Long id, Integer points) throws ResourceNotFoundException;

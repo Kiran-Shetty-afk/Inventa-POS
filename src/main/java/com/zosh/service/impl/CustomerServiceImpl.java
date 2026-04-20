@@ -59,6 +59,16 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    public List<Customer> getCustomersByBranchId(Long branchId) {
+        return customerRepository.findDistinctByBranchId(branchId);
+    }
+
+    @Override
+    public List<Customer> getCustomersByStoreId(Long storeId) {
+        return customerRepository.findDistinctByStoreId(storeId);
+    }
+
+    @Override
     public List<Customer> searchCustomer(String keyword) {
         return customerRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(keyword, keyword);
     }

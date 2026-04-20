@@ -51,6 +51,16 @@ public class CustomerController {
         return ResponseEntity.ok(customerService.getAllCustomers());
     }
 
+    @GetMapping("/branch/{branchId}")
+    public ResponseEntity<List<Customer>> getByBranchId(@PathVariable Long branchId) {
+        return ResponseEntity.ok(customerService.getCustomersByBranchId(branchId));
+    }
+
+    @GetMapping("/store/{storeId}")
+    public ResponseEntity<List<Customer>> getByStoreId(@PathVariable Long storeId) {
+        return ResponseEntity.ok(customerService.getCustomersByStoreId(storeId));
+    }
+
     @PostMapping("/{id}/loyalty-points")
     public ResponseEntity<Customer> addLoyaltyPoints(
             @PathVariable Long id,
