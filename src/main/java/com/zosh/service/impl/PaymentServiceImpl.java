@@ -37,10 +37,10 @@ public class PaymentServiceImpl implements PaymentService {
     @Value("${payments.stripe.enabled:false}")
     private boolean stripeEnabled;
 
-    @Value("${RAZORPAY_KEY}")
+    @Value("rzp_test_SbTRKjAd1YcufV")
     private String apiKey;
 
-    @Value("${RAZORPAY_SECRET}")
+    @Value("3kFn0T2C9IQwp048Mz1dZpcy")
     private String apiSecret;
 
 
