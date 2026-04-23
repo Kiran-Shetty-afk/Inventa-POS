@@ -13,6 +13,7 @@ This folder is the workspace knowledge base.
 - `008-export-flows-hardening-apr-23.md`: Made transaction and super-admin export flows reachable and data-backed.
 - `009-day-wise-dashboard-reports-dataflow-fix-apr-23.md`: Fixes day-wise sales/cashier charts and selected-date dashboard KPI stat cards.
 - `010-demand-forecast-smart-reorder-v1-apr-23.md`: Added seasonality-aware demand forecast and smart reorder suggestions to branch reports.
+- `011-cashier-returns-store-sales-fixes-apr-23.md`: Fixes cashier shift/returns flows and store sales dashboard KPI contract mismatches.
 - `CHANGELOG.md`: Versioned log of important changes and fixes.
 
 ## Update Rules

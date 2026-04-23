@@ -57,8 +57,8 @@ export default function Sales() {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount || 0);
   };
 
@@ -196,14 +196,17 @@ export default function Sales() {
                   {loading ? (
                     <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
-                    storeOverview?.todayOrders || 0
+                    storeOverview?.todayOrders ?? storeOverview?.ordersToday ?? 0
                   )}
                 </h3>
                 <p className="text-xs text-emerald-500 mt-1">
                   {loading ? (
                     <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
-                    formatChange(storeOverview?.todayOrders, storeOverview?.yesterdayOrders)
+                    formatChange(
+                      storeOverview?.todayOrders ?? storeOverview?.ordersToday,
+                      storeOverview?.yesterdayOrders ?? storeOverview?.ordersYesterday
+                    )
                   )} from yesterday
                 </p>
               </div>

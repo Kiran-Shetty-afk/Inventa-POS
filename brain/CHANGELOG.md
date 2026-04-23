@@ -1,5 +1,14 @@
 # Brain Changelog
 
+## v2026.04.23.23 - Cashier returns and store sales stabilization
+- Fixed cashier route/load issues by adding `/cashier/shiftsummary` redirect and making cashier login await shift start before navigation.
+- Fixed cashier customer/payment wiring (`fullName` display fallback, selected customer normalization, correct branch resolution in order payload).
+- Fixed shift summary print mapping to use backend DTO fields (`shiftStart`/`shiftEnd`) so print summary renders correctly.
+- Fixed returns flow by validating reason/refund method, wiring `Print & Complete`, using backend-compatible refund payment types, and refreshing refundable order list after refund.
+- Re-enabled backend branch order status filtering and added duplicate refund guard plus refund payment type persistence/mapping.
+- Added missing store overview KPI fields and computations for `/store/sales` cards (`todayOrders`, `yesterdayOrders`, `activeCashiers`, `averageOrderValue`, `previousPeriodAverageOrderValue`, `previousPeriodSales`).
+- Added knowledge note `011-cashier-returns-store-sales-fixes-apr-23.md` and updated `brain/INDEX.md`.
+
 ## v2026.04.23.22 - Demand forecast and smart reorder V1
 - Added branch analytics endpoint `GET /api/branch-analytics/demand-forecast` with optional `horizons`, `lookbackDays`, and `anchorDate` parameters.
 - Implemented seasonality-aware product demand forecast (7/14/30 day horizons) using recency-weighted historical branch order-item demand and weekday weighting.

@@ -11,8 +11,12 @@ const DiscountSection = () => {
     const dispatch = useDispatch();
   const discount = useSelector(selectDiscount);
   const handleSetDiscount = (e) => {
+    const value = Number.parseFloat(e.target.value);
+    const normalizedValue = Number.isFinite(value)
+      ? Number(value.toFixed(2))
+      : 0;
     dispatch(
-      setDiscount({ ...discount, value: parseFloat(e.target.value) || 0 })
+      setDiscount({ ...discount, value: normalizedValue })
     );
   };
 
@@ -28,13 +32,17 @@ const DiscountSection = () => {
             placeholder="Discount amount"
             value={discount.value || ""}
             onChange={handleSetDiscount}
+            step="0.01"
+            min="0"
           />
           <div className="flex space-x-2">
             <Button
               variant={discount.type === "percentage" ? "default" : "outline"}
               size="sm"
               className="flex-1"
-              onClick={() => setDiscount({ ...discount, type: "percentage" })}
+              onClick={() =>
+                dispatch(setDiscount({ ...discount, type: "percentage" }))
+              }
             >
               %
             </Button>
@@ -42,7 +50,9 @@ const DiscountSection = () => {
               variant={discount.type === "fixed" ? "default" : "outline"}
               size="sm"
               className="flex-1"
-              onClick={() => setDiscount({ ...discount, type: "fixed" })}
+              onClick={() =>
+                dispatch(setDiscount({ ...discount, type: "fixed" }))
+              }
             >
               ₹
             </Button>

@@ -95,8 +95,22 @@ const Login = () => {
         // Redirect based on user role (replace so browser Back does not return to login/auth)
         const userRole = normalizeAppRole(user.role)
         if (userRole === "ROLE_BRANCH_CASHIER") {
+          try {
+            await dispatch(startShift(user.branchId)).unwrap()
+          } catch (shiftError) {
+            const errorMessage =
+              typeof shiftError === "string"
+                ? shiftError
+                : "Unable to start shift automatically."
+            if (!errorMessage.toLowerCase().includes("already started")) {
+              toast({
+                title: "Shift Start Warning",
+                description: errorMessage,
+                variant: "destructive",
+              })
+            }
+          }
           navigate("/cashier", { replace: true })
-          dispatch(startShift(user.branchId))
         } else if (
           userRole === "ROLE_STORE_ADMIN" ||
           userRole === "ROLE_STORE_MANAGER"

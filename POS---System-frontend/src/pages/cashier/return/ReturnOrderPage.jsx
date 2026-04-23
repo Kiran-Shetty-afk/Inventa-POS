@@ -18,20 +18,28 @@ const ReturnOrderPage = () => {
 
   const dispatch = useDispatch();
   const { branch } = useSelector((state) => state.branch);
+  const loadRefundableOrders = React.useCallback(() => {
+    if (branch?.id) {
+      dispatch(getOrdersByBranch({ branchId: branch.id, status: "COMPLETED" }));
+    }
+  }, [dispatch, branch?.id]);
 
   // Fetch orders for the branch on mount or when branch changes
   useEffect(() => {
-    console.log("branch ", branch);
-    if (branch?.id) {
-      dispatch(getOrdersByBranch({ branchId: branch.id }));
-    }
-  }, [dispatch, branch]);
+    loadRefundableOrders();
+  }, [loadRefundableOrders]);
 
 
 
   const handleSelectOrder = (order) => {
     console.log("selected order", order);
     setSelectedOrder(order);
+  };
+
+  const handlePrintAndComplete = () => {
+    window.print();
+    setShowReceiptDialog(false);
+    setSelectedOrder(null);
   };
 
   return (
@@ -53,6 +61,7 @@ const ReturnOrderPage = () => {
             <ReturnItemsSection
               setShowReceiptDialog={setShowReceiptDialog}
               selectedOrder={selectedOrder}
+              onRefundCompleted={loadRefundableOrders}
             />
           </>
         )}
@@ -63,6 +72,7 @@ const ReturnOrderPage = () => {
           showReceiptDialog={showReceiptDialog}
           setShowReceiptDialog={setShowReceiptDialog}
           selectedOrder={selectedOrder}
+          onPrintAndComplete={handlePrintAndComplete}
         />
       )}
     </div>

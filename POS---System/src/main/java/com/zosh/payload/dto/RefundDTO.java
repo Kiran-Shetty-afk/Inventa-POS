@@ -1,6 +1,7 @@
 package com.zosh.payload.dto;
 
 
+import com.zosh.domain.PaymentType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,4 +20,5 @@ public class RefundDTO {
     private Long shiftReportId;
     private Long branchId;
     private LocalDateTime createdAt;
+    private PaymentType paymentType;
 }

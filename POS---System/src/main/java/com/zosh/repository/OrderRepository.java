@@ -2,6 +2,7 @@ package com.zosh.repository;
 
 import com.zosh.modal.Order;
 import com.zosh.modal.User;
+import com.zosh.domain.OrderStatus;
 import com.zosh.payload.StoreAnalysis.BranchSalesDTO;
 import com.zosh.payload.StoreAnalysis.PaymentInsightDTO;
 import com.zosh.payload.StoreAnalysis.TimeSeriesPointDTO;
@@ -114,6 +115,50 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Query("SELECT COUNT(o) FROM Order o WHERE o.branch.store.storeAdmin.id = :storeAdminId")
         int countByStoreAdminId(@Param("storeAdminId") Long storeAdminId);
 //
+    @Query("""
+    SELECT COUNT(o)
+    FROM Order o
+    WHERE o.branch.store.storeAdmin.id = :storeAdminId
+    AND o.status = :status
+    AND o.createdAt >= :start
+    AND o.createdAt < :end
+""")
+    int countByStoreAdminIdAndStatusBetween(
+            @Param("storeAdminId") Long storeAdminId,
+            @Param("status") OrderStatus status,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("""
+    SELECT COUNT(DISTINCT o.cashier.id)
+    FROM Order o
+    WHERE o.branch.store.storeAdmin.id = :storeAdminId
+    AND o.status = :status
+    AND o.createdAt >= :start
+    AND o.createdAt < :end
+""")
+    int countDistinctCashiersByStoreAdminIdAndStatusBetween(
+            @Param("storeAdminId") Long storeAdminId,
+            @Param("status") OrderStatus status,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("""
+    SELECT AVG(o.totalAmount)
+    FROM Order o
+    WHERE o.branch.store.storeAdmin.id = :storeAdminId
+    AND o.status = :status
+    AND o.createdAt >= :start
+    AND o.createdAt < :end
+""")
+    Optional<Double> averageOrderValueByStoreAdminIdAndStatusBetween(
+            @Param("storeAdminId") Long storeAdminId,
+            @Param("status") OrderStatus status,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
 
     @Query("""
     SELECT o FROM Order o 

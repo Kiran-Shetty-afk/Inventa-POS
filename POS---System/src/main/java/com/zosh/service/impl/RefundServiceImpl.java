@@ -39,6 +39,9 @@ public class RefundServiceImpl implements RefundService {
 
         Order order = orderRepository.findById(refundDTO.getOrderId())
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        if (order.getStatus() == OrderStatus.REFUNDED) {
+            throw new UserException("Order already refunded");
+        }
 
         Branch branch=branchRepository.findById(refundDTO.getBranchId()).orElseThrow(
                 ()-> new EntityNotFoundException("branch not found")
@@ -51,6 +54,7 @@ public class RefundServiceImpl implements RefundService {
         refund.setAmount(order.getTotalAmount());
         refund.setCreatedAt(LocalDateTime.now());
         refund.setBranch(branch);
+        refund.setPaymentType(refundDTO.getPaymentType() != null ? refundDTO.getPaymentType() : order.getPaymentType());
 
 
         Refund savedRefund=refundRepository.save(refund);

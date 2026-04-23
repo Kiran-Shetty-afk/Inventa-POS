@@ -19,6 +19,9 @@ const initialState = {
   shiftsByBranch: [],
   loading: false,
   error: null,
+  startError: null,
+  currentError: null,
+  endError: null,
 };
 
 const shiftReportSlice = createSlice({
@@ -32,6 +35,9 @@ const shiftReportSlice = createSlice({
       state.shiftsByCashier = [];
       state.shiftsByBranch = [];
       state.error = null;
+      state.startError = null;
+      state.currentError = null;
+      state.endError = null;
     },
     clearCurrentShift: (state) => {
       state.currentShift = null;
@@ -52,6 +58,7 @@ const shiftReportSlice = createSlice({
       .addCase(startShift.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.startError = null;
       })
       .addCase(startShift.fulfilled, (state, action) => {
         state.loading = false;
@@ -61,12 +68,14 @@ const shiftReportSlice = createSlice({
       .addCase(startShift.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        state.startError = action.payload;
       })
 
       // End Shift
       .addCase(endShift.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.endError = null;
       })
       .addCase(endShift.fulfilled, (state, action) => {
         state.loading = false;
@@ -83,20 +92,24 @@ const shiftReportSlice = createSlice({
       .addCase(endShift.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        state.endError = action.payload;
       })
 
       // Get Current Shift Progress
       .addCase(getCurrentShiftProgress.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.currentError = null;
       })
       .addCase(getCurrentShiftProgress.fulfilled, (state, action) => {
         state.loading = false;
         state.currentShift = action.payload;
+        state.currentError = null;
       })
       .addCase(getCurrentShiftProgress.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        state.currentError = action.payload;
       })
 
       // Get Shift Report by Date

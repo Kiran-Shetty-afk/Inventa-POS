@@ -17,7 +17,7 @@ const CustomerSection = ({setShowCustomerDialog}) => {
           <Card className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
             <CardContent className="p-3">
               <h3 className="font-medium text-green-800 dark:text-green-200">
-                {selectedCustomer.name}
+                {selectedCustomer.fullName || selectedCustomer.name}
               </h3>
               <p className="text-sm text-green-600 dark:text-green-300">
                 {selectedCustomer.phone}

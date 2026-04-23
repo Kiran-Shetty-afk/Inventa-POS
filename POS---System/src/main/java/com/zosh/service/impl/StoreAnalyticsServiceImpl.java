@@ -1,6 +1,7 @@
 package com.zosh.service.impl;
 
 import com.zosh.domain.UserRole;
+import com.zosh.domain.OrderStatus;
 import com.zosh.modal.Order;
 import com.zosh.payload.StoreAnalysis.*;
 import com.zosh.repository.*;
@@ -8,7 +9,6 @@ import com.zosh.service.StoreAnalyticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.temporal.WeekFields;
@@ -37,15 +37,69 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
         roles.add(UserRole.ROLE_CUSTOMER);
         roles.add(UserRole.ROLE_BRANCH_CASHIER);
         roles.add(UserRole.ROLE_BRANCH_MANAGER);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime todayStart = now.toLocalDate().atStartOfDay();
+        LocalDateTime tomorrowStart = todayStart.plusDays(1);
+        LocalDateTime yesterdayStart = todayStart.minusDays(1);
+        LocalDateTime lastWeekStart = now.minusDays(7);
+        LocalDateTime previousWeekStart = now.minusDays(14);
+
+        int todayOrders = orderRepository.countByStoreAdminIdAndStatusBetween(
+                storeAdminId,
+                OrderStatus.COMPLETED,
+                todayStart,
+                tomorrowStart
+        );
+        int yesterdayOrders = orderRepository.countByStoreAdminIdAndStatusBetween(
+                storeAdminId,
+                OrderStatus.COMPLETED,
+                yesterdayStart,
+                todayStart
+        );
+        int activeCashiers = orderRepository.countDistinctCashiersByStoreAdminIdAndStatusBetween(
+                storeAdminId,
+                OrderStatus.COMPLETED,
+                todayStart,
+                tomorrowStart
+        );
+        double averageOrderValue = orderRepository
+                .averageOrderValueByStoreAdminIdAndStatusBetween(
+                        storeAdminId,
+                        OrderStatus.COMPLETED,
+                        lastWeekStart,
+                        now
+                )
+                .orElse(0.0);
+        double previousPeriodAverageOrderValue = orderRepository
+                .averageOrderValueByStoreAdminIdAndStatusBetween(
+                        storeAdminId,
+                        OrderStatus.COMPLETED,
+                        previousWeekStart,
+                        lastWeekStart
+                )
+                .orElse(0.0);
+        double totalSales = orderRepository.sumTotalSalesByStoreAdmin(storeAdminId).orElse(0.0);
+        double previousPeriodSales = orderRepository
+                .findAllByStoreAdminAndCreatedAtBetween(storeAdminId, previousWeekStart, lastWeekStart)
+                .stream()
+                .filter(order -> order.getStatus() == OrderStatus.COMPLETED)
+                .mapToDouble(order -> order.getTotalAmount() != null ? order.getTotalAmount() : 0.0)
+                .sum();
 
         return StoreOverviewDTO.builder()
                 .totalBranches(branchRepository.countByStoreAdminId(storeAdminId))
-                .totalSales(orderRepository.sumTotalSalesByStoreAdmin(storeAdminId).orElse(Double.valueOf(0)))
+                .totalSales(totalSales)
+                .previousPeriodSales(previousPeriodSales)
                 .totalOrders(orderRepository.countByStoreAdminId(storeAdminId))
                 .totalEmployees(userRepository.countByStoreAdminIdAndRoles(storeAdminId,roles))
                 .totalCustomers(customerRepository.countByStoreAdminId(storeAdminId))
                 .totalRefunds(refundRepository.countByStoreAdminId(storeAdminId))
                 .totalProducts(productRepository.countByStoreAdminId(storeAdminId))
+                .todayOrders(todayOrders)
+                .yesterdayOrders(yesterdayOrders)
+                .activeCashiers(activeCashiers)
+                .averageOrderValue(averageOrderValue)
+                .previousPeriodAverageOrderValue(previousPeriodAverageOrderValue)
 //                .topBranchName(branchRepository.findTopBranchBySales(storeAdminId))
                 .build();
     }

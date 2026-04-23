@@ -34,7 +34,7 @@ const returnReasons = [
   "Other",
 ];
 
-const ReturnItemsSection = ({ selectedOrder, setShowReceiptDialog }) => {
+const ReturnItemsSection = ({ selectedOrder, setShowReceiptDialog, onRefundCompleted }) => {
   const { toast } = useToast();
   const { userProfile } = useSelector((state) => state.user);
   const { branch } = useSelector((state) => state.branch);
@@ -45,24 +45,48 @@ const ReturnItemsSection = ({ selectedOrder, setShowReceiptDialog }) => {
   const [refundMethod, setRefundMethod] = useState("");
 
   const processRefund = async () => {
-    // setShowRefundDialog(false);
-    setShowReceiptDialog(true);
+    if (!returnReason) {
+      toast({
+        title: "Return Reason Required",
+        description: "Please select a return reason before processing.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (returnReason === "Other" && !otherReason.trim()) {
+      toast({
+        title: "Return Reason Required",
+        description: "Please enter the custom return reason.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!refundMethod) {
+      toast({
+        title: "Refund Method Required",
+        description: "Please select a refund method before processing.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Prepare refundDTO for API
     const refundDTO = {
       orderId: selectedOrder.id,
-      branchId: branch?.id,
+      branchId: branch?.id ?? userProfile?.branchId,
       cashierId: userProfile?.id,
 
       reason: returnReason === "Other" ? otherReason : returnReason,
-      refundMethod:
-        refundMethod === "original" ? selectedOrder.paymentType : refundMethod,
+      paymentType:
+        refundMethod === "ORIGINAL" ? selectedOrder.paymentType : refundMethod,
     };
     try {
       await dispatch(createRefund(refundDTO)).unwrap();
+      setShowReceiptDialog(true);
+      onRefundCompleted?.();
       toast({
         title: "Refund Processed",
-        description: `Refund of ₹${selectedOrder.totalAmount} processed via ${refundDTO.refundMethod}`,
+        description: `Refund of ₹${Number(selectedOrder.totalAmount || 0).toFixed(2)} processed via ${refundDTO.paymentType}`,
       });
     } catch (error) {
       toast({
@@ -120,12 +144,15 @@ const ReturnItemsSection = ({ selectedOrder, setShowReceiptDialog }) => {
                   <SelectValue placeholder="Select refund method..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="original">
-                    Original Payment Method ({selectedOrder.paymentMode})
+                  <SelectItem value="ORIGINAL">
+                    Original Payment Method ({selectedOrder.paymentType})
                   </SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  {selectedOrder.paymentMode !== "card" && (
-                    <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="CASH">Cash</SelectItem>
+                  {selectedOrder.paymentType !== "CARD" && (
+                    <SelectItem value="CARD">Card</SelectItem>
+                  )}
+                  {selectedOrder.paymentType !== "UPI" && (
+                    <SelectItem value="UPI">UPI</SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -133,7 +160,7 @@ const ReturnItemsSection = ({ selectedOrder, setShowReceiptDialog }) => {
             <div className="pt-4 border-t">
               <div className="flex justify-between text-lg font-semibold">
                 <span>Total Refund Amount:</span>
-                <span>₹{selectedOrder.totalAmount}</span>
+                <span>₹{Number(selectedOrder.totalAmount || 0).toFixed(2)}</span>
               </div>
             </div>
             <Button className="w-full" onClick={processRefund}>

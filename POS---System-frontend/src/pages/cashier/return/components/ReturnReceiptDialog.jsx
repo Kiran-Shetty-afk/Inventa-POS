@@ -14,6 +14,7 @@ const ReturnReceiptDialog = ({
   showReceiptDialog,
   setShowReceiptDialog,
   selectedOrder,
+  onPrintAndComplete,
   // returnItems,
   // calculateRefundAmount,
   // refundMethod,
@@ -64,15 +65,15 @@ const ReturnReceiptDialog = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {selectedOrder.items
+            {selectedOrder?.items
               
               .map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="py-2">{item.product?.name.slice(0, 20)+"..."}</TableCell>
-                  <TableCell className="text-center py-2">{item.returnQuantity}</TableCell>
+                  <TableCell className="text-center py-2">{item.quantity}</TableCell>
                   <TableCell className="text-right py-2">₹{item.product?.sellingPrice?.toFixed(2)}</TableCell>
                   <TableCell className="text-right py-2">
-                    ₹{(item.product.sellingPrice * item.returnQuantity)?.toFixed(2)}
+                    ₹{(item.product?.sellingPrice * item.quantity)?.toFixed(2)}
                   </TableCell>
                 </TableRow>
               ))}
@@ -103,7 +104,7 @@ const ReturnReceiptDialog = ({
         </div>
       </div>
       <DialogFooter>
-        <Button variant="outline" className="gap-2" >
+        <Button variant="outline" className="gap-2" onClick={onPrintAndComplete}>
           <PrinterIcon className="h-4 w-4" />
           Print & Complete
         </Button>

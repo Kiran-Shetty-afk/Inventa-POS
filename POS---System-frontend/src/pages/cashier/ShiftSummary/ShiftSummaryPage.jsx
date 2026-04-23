@@ -23,21 +23,22 @@ const ShiftSummaryPage = () => {
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const navigate=useNavigate()
 
-  const { currentShift, loading, error } = useSelector((state) => state.shiftReport);
+  const { currentShift, loading, error, currentError } = useSelector((state) => state.shiftReport);
+  const displayError = currentError || error;
 
   useEffect(() => {
     dispatch(getCurrentShiftProgress());
   }, [dispatch]);
 
   useEffect(() => {
-    if (!currentShift && !loading && error) {
+    if (!currentShift && !loading && displayError) {
       const retryTimer = setTimeout(() => {
         dispatch(getCurrentShiftProgress());
       }, 1500);
       return () => clearTimeout(retryTimer);
     }
     return undefined;
-  }, [currentShift, loading, error, dispatch]);
+  }, [currentShift, loading, displayError, dispatch]);
 
   const handlePrintSummary = () => {
     setShowPrintDialog(false);
@@ -74,8 +75,8 @@ const ShiftSummaryPage = () => {
         <body>
           <h1>Cashier Shift Summary</h1>
           <p><strong>Shift ID:</strong> ${currentShift.id ?? "-"}</p>
-          <p><strong>Start:</strong> ${currentShift.startTime ?? "-"}</p>
-          <p><strong>End:</strong> ${currentShift.endTime ?? "In progress"}</p>
+          <p><strong>Start:</strong> ${currentShift.shiftStart ?? "-"}</p>
+          <p><strong>End:</strong> ${currentShift.shiftEnd ?? "In progress"}</p>
           <div class="section">
             <p><strong>Total Sales:</strong> ₹${Number(currentShift.totalSales ?? 0).toLocaleString('en-IN')}</p>
             <p><strong>Total Orders:</strong> ${currentShift.totalOrders ?? 0}</p>
@@ -116,8 +117,6 @@ const ShiftSummaryPage = () => {
       <div className="flex-1 overflow-auto p-4">
         {loading ? (
           <div className="flex justify-center items-center h-full text-lg">Loading shift summary...</div>
-        ) : error ? (
-          <div className="flex justify-center items-center h-full text-destructive">{error}</div>
         ) : currentShift ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -133,6 +132,8 @@ const ShiftSummaryPage = () => {
               <RefundsCard shiftData={currentShift} />
             </div>
           </>
+        ) : displayError ? (
+          <div className="flex justify-center items-center h-full text-destructive">{displayError}</div>
         ) : (
           <div className="flex justify-center items-center h-full text-muted-foreground">No shift data available.</div>
         )}

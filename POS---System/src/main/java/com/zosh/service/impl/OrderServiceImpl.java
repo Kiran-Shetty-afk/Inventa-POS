@@ -112,8 +112,8 @@ public class OrderServiceImpl implements OrderService {
                         order.getPaymentType() == paymentType)
 
                 // ✅ Filter by Status (if provided)
-//                .filter(order -> status() == null ||
-//                        order.getStatus() == status)
+                .filter(order -> status == null ||
+                        order.getStatus() == status)
 
                 // ✅ Map to DTO
                 .map(OrderMapper::toDto)

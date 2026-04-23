@@ -30,7 +30,7 @@ const PaymentDialog = ({
   const paymentMethod = useSelector(selectPaymentMethod);
   const {toast} = useToast();
   const cart = useSelector(selectCartItems);
-  const branch = useSelector((state) => state.branch);
+  const branch = useSelector((state) => state.branch.branch);
   const { userProfile } = useSelector((state) => state.user);
   const dispatch = useDispatch();
 
@@ -64,15 +64,15 @@ const PaymentDialog = ({
     try {
       // Prepare order data according to OrderDTO structure
       const orderData = {
-        totalAmount: total,
-        branchId: branch.id,
+        totalAmount: Number(total.toFixed(2)),
+        branchId: branch?.id ?? userProfile?.branchId,
         cashierId: userProfile.id,
         customer: selectedCustomer || null,
         items: cart.map((item) => ({
           productId: item.id,
           quantity: item.quantity,
-          price: item.price,
-          total: item.price * item.quantity,
+          price: Number(item.price),
+          total: Number((item.price * item.quantity).toFixed(2)),
         })),
         paymentType: paymentMethod,
         note: note || "",

@@ -17,6 +17,10 @@ const CashierRoutes = () => {
         <Route path="returns" element={<ReturnOrderPage />} />
         <Route path="customers" element={<CustomerLookupPage />} />
         <Route path="shift-summary" element={<ShiftSummaryPage />} />
+        <Route
+          path="shiftsummary"
+          element={<Navigate to="/cashier/shift-summary" replace />}
+        />
       </Route>
       <Route
         path="*"
