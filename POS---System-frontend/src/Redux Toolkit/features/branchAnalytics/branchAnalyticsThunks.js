@@ -19,13 +19,34 @@ const getAuthHeaders = () => {
   };
 };
 
+const buildMonthAwareQuery = ({ branchId, days, date, year, month }) => {
+  const params = new URLSearchParams();
+  params.set("branchId", branchId);
+
+  if (typeof days === "number") {
+    params.set("days", String(days));
+  }
+
+  if (date) {
+    params.set("date", date);
+  }
+
+  if (Number.isInteger(year) && Number.isInteger(month)) {
+    params.set("year", String(year));
+    params.set("month", String(month));
+  }
+
+  return params.toString();
+};
+
 // Get daily sales chart data (last n days)
 export const getDailySalesChart = createAsyncThunk(
   'branchAnalytics/getDailySalesChart',
-  async ({ branchId, days = 7 }, { rejectWithValue }) => {
+  async ({ branchId, days = 7, year, month }, { rejectWithValue }) => {
     try {
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/branch-analytics/daily-sales?branchId=${branchId}&days=${days}`, { headers });
+      const query = buildMonthAwareQuery({ branchId, days, year, month });
+      const res = await api.get(`/api/branch-analytics/daily-sales?${query}`, { headers });
       console.log('✅ Daily sales chart response:', res.data);
       return res.data;
     } catch (err) {
@@ -38,10 +59,11 @@ export const getDailySalesChart = createAsyncThunk(
 // Get top 5 products by quantity (with % contribution)
 export const getTopProductsByQuantity = createAsyncThunk(
   'branchAnalytics/getTopProductsByQuantity',
-  async (branchId, { rejectWithValue }) => {
+  async ({ branchId, year, month }, { rejectWithValue }) => {
     try {
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/branch-analytics/top-products?branchId=${branchId}`, { headers });
+      const query = buildMonthAwareQuery({ branchId, year, month });
+      const res = await api.get(`/api/branch-analytics/top-products?${query}`, { headers });
       console.log('✅ Top products by quantity response:', res.data);
       return res.data;
     } catch (err) {
@@ -70,10 +92,11 @@ export const getTopCashiersByRevenue = createAsyncThunk(
 // Get category-wise sales breakdown
 export const getCategoryWiseSalesBreakdown = createAsyncThunk(
   'branchAnalytics/getCategoryWiseSalesBreakdown',
-  async ({ branchId, date }, { rejectWithValue }) => {
+  async ({ branchId, date, year, month }, { rejectWithValue }) => {
     try {
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/branch-analytics/category-sales?branchId=${branchId}&date=${date}`, { headers });
+      const query = buildMonthAwareQuery({ branchId, date, year, month });
+      const res = await api.get(`/api/branch-analytics/category-sales?${query}`, { headers });
       console.log('✅ Category-wise sales breakdown response:', res.data);
       return res.data;
     } catch (err) {
@@ -102,10 +125,11 @@ export const getTodayOverview = createAsyncThunk(
 // Get payment breakdown for a date
 export const getPaymentBreakdown = createAsyncThunk(
   'branchAnalytics/getPaymentBreakdown',
-  async ({ branchId, date }, { rejectWithValue }) => {
+  async ({ branchId, date, year, month }, { rejectWithValue }) => {
     try {
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/branch-analytics/payment-breakdown?branchId=${branchId}&date=${date}`, { headers });
+      const query = buildMonthAwareQuery({ branchId, date, year, month });
+      const res = await api.get(`/api/branch-analytics/payment-breakdown?${query}`, { headers });
       console.log('✅ Payment breakdown response:', res.data);
       return res.data;
     } catch (err) {

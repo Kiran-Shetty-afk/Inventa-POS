@@ -28,6 +28,22 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     List<Object[]> getTopProductsByQuantity(@Param("branchId") Long branchId);
 
     @Query("""
+        SELECT p.id, p.name, SUM(oi.quantity)
+        FROM OrderItem oi
+        JOIN oi.product p
+        JOIN oi.order o
+        WHERE o.branch.id = :branchId
+          AND o.createdAt BETWEEN :start AND :end
+        GROUP BY p.id, p.name
+        ORDER BY SUM(oi.quantity) DESC
+    """)
+    List<Object[]> getTopProductsByQuantityBetween(
+            @Param("branchId") Long branchId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("""
         SELECT c.name, SUM(oi.quantity * oi.price), SUM(oi.quantity)
         FROM OrderItem oi
         JOIN oi.product p

@@ -29,9 +29,11 @@ public class BranchAnalyticsController {
     @PreAuthorize(ALLOWED_ROLES)
     public ResponseEntity<List<DailySalesDTO>> getDailySalesChart(
             @RequestParam Long branchId,
-            @RequestParam(defaultValue = "7") int days
+            @RequestParam(defaultValue = "7") int days,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getDailySalesChart(branchId, days));
+        return ResponseEntity.ok(branchAnalyticsService.getDailySalesChart(branchId, days, year, month));
     }
 
     /**
@@ -40,9 +42,11 @@ public class BranchAnalyticsController {
     @GetMapping("/top-products")
     @PreAuthorize(ALLOWED_ROLES)
     public ResponseEntity<List<ProductPerformanceDTO>> getTopProductsByQuantity(
-            @RequestParam Long branchId
+            @RequestParam Long branchId,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getTopProductsByQuantityWithPercentage(branchId));
+        return ResponseEntity.ok(branchAnalyticsService.getTopProductsByQuantityWithPercentage(branchId, year, month));
     }
 
     /**
@@ -63,9 +67,11 @@ public class BranchAnalyticsController {
     @PreAuthorize(ALLOWED_ROLES)
     public ResponseEntity<List<CategorySalesDTO>> getCategoryWiseSalesBreakdown(
             @RequestParam Long branchId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getCategoryWiseSalesBreakdown(branchId, date));
+        return ResponseEntity.ok(branchAnalyticsService.getCategoryWiseSalesBreakdown(branchId, date, year, month));
     }
 
     @GetMapping("/today-overview")
@@ -81,10 +87,12 @@ public class BranchAnalyticsController {
     @PreAuthorize("hasRole('BRANCH_MANAGER') or hasRole('BRANCH_ADMIN')")
     public ResponseEntity<List<PaymentSummary>> getPaymentBreakdown(
             @RequestParam Long branchId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month
     ) {
         return ResponseEntity.ok(
-                branchAnalyticsService.getPaymentMethodBreakdown(branchId, date)
+                branchAnalyticsService.getPaymentMethodBreakdown(branchId, date, year, month)
         );
     }
 

@@ -77,6 +77,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("date") LocalDate date
     );
 
+    @Query("""
+    SELECT o.paymentType, SUM(o.totalAmount), COUNT(o)
+    FROM Order o
+    WHERE o.branch.id = :branchId
+    AND o.createdAt BETWEEN :start AND :end
+    GROUP BY o.paymentType
+""")
+    List<Object[]> getPaymentBreakdownByMethodBetween(
+            @Param("branchId") Long branchId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
     ////////////////////
 
 

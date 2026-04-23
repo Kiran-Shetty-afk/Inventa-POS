@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,11 @@ const Reports = () => {
   const dispatch = useDispatch();
   const { toast } = useToast();
   const branchId = useSelector((state) => state.branch.branch?.id);
+  const currentMonth = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }, []);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const {
     dailySales,
     paymentBreakdown,
@@ -30,13 +35,15 @@ const Reports = () => {
 
   useEffect(() => {
     if (branchId) {
-      dispatch(getDailySalesChart({ branchId }));
-      const today = new Date().toISOString().slice(0, 10);
-      dispatch(getPaymentBreakdown({ branchId, date: today }));
-      dispatch(getCategoryWiseSalesBreakdown({ branchId, date: today }));
+      const [year, month] = selectedMonth.split("-").map(Number);
+      if (Number.isInteger(year) && Number.isInteger(month)) {
+        dispatch(getDailySalesChart({ branchId, year, month }));
+        dispatch(getPaymentBreakdown({ branchId, year, month }));
+        dispatch(getCategoryWiseSalesBreakdown({ branchId, year, month }));
+      }
       dispatch(getTopCashiersByRevenue(branchId));
     }
-  }, [branchId, dispatch]);
+  }, [branchId, dispatch, selectedMonth]);
 
   // Map API data to recharts format
   const salesData = dailySales?.map((item) => ({
@@ -130,6 +137,16 @@ const Reports = () => {
     }
 
     const today = new Date().toISOString().slice(0, 10);
+    const [selectedYear, selectedMonthNumber] = selectedMonth.split("-").map(Number);
+    if (!Number.isInteger(selectedYear) || !Number.isInteger(selectedMonthNumber)) {
+      toast({
+        title: "Invalid month",
+        description: "Please select a valid month before exporting.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    const monthKey = `${selectedYear}-${String(selectedMonthNumber).padStart(2, "0")}`;
 
     try {
       let headers;
@@ -138,18 +155,20 @@ const Reports = () => {
 
       switch (type) {
         case "sales": {
-          const data = await dispatch(getDailySalesChart({ branchId })).unwrap();
+          const data = await dispatch(
+            getDailySalesChart({ branchId, year: selectedYear, month: selectedMonthNumber })
+          ).unwrap();
           headers = ["Date", "Total Sales"];
           rows = (data || []).map((r) => [
             r.date ?? "",
             r.totalSales ?? r.totalAmount ?? "",
           ]);
-          filename = `branch-reports-daily-sales-${branchId}-${today}.csv`;
+          filename = `branch-reports-daily-sales-${branchId}-${monthKey}.csv`;
           break;
         }
         case "payments": {
           const data = await dispatch(
-            getPaymentBreakdown({ branchId, date: today })
+            getPaymentBreakdown({ branchId, year: selectedYear, month: selectedMonthNumber })
           ).unwrap();
           headers = [
             "Payment Type",
@@ -163,19 +182,19 @@ const Reports = () => {
             r.totalAmount ?? "",
             r.transactionCount ?? "",
           ]);
-          filename = `branch-reports-payment-breakdown-${branchId}-${today}.csv`;
+          filename = `branch-reports-payment-breakdown-${branchId}-${monthKey}.csv`;
           break;
         }
         case "products": {
           const data = await dispatch(
-            getCategoryWiseSalesBreakdown({ branchId, date: today })
+            getCategoryWiseSalesBreakdown({ branchId, year: selectedYear, month: selectedMonthNumber })
           ).unwrap();
           headers = ["Category", "Total Sales"];
           rows = (data || []).map((r) => [
             r.categoryName ?? r.name ?? "",
             r.totalSales ?? r.totalAmount ?? "",
           ]);
-          filename = `branch-reports-category-sales-${branchId}-${today}.csv`;
+          filename = `branch-reports-category-sales-${branchId}-${monthKey}.csv`;
           break;
         }
         case "cashier": {
@@ -263,9 +282,12 @@ const Reports = () => {
         <div className="flex gap-2">
           <Button variant="outline" size="sm">
             <Calendar className="h-4 w-4 mr-1" />
-            {/* Date range selection can be added here */}
-            {/* {dateRange.startDate} - {dateRange.endDate} */}
-            Today
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-transparent outline-none"
+            />
           </Button>
           <Button
             type="button"

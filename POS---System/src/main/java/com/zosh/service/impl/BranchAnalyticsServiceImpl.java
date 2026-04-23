@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,13 +30,23 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     private final InventoryRepository inventoryRepository;
 
     @Override
-    public List<DailySalesDTO> getDailySalesChart(Long branchId, int days) {
-        LocalDate today = LocalDate.now();
-        LocalDate startDate = today.minusDays(days - 1); // includes today
+    public List<DailySalesDTO> getDailySalesChart(Long branchId, int days, Integer year, Integer month) {
+        LocalDate startDate;
+        int totalDays;
+
+        if (year != null && month != null) {
+            YearMonth selectedMonth = YearMonth.of(year, month);
+            startDate = selectedMonth.atDay(1);
+            totalDays = selectedMonth.lengthOfMonth();
+        } else {
+            LocalDate today = LocalDate.now();
+            startDate = today.minusDays(days - 1); // includes today
+            totalDays = days;
+        }
 
         List<DailySalesDTO> salesChart = new ArrayList<>();
 
-        for (int i = 0; i < days; i++) {
+        for (int i = 0; i < totalDays; i++) {
             LocalDate currentDate = startDate.plusDays(i);
             LocalDateTime start = currentDate.atStartOfDay();
             LocalDateTime end = currentDate.atTime(LocalTime.MAX);
@@ -54,8 +65,15 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     }
 
     @Override
-    public List<ProductPerformanceDTO> getTopProductsByQuantityWithPercentage(Long branchId) {
-        List<Object[]> rawData = orderItemRepository.getTopProductsByQuantity(branchId);
+    public List<ProductPerformanceDTO> getTopProductsByQuantityWithPercentage(Long branchId, Integer year, Integer month) {
+        LocalDateTime[] range = resolveDateRange(null, year, month);
+        List<Object[]> rawData;
+
+        if (range != null) {
+            rawData = orderItemRepository.getTopProductsByQuantityBetween(branchId, range[0], range[1]);
+        } else {
+            rawData = orderItemRepository.getTopProductsByQuantity(branchId);
+        }
 
         long totalQuantity = rawData.stream()
                 .mapToLong(obj -> (Long) obj[2])
@@ -92,9 +110,10 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     }
 
     @Override
-    public List<CategorySalesDTO> getCategoryWiseSalesBreakdown(Long branchId, LocalDate date) {
-        LocalDateTime start = date.atStartOfDay();
-        LocalDateTime end = date.atTime(LocalTime.MAX);
+    public List<CategorySalesDTO> getCategoryWiseSalesBreakdown(Long branchId, LocalDate date, Integer year, Integer month) {
+        LocalDateTime[] range = resolveDateRange(date, year, month);
+        LocalDateTime start = range[0];
+        LocalDateTime end = range[1];
 
         List<Object[]> rawData = orderItemRepository.getCategoryWiseSales(branchId, start, end);
 
@@ -107,8 +126,15 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     }
 
     @Override
-    public List<PaymentSummary> getPaymentMethodBreakdown(Long branchId, LocalDate date) {
-        List<Object[]> rawData = orderRepository.getPaymentBreakdownByMethod(branchId, date);
+    public List<PaymentSummary> getPaymentMethodBreakdown(Long branchId, LocalDate date, Integer year, Integer month) {
+        LocalDateTime[] range = resolveDateRange(date, year, month);
+        List<Object[]> rawData;
+
+        if (year != null && month != null) {
+            rawData = orderRepository.getPaymentBreakdownByMethodBetween(branchId, range[0], range[1]);
+        } else {
+            rawData = orderRepository.getPaymentBreakdownByMethod(branchId, range[0].toLocalDate());
+        }
 
         double total = rawData.stream()
                 .mapToDouble(obj -> (Double) obj[1])
@@ -174,6 +200,22 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     private double calculateGrowth(Number today, Number yesterday) {
         if (yesterday == null || yesterday.doubleValue() == 0.0) return 0.0;
         return ((today.doubleValue() - yesterday.doubleValue()) / yesterday.doubleValue()) * 100;
+    }
+
+    private LocalDateTime[] resolveDateRange(LocalDate date, Integer year, Integer month) {
+        if (year != null && month != null) {
+            YearMonth selectedMonth = YearMonth.of(year, month);
+            return new LocalDateTime[] {
+                    selectedMonth.atDay(1).atStartOfDay(),
+                    selectedMonth.atEndOfMonth().atTime(LocalTime.MAX)
+            };
+        }
+
+        LocalDate targetDate = date != null ? date : LocalDate.now();
+        return new LocalDateTime[] {
+                targetDate.atStartOfDay(),
+                targetDate.atTime(LocalTime.MAX)
+        };
     }
 
 }

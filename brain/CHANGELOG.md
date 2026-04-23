@@ -1,5 +1,11 @@
 # Brain Changelog
 
+## v2026.04.23.17 - Branch month-wise analytics filters
+- Added optional `year`/`month` support in branch analytics backend for daily sales, top products, category sales, and payment breakdown.
+- Added period-based repository queries to aggregate top products and payment methods over month date ranges.
+- Added independent month pickers on Branch Dashboard and Branch Reports pages, and wired chart data fetches to selected month values.
+- Updated branch reports export flow to use selected month for sales/payment/category exports and month-aware filenames.
+
 ## v2026.04.23.16 - Branch manager chart resilience fixes
 - Fixed Branch Manager dashboard payment breakdown rendering by normalizing payment payload keys and coercing numeric chart fields safely.
 - Fixed Branch Manager reports `Payment Methods` and `Product Category Performance` chart data mapping with defensive key/value normalization.
