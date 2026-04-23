@@ -1,5 +1,9 @@
 # Brain Changelog
 
+## v2026.04.23.36 - Cashier duplicate payment submission guard
+- Fixed duplicate order creation risk on `/cashier` by adding an in-flight payment guard in `PaymentDialog` so repeated clicks on `Complete Payment` cannot dispatch `createOrder` multiple times concurrently.
+- Updated payment action buttons to disabled/loading state during checkout submission (`Processing...`) to prevent accidental double-submit.
+
 ## v2026.04.23.35 - Dark green tab logo background
 - Updated `POS---System-frontend/public/shopping-cart-logo.svg` background color to `darkgreen` to match requested branding on the title/tab logo.
 

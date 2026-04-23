@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +39,7 @@ const PaymentDialog = ({
   setShowPaymentDialog,
   setShowReceiptDialog,
 }) => {
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const paymentMethod = useSelector(selectPaymentMethod);
   const {toast} = useToast();
   const cart = useSelector(selectCartItems);
@@ -55,6 +56,10 @@ const PaymentDialog = ({
   
 
   const processPayment = async () => {
+    if (isProcessingPayment) {
+      return;
+    }
+
     if (cart.length === 0) {
       toast({
         title: "Empty Cart",
@@ -74,6 +79,7 @@ const PaymentDialog = ({
     }
 
     try {
+      setIsProcessingPayment(true);
       const resolvedBranchId = branch?.id ?? userProfile?.branchId;
       const normalizedPaymentType = normalizePaymentType(paymentMethod);
       // Prepare order data according to OrderDTO structure
@@ -124,6 +130,8 @@ const PaymentDialog = ({
         description: error || "Failed to create order. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -159,10 +167,16 @@ const PaymentDialog = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+          <Button
+            variant="outline"
+            onClick={() => setShowPaymentDialog(false)}
+            disabled={isProcessingPayment}
+          >
             Cancel
           </Button>
-          <Button onClick={processPayment}>Complete Payment</Button>
+          <Button onClick={processPayment} disabled={isProcessingPayment}>
+            {isProcessingPayment ? "Processing..." : "Complete Payment"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
