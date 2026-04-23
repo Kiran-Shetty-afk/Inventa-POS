@@ -20,6 +20,21 @@ const initialState = {
   recentOrders: [], // Added for recent orders
 };
 
+const dedupeOrdersById = (orders = []) => {
+  const seen = new Set();
+  return orders.filter((order) => {
+    const key = order?.id;
+    if (key == null) {
+      return true;
+    }
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+};
+
 const orderSlice = createSlice({
   name: 'order',
   initialState,
@@ -42,7 +57,7 @@ const orderSlice = createSlice({
       })
       .addCase(createOrder.fulfilled, (state, action) => {
         state.loading = false;
-        state.orders.push(action.payload);
+        state.orders = dedupeOrdersById([action.payload, ...state.orders]);
         state.selectedOrder=action.payload;
       })
       .addCase(createOrder.rejected, (state, action) => {
@@ -59,7 +74,7 @@ const orderSlice = createSlice({
       })
       .addCase(getOrdersByBranch.fulfilled, (state, action) => {
         state.loading = false;
-        state.orders = action.payload;
+        state.orders = dedupeOrdersById(action.payload);
       })
 
       .addCase(getOrdersByCashier.pending, (state) => {
@@ -67,7 +82,7 @@ const orderSlice = createSlice({
       })
       .addCase(getOrdersByCashier.fulfilled, (state, action) => {
         state.loading = false;
-        state.orders = action.payload;
+        state.orders = dedupeOrdersById(action.payload);
         console.log("get order by cashier ", action.payload);
       })
 

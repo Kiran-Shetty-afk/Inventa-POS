@@ -1,5 +1,9 @@
 # Brain Changelog
 
+## v2026.04.23.37 - Order history duplicate rendering hardening
+- Added defensive order de-duplication by `id` in `orderSlice` for `createOrder`, `getOrdersByCashier`, and `getOrdersByBranch` updates.
+- This ensures `/cashier/orders` does not show duplicate rows even if repeated payload entries are returned during refreshes.
+
 ## v2026.04.23.36 - Cashier duplicate payment submission guard
 - Fixed duplicate order creation risk on `/cashier` by adding an in-flight payment guard in `PaymentDialog` so repeated clicks on `Complete Payment` cannot dispatch `createOrder` multiple times concurrently.
 - Updated payment action buttons to disabled/loading state during checkout submission (`Processing...`) to prevent accidental double-submit.
