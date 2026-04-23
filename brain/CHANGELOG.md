@@ -1,5 +1,10 @@
 # Brain Changelog
 
+## v2026.04.23.40 - Consolidated role feature reference
+- Added `brain/015-role-features-superadmin-storeadmin-branchmanager-cashier-apr-23.md` with detailed, role-wise feature coverage for Super Admin, Store Admin, Branch Manager, and Cashier.
+- Consolidated capabilities from architecture and all Apr-23 role-related fix/feature notes so role behavior is documented in one place.
+- Updated `brain/INDEX.md` with the new role feature reference entry.
+
 ## v2026.04.23.39 - Store sales KPI card overflow fix
 - Fixed `/store/sales` KPI card layout so icons no longer spill outside cards when currency values are long.
 - Added overflow-safe card content, non-shrinking icon wrappers, and responsive text constraints for all sales summary cards in `store-admin/Sales.jsx`.
