@@ -1,5 +1,10 @@
 # Brain Changelog
 
+## v2026.04.23.16 - Branch manager chart resilience fixes
+- Fixed Branch Manager dashboard payment breakdown rendering by normalizing payment payload keys and coercing numeric chart fields safely.
+- Fixed Branch Manager reports `Payment Methods` and `Product Category Performance` chart data mapping with defensive key/value normalization.
+- Simplified report pie chart composition to use `ChartContainer` directly for more reliable rendering.
+
 ## v2026.04.23.15 - Category-aware seeded product images
 - Updated historical seeder product image generation to use category-specific stock keywords instead of fully random image seeds.
 - Mapped seeded categories (`Beverages`, `Snacks`, `Dairy`, `Bakery`, `Personal Care`, `Household`) to matching stock-image tag sets for more realistic product visuals.
