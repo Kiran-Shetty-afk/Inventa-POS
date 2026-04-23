@@ -1,5 +1,17 @@
 # Brain Changelog
 
+## v2026.04.23.19 - Branch employee actions made functional
+- Fixed `branch/employees` action behavior by replacing placeholder login-access toggle and reset-password handlers with real update API calls.
+- Updated backend employee mapping/service to expose and persist `verified`, `createdAt`, `lastLogin`, and encoded password updates.
+- Replaced static performance dialog content with computed order-based metrics for cashiers and real employee profile details for non-cashiers.
+- Updated active employee stat to count enabled (`verified`) employees rather than total employees.
+
+## v2026.04.23.18 - Branch day-wise analytics toggle
+- Added `Day Wise` toggle button (with date picker) alongside `Month Wise` mode on both branch dashboard and branch reports pages.
+- Updated frontend analytics dispatch logic to fetch daily sales, payment breakdown, and product/category performance by selected day in day mode.
+- Extended backend branch analytics daily sales and top products endpoints to accept optional `date` and honor day-level filtering.
+- Updated report exports to respect current mode and produce day/month-aware filenames.
+
 ## v2026.04.23.17 - Branch month-wise analytics filters
 - Added optional `year`/`month` support in branch analytics backend for daily sales, top products, category sales, and payment breakdown.
 - Added period-based repository queries to aggregate top products and payment methods over month date ranges.

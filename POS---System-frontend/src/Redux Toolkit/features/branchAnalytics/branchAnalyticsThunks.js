@@ -59,10 +59,10 @@ export const getDailySalesChart = createAsyncThunk(
 // Get top 5 products by quantity (with % contribution)
 export const getTopProductsByQuantity = createAsyncThunk(
   'branchAnalytics/getTopProductsByQuantity',
-  async ({ branchId, year, month }, { rejectWithValue }) => {
+  async ({ branchId, date, year, month }, { rejectWithValue }) => {
     try {
       const headers = getAuthHeaders();
-      const query = buildMonthAwareQuery({ branchId, year, month });
+      const query = buildMonthAwareQuery({ branchId, date, year, month });
       const res = await api.get(`/api/branch-analytics/top-products?${query}`, { headers });
       console.log('✅ Top products by quantity response:', res.data);
       return res.data;

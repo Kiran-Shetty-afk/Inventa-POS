@@ -30,10 +30,11 @@ public class BranchAnalyticsController {
     public ResponseEntity<List<DailySalesDTO>> getDailySalesChart(
             @RequestParam Long branchId,
             @RequestParam(defaultValue = "7") int days,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getDailySalesChart(branchId, days, year, month));
+        return ResponseEntity.ok(branchAnalyticsService.getDailySalesChart(branchId, days, date, year, month));
     }
 
     /**
@@ -43,10 +44,11 @@ public class BranchAnalyticsController {
     @PreAuthorize(ALLOWED_ROLES)
     public ResponseEntity<List<ProductPerformanceDTO>> getTopProductsByQuantity(
             @RequestParam Long branchId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getTopProductsByQuantityWithPercentage(branchId, year, month));
+        return ResponseEntity.ok(branchAnalyticsService.getTopProductsByQuantityWithPercentage(branchId, date, year, month));
     }
 
     /**

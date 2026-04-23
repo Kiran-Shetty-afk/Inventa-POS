@@ -21,6 +21,8 @@ public class UserDTO {
     private BranchDTO branch;
     private String branchName;
     private LocalDateTime lastLogin;
+    private LocalDateTime createdAt;
+    private Boolean verified;
 
 
 
@@ -39,6 +41,8 @@ public class UserDTO {
         this.branch = null;
         this.branchName=branchName;
         this.lastLogin=lastLogin;
+        this.createdAt = null;
+        this.verified = null;
 
     }
 }

@@ -8,6 +8,8 @@ This folder is the workspace knowledge base.
 - `003-qa-bugfix-sweep-apr-23.md`: QA bugfix record for dashboards, reports, cashier flows, and landing links.
 - `004-branch-manager-chart-fixes-apr-23.md`: Notes for branch manager payment/category chart resilience fixes.
 - `005-branch-manager-month-filters-apr-23.md`: Month-wise filter implementation notes for branch dashboard and reports analytics.
+- `006-branch-day-wise-toggle-apr-23.md`: Added day-wise mode toggle and date filtering across branch dashboard/reports.
+- `007-branch-employees-action-fixes-apr-23.md`: Fixes for non-working employee actions and static branch employee performance info.
 - `CHANGELOG.md`: Versioned log of important changes and fixes.
 
 ## Update Rules

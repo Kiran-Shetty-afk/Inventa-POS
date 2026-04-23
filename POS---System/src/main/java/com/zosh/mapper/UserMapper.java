@@ -23,6 +23,9 @@ public class UserMapper {
         userDTO.setRole(user.getRole());
         userDTO.setStoreId(user.getStore()==null?null:user.getStore().getId());
         userDTO.setPhone(user.getPhone());
+        userDTO.setLastLogin(user.getLastLogin());
+        userDTO.setCreatedAt(user.getCreatedAt());
+        userDTO.setVerified(user.getVerified());
 
         return userDTO;
     }

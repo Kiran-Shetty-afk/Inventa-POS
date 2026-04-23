@@ -30,7 +30,7 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     private final InventoryRepository inventoryRepository;
 
     @Override
-    public List<DailySalesDTO> getDailySalesChart(Long branchId, int days, Integer year, Integer month) {
+    public List<DailySalesDTO> getDailySalesChart(Long branchId, int days, LocalDate date, Integer year, Integer month) {
         LocalDate startDate;
         int totalDays;
 
@@ -38,6 +38,9 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
             YearMonth selectedMonth = YearMonth.of(year, month);
             startDate = selectedMonth.atDay(1);
             totalDays = selectedMonth.lengthOfMonth();
+        } else if (date != null) {
+            startDate = date.minusDays(days - 1);
+            totalDays = days;
         } else {
             LocalDate today = LocalDate.now();
             startDate = today.minusDays(days - 1); // includes today
@@ -65,15 +68,12 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     }
 
     @Override
-    public List<ProductPerformanceDTO> getTopProductsByQuantityWithPercentage(Long branchId, Integer year, Integer month) {
+    public List<ProductPerformanceDTO> getTopProductsByQuantityWithPercentage(Long branchId, LocalDate date, Integer year, Integer month) {
         LocalDateTime[] range = resolveDateRange(null, year, month);
-        List<Object[]> rawData;
-
-        if (range != null) {
-            rawData = orderItemRepository.getTopProductsByQuantityBetween(branchId, range[0], range[1]);
-        } else {
-            rawData = orderItemRepository.getTopProductsByQuantity(branchId);
+        if (date != null && (year == null || month == null)) {
+            range = resolveDateRange(date, null, null);
         }
+        List<Object[]> rawData = orderItemRepository.getTopProductsByQuantityBetween(branchId, range[0], range[1]);
 
         long totalQuantity = rawData.stream()
                 .mapToLong(obj -> (Long) obj[2])

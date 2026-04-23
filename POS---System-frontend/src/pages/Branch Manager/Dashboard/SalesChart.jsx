@@ -5,19 +5,23 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { getDailySalesChart } from "@/Redux Toolkit/features/branchAnalytics/branchAnalyticsThunks";
 
-const SalesChart = ({ selectedMonth }) => {
+const SalesChart = ({ selectedMonth, selectedDate, viewMode }) => {
   const dispatch = useDispatch();
   const branchId = useSelector((state) => state.branch.branch?.id);
   const analytics = useSelector((state) => state.branchAnalytics);
 
   useEffect(() => {
     if (branchId) {
-      const [year, month] = selectedMonth.split("-").map(Number);
-      if (Number.isInteger(year) && Number.isInteger(month)) {
-        dispatch(getDailySalesChart({ branchId, year, month }));
+      if (viewMode === "month") {
+        const [year, month] = selectedMonth.split("-").map(Number);
+        if (Number.isInteger(year) && Number.isInteger(month)) {
+          dispatch(getDailySalesChart({ branchId, year, month }));
+        }
+      } else if (selectedDate) {
+        dispatch(getDailySalesChart({ branchId, days: 1, date: selectedDate }));
       }
     }
-  }, [branchId, dispatch, selectedMonth]);
+  }, [branchId, dispatch, selectedMonth, selectedDate, viewMode]);
 
 
 

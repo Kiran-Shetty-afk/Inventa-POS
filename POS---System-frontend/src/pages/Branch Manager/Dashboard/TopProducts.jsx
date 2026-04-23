@@ -13,19 +13,23 @@ import { getTopProductsByQuantity } from "@/Redux Toolkit/features/branchAnalyti
 
 const COLORS = ["#6D214F", "#B33771", "#D980FA", "#833471", "#84817a"];
 
-const TopProducts = ({ selectedMonth }) => {
+const TopProducts = ({ selectedMonth, selectedDate, viewMode }) => {
   const dispatch = useDispatch();
   const branchId = useSelector((state) => state.branch.branch?.id);
   const { topProducts, loading } = useSelector((state) => state.branchAnalytics);
 
   useEffect(() => {
     if (branchId) {
-      const [year, month] = selectedMonth.split("-").map(Number);
-      if (Number.isInteger(year) && Number.isInteger(month)) {
-        dispatch(getTopProductsByQuantity({ branchId, year, month }));
+      if (viewMode === "month") {
+        const [year, month] = selectedMonth.split("-").map(Number);
+        if (Number.isInteger(year) && Number.isInteger(month)) {
+          dispatch(getTopProductsByQuantity({ branchId, year, month }));
+        }
+      } else if (selectedDate) {
+        dispatch(getTopProductsByQuantity({ branchId, date: selectedDate }));
       }
     }
-  }, [branchId, dispatch, selectedMonth]);
+  }, [branchId, dispatch, selectedMonth, selectedDate, viewMode]);
 
   // Map API data to recharts format
   const data = topProducts?.map((item) => ({

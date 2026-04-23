@@ -7,8 +7,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface BranchAnalyticsService {
-    List<DailySalesDTO> getDailySalesChart(Long branchId, int days, Integer year, Integer month);
-    List<ProductPerformanceDTO> getTopProductsByQuantityWithPercentage(Long branchId, Integer year, Integer month);
+    List<DailySalesDTO> getDailySalesChart(Long branchId, int days, LocalDate date, Integer year, Integer month);
+    List<ProductPerformanceDTO> getTopProductsByQuantityWithPercentage(Long branchId, LocalDate date, Integer year, Integer month);
     List<CashierPerformanceDTO> getTopCashierPerformanceByOrders(Long branchId);
     List<CategorySalesDTO> getCategoryWiseSalesBreakdown(Long branchId, LocalDate date, Integer year, Integer month);
 

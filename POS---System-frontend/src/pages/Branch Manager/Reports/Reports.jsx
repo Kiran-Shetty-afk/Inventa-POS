@@ -25,7 +25,10 @@ const Reports = () => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   }, []);
+  const currentDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedDate, setSelectedDate] = useState(currentDate);
+  const [viewMode, setViewMode] = useState("month");
   const {
     dailySales,
     paymentBreakdown,
@@ -35,15 +38,21 @@ const Reports = () => {
 
   useEffect(() => {
     if (branchId) {
-      const [year, month] = selectedMonth.split("-").map(Number);
-      if (Number.isInteger(year) && Number.isInteger(month)) {
-        dispatch(getDailySalesChart({ branchId, year, month }));
-        dispatch(getPaymentBreakdown({ branchId, year, month }));
-        dispatch(getCategoryWiseSalesBreakdown({ branchId, year, month }));
+      if (viewMode === "month") {
+        const [year, month] = selectedMonth.split("-").map(Number);
+        if (Number.isInteger(year) && Number.isInteger(month)) {
+          dispatch(getDailySalesChart({ branchId, year, month }));
+          dispatch(getPaymentBreakdown({ branchId, year, month }));
+          dispatch(getCategoryWiseSalesBreakdown({ branchId, year, month }));
+        }
+      } else if (selectedDate) {
+        dispatch(getDailySalesChart({ branchId, days: 1, date: selectedDate }));
+        dispatch(getPaymentBreakdown({ branchId, date: selectedDate }));
+        dispatch(getCategoryWiseSalesBreakdown({ branchId, date: selectedDate }));
       }
       dispatch(getTopCashiersByRevenue(branchId));
     }
-  }, [branchId, dispatch, selectedMonth]);
+  }, [branchId, dispatch, selectedMonth, selectedDate, viewMode]);
 
   // Map API data to recharts format
   const salesData = dailySales?.map((item) => ({
@@ -138,7 +147,8 @@ const Reports = () => {
 
     const today = new Date().toISOString().slice(0, 10);
     const [selectedYear, selectedMonthNumber] = selectedMonth.split("-").map(Number);
-    if (!Number.isInteger(selectedYear) || !Number.isInteger(selectedMonthNumber)) {
+    const isMonthMode = viewMode === "month";
+    if (isMonthMode && (!Number.isInteger(selectedYear) || !Number.isInteger(selectedMonthNumber))) {
       toast({
         title: "Invalid month",
         description: "Please select a valid month before exporting.",
@@ -146,7 +156,16 @@ const Reports = () => {
       });
       return false;
     }
+    if (!isMonthMode && !selectedDate) {
+      toast({
+        title: "Invalid date",
+        description: "Please select a valid date before exporting.",
+        variant: "destructive",
+      });
+      return false;
+    }
     const monthKey = `${selectedYear}-${String(selectedMonthNumber).padStart(2, "0")}`;
+    const exportKey = isMonthMode ? monthKey : selectedDate;
 
     try {
       let headers;
@@ -155,20 +174,22 @@ const Reports = () => {
 
       switch (type) {
         case "sales": {
-          const data = await dispatch(
-            getDailySalesChart({ branchId, year: selectedYear, month: selectedMonthNumber })
+          const data = await dispatch(isMonthMode
+            ? getDailySalesChart({ branchId, year: selectedYear, month: selectedMonthNumber })
+            : getDailySalesChart({ branchId, days: 1, date: selectedDate })
           ).unwrap();
           headers = ["Date", "Total Sales"];
           rows = (data || []).map((r) => [
             r.date ?? "",
             r.totalSales ?? r.totalAmount ?? "",
           ]);
-          filename = `branch-reports-daily-sales-${branchId}-${monthKey}.csv`;
+          filename = `branch-reports-daily-sales-${branchId}-${exportKey}.csv`;
           break;
         }
         case "payments": {
-          const data = await dispatch(
-            getPaymentBreakdown({ branchId, year: selectedYear, month: selectedMonthNumber })
+          const data = await dispatch(isMonthMode
+            ? getPaymentBreakdown({ branchId, year: selectedYear, month: selectedMonthNumber })
+            : getPaymentBreakdown({ branchId, date: selectedDate })
           ).unwrap();
           headers = [
             "Payment Type",
@@ -182,19 +203,20 @@ const Reports = () => {
             r.totalAmount ?? "",
             r.transactionCount ?? "",
           ]);
-          filename = `branch-reports-payment-breakdown-${branchId}-${monthKey}.csv`;
+          filename = `branch-reports-payment-breakdown-${branchId}-${exportKey}.csv`;
           break;
         }
         case "products": {
-          const data = await dispatch(
-            getCategoryWiseSalesBreakdown({ branchId, year: selectedYear, month: selectedMonthNumber })
+          const data = await dispatch(isMonthMode
+            ? getCategoryWiseSalesBreakdown({ branchId, year: selectedYear, month: selectedMonthNumber })
+            : getCategoryWiseSalesBreakdown({ branchId, date: selectedDate })
           ).unwrap();
           headers = ["Category", "Total Sales"];
           rows = (data || []).map((r) => [
             r.categoryName ?? r.name ?? "",
             r.totalSales ?? r.totalAmount ?? "",
           ]);
-          filename = `branch-reports-category-sales-${branchId}-${monthKey}.csv`;
+          filename = `branch-reports-category-sales-${branchId}-${exportKey}.csv`;
           break;
         }
         case "cashier": {
@@ -280,14 +302,39 @@ const Reports = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
         <div className="flex gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={viewMode === "month" ? "default" : "outline"}
+            onClick={() => setViewMode("month")}
+          >
+            Month Wise
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={viewMode === "day" ? "default" : "outline"}
+            onClick={() => setViewMode("day")}
+          >
+            Day Wise
+          </Button>
           <Button variant="outline" size="sm">
             <Calendar className="h-4 w-4 mr-1" />
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-transparent outline-none"
-            />
+            {viewMode === "month" ? (
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-transparent outline-none"
+              />
+            ) : (
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="bg-transparent outline-none"
+              />
+            )}
           </Button>
           <Button
             type="button"

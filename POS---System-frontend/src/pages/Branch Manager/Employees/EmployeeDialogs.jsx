@@ -89,8 +89,7 @@ export const ResetPasswordDialog = ({
             <strong>{selectedEmployee.fullName || selectedEmployee.name}</strong>?
           </p>
           <p className="text-sm text-gray-500 mt-2">
-            A temporary password will be generated and sent to their email
-            address.
+            A temporary password will be generated instantly for manual sharing.
           </p>
         </div>
         <DialogFooter>
@@ -110,6 +109,7 @@ export const PerformanceDialog = ({
   isPerformanceDialogOpen,
   setIsPerformanceDialogOpen,
   selectedEmployee,
+  performanceData,
 }) => {
   const { toast } = useToast();
   const employeeName = selectedEmployee?.fullName || selectedEmployee?.name || "Employee";
@@ -126,9 +126,9 @@ export const PerformanceDialog = ({
       csv = buildCsv(
         ["Metric", "Value", "Period"],
         [
-          ["Orders Processed", "127", "Last 30 days"],
-          ["Total Sales", "78450", "Last 30 days"],
-          ["Avg. Order Value", "617", "Last 30 days"],
+          ["Orders Processed", String(performanceData?.ordersProcessed ?? 0), "Last 30 days"],
+          ["Total Sales", String(Math.round(performanceData?.totalSales ?? 0)), "Last 30 days"],
+          ["Avg. Order Value", String(Math.round(performanceData?.avgOrderValue ?? 0)), "Last 30 days"],
         ]
       );
     } else {
@@ -136,18 +136,18 @@ export const PerformanceDialog = ({
         buildCsv(
           ["Metric", "Value", "Period"],
           [
-            ["Stock Updates", "42", "Last 30 days"],
-            ["Products Managed", "156", "Total"],
-            ["Inventory Accuracy", "98%", "Last audit"],
+            ["Role", String(selectedEmployee?.role || "-"), "Current"],
+            ["Last Login", String(selectedEmployee?.lastLogin || "-"), "Recorded"],
+            ["Access Status", selectedEmployee?.verified ? "Enabled" : "Disabled", "Current"],
           ]
         ) +
         "\r\n\r\n" +
         buildCsv(
-          ["Activity", "Category", "When"],
+          ["Attribute", "Value"],
           [
-            ["Updated stock for 12 products", "Grocery category", "2 days ago"],
-            ["Added 5 new products", "Dairy category", "5 days ago"],
-            ["Completed monthly inventory audit", "All categories", "1 week ago"],
+            ["Email", String(selectedEmployee?.email || "-")],
+            ["Phone", String(selectedEmployee?.phone || "-")],
+            ["Joined", String(selectedEmployee?.createdAt || "-")],
           ]
         );
     }
@@ -181,7 +181,7 @@ export const PerformanceDialog = ({
                       <h3 className="text-lg font-medium text-gray-500">
                         Orders Processed
                       </h3>
-                      <p className="text-3xl font-bold mt-2">127</p>
+                      <p className="text-3xl font-bold mt-2">{performanceData?.ordersProcessed ?? 0}</p>
                       <p className="text-sm text-gray-500 mt-1">Last 30 days</p>
                     </div>
                   </CardContent>
@@ -193,7 +193,9 @@ export const PerformanceDialog = ({
                       <h3 className="text-lg font-medium text-gray-500">
                         Total Sales
                       </h3>
-                      <p className="text-3xl font-bold mt-2">₹78,450</p>
+                      <p className="text-3xl font-bold mt-2">
+                        ₹{Math.round(performanceData?.totalSales ?? 0).toLocaleString("en-IN")}
+                      </p>
                       <p className="text-sm text-gray-500 mt-1">Last 30 days</p>
                     </div>
                   </CardContent>
@@ -205,7 +207,9 @@ export const PerformanceDialog = ({
                       <h3 className="text-lg font-medium text-gray-500">
                         Avg. Order Value
                       </h3>
-                      <p className="text-3xl font-bold mt-2">₹617</p>
+                      <p className="text-3xl font-bold mt-2">
+                        ₹{Math.round(performanceData?.avgOrderValue ?? 0).toLocaleString("en-IN")}
+                      </p>
                       <p className="text-sm text-gray-500 mt-1">Last 30 days</p>
                     </div>
                   </CardContent>
@@ -215,14 +219,26 @@ export const PerformanceDialog = ({
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold">
-                    Daily Sales Performance
+                    Recent Orders
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[200px] w-full flex items-center justify-center bg-gray-50 rounded-md">
-                    <p className="text-gray-500">
-                      Sales chart would appear here in production
-                    </p>
+                  <div className="space-y-3">
+                    {(performanceData?.recentOrders || []).length === 0 ? (
+                      <p className="text-gray-500">No recent orders for this cashier.</p>
+                    ) : (
+                      performanceData.recentOrders.map((order) => (
+                        <div key={order.id} className="flex items-center justify-between border-b pb-2">
+                          <div>
+                            <p className="font-medium">Order #{order.id}</p>
+                            <p className="text-xs text-gray-500">
+                              {order.createdAt ? new Date(order.createdAt).toLocaleString("en-IN") : "-"}
+                            </p>
+                          </div>
+                          <p className="font-semibold">₹{Math.round(order.totalAmount || 0).toLocaleString("en-IN")}</p>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -234,10 +250,12 @@ export const PerformanceDialog = ({
                   <CardContent className="p-6">
                     <div className="flex flex-col items-center justify-center">
                       <h3 className="text-lg font-medium text-gray-500">
-                        Stock Updates
+                        Access Status
                       </h3>
-                      <p className="text-3xl font-bold mt-2">42</p>
-                      <p className="text-sm text-gray-500 mt-1">Last 30 days</p>
+                      <p className="text-3xl font-bold mt-2">
+                        {selectedEmployee?.verified ? "Enabled" : "Disabled"}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">Current</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -246,10 +264,14 @@ export const PerformanceDialog = ({
                   <CardContent className="p-6">
                     <div className="flex flex-col items-center justify-center">
                       <h3 className="text-lg font-medium text-gray-500">
-                        Products Managed
+                        Last Login
                       </h3>
-                      <p className="text-3xl font-bold mt-2">156</p>
-                      <p className="text-sm text-gray-500 mt-1">Total</p>
+                      <p className="text-lg font-bold mt-2">
+                        {selectedEmployee?.lastLogin
+                          ? new Date(selectedEmployee.lastLogin).toLocaleDateString("en-IN")
+                          : "Never"}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">Recorded</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -258,10 +280,14 @@ export const PerformanceDialog = ({
                   <CardContent className="p-6">
                     <div className="flex flex-col items-center justify-center">
                       <h3 className="text-lg font-medium text-gray-500">
-                        Inventory Accuracy
+                        Joined On
                       </h3>
-                      <p className="text-3xl font-bold mt-2">98%</p>
-                      <p className="text-sm text-gray-500 mt-1">Last audit</p>
+                      <p className="text-lg font-bold mt-2">
+                        {selectedEmployee?.createdAt
+                          ? new Date(selectedEmployee.createdAt).toLocaleDateString("en-IN")
+                          : "-"}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">Profile</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -270,37 +296,28 @@ export const PerformanceDialog = ({
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold">
-                    Activity Log
+                    Employee Details
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex justify-between items-center border-b pb-2">
                       <div>
-                        <p className="font-medium">
-                          Updated stock for 12 products
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Grocery category
-                        </p>
+                        <p className="font-medium">Role</p>
+                        <p className="text-sm text-gray-500">{selectedEmployee?.role || "-"}</p>
                       </div>
-                      <p className="text-sm text-gray-500">2 days ago</p>
                     </div>
                     <div className="flex justify-between items-center border-b pb-2">
                       <div>
-                        <p className="font-medium">Added 5 new products</p>
-                        <p className="text-sm text-gray-500">Dairy category</p>
+                        <p className="font-medium">Email</p>
+                        <p className="text-sm text-gray-500">{selectedEmployee?.email || "-"}</p>
                       </div>
-                      <p className="text-sm text-gray-500">5 days ago</p>
                     </div>
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="font-medium">
-                          Completed monthly inventory audit
-                        </p>
-                        <p className="text-sm text-gray-500">All categories</p>
+                        <p className="font-medium">Phone</p>
+                        <p className="text-sm text-gray-500">{selectedEmployee?.phone || "-"}</p>
                       </div>
-                      <p className="text-sm text-gray-500">1 week ago</p>
                     </div>
                   </div>
                 </CardContent>

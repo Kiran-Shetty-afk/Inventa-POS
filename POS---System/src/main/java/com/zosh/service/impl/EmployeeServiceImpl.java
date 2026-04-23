@@ -58,6 +58,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setStore(store);
         employee.setBranch(branch);
         employee.setPassword(passwordEncoder.encode(employee.getPassword()));
+        employee.setVerified(true);
 
         System.out.println("employee: " + employee);
 
@@ -92,6 +93,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         employee.setPassword(passwordEncoder.encode(employee.getPassword()));
         employee.setBranch(branch);
+        employee.setVerified(true);
 
         User isExist=userRepository.findByEmail(employee.getEmail());
         if(isExist!=null){
@@ -118,7 +120,12 @@ public class EmployeeServiceImpl implements EmployeeService {
             // Add logic to restrict role changes based on current user's role if necessary
             existingEmployee.setRole(employeeDetails.getRole());
         }
-        // Password should be updated via a separate method for security reasons
+        if (employeeDetails.getPassword() != null && !employeeDetails.getPassword().isBlank()) {
+            existingEmployee.setPassword(passwordEncoder.encode(employeeDetails.getPassword()));
+        }
+        if (employeeDetails.getVerified() != null) {
+            existingEmployee.setVerified(employeeDetails.getVerified());
+        }
 
         return userRepository.save(existingEmployee);
     }

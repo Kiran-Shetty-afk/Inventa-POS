@@ -11,7 +11,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Edit, UserX, Key, BarChart } from "lucide-react";
 
-const loginAccess=true
+const formatDateTime = (value) => {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
 
 const EmployeeTable = ({
   employees,
@@ -43,17 +52,17 @@ const EmployeeTable = ({
               <TableCell>
                 <Badge
                   className={
-                    loginAccess
+                    employee.verified
                       ? "bg-green-100 text-green-800 hover:bg-green-100/80"
                       : "bg-red-100 text-red-800 hover:bg-red-100/80"
                   }
                   variant="secondary"
                 >
-                  {loginAccess ? "Enabled" : "Disabled"}
+                  {employee.verified ? "Enabled" : "Disabled"}
                 </Badge>
               </TableCell>
             
-              <TableCell>{employee.createdAt}</TableCell>
+              <TableCell>{formatDateTime(employee.createdAt)}</TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
                   <Button
@@ -61,7 +70,7 @@ const EmployeeTable = ({
                     size="icon"
                     onClick={() => handleToggleAccess(employee)}
                     title={
-                      employee.loginAccess
+                      employee.verified
                         ? "Disable Access"
                         : "Enable Access"
                     }

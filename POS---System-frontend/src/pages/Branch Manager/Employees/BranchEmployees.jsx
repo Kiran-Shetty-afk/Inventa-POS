@@ -1,7 +1,4 @@
-import React, { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
 import { branchAdminRole } from "../../../utils/userRole";
 
 import EmployeeStats from "./EmployeeStats";
@@ -19,19 +16,10 @@ import {
   findBranchEmployees,
   updateEmployee,
 } from "../../../Redux Toolkit/features/employee/employeeThunks";
-
-const getStatusColor = (status) => {
-  if (status === "Active") {
-    return "text-green-500";
-  } else if (status === "Inactive") {
-    return "text-red-500";
-  } else {
-    return "text-gray-500";
-  }
-};
+import { getOrdersByBranch } from "../../../Redux Toolkit/features/order/orderThunks";
+import { useToast } from "@/components/ui/use-toast";
 
 const BranchEmployees = () => {
-  // const [employees, setEmployees] = useState([]); // Initialize with empty array
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] =
@@ -39,13 +27,12 @@ const BranchEmployees = () => {
   const [isPerformanceDialogOpen, setIsPerformanceDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const dispatch = useDispatch();
-  // const { store } = useSelector((state) => state);
+  const { toast } = useToast();
   const { branch } = useSelector((state) => state.branch);
   const {employees}=useSelector((state)=>state.employee)
+  const { orders } = useSelector((state) => state.order);
   const { userProfile } = useSelector((state) => state.user);
 
-
-  console.log("branch employees", employees);
 
   const handleAddEmployee = (newEmployeeData) => {
     if (branch?.id && userProfile.branchId) {
@@ -58,66 +45,95 @@ const BranchEmployees = () => {
         branchId: branch.id,
         token: localStorage.getItem("jwt"),
       };
-      console.log("branch employee data ", data);
       dispatch(createBranchEmployee(data));
       setIsAddDialogOpen(false);
     }
   };
 
-  const handleEditEmployee = (updatedEmployeeData) => {
+  const handleEditEmployee = async (updatedEmployeeData) => {
     if (selectedEmployee?.id && localStorage.getItem("jwt")) {
-      const data={
+      try {
+        const data={
           employeeId: selectedEmployee.id,
           employeeDetails: updatedEmployeeData,
           token: localStorage.getItem("jwt"),
 
         }
-      dispatch(
-        updateEmployee(data)
-      );
-      setIsEditDialogOpen(false);
+        await dispatch(updateEmployee(data)).unwrap();
+        setIsEditDialogOpen(false);
+        if (branch?.id) {
+          await dispatch(findBranchEmployees({ branchId: branch?.id }));
+        }
+        toast({
+          title: "Employee updated",
+          description: "Employee details have been saved.",
+        });
+      } catch (error) {
+        toast({
+          title: "Update failed",
+          description: typeof error === "string" ? error : "Could not update employee.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
     useEffect(() => {
       if (branch?.id) {
-        dispatch(
-          findBranchEmployees({
-            branchId: branch?.id
-          })
-        );
+        dispatch(findBranchEmployees({ branchId: branch?.id }));
+        dispatch(getOrdersByBranch({ branchId: branch?.id }));
       }
     }, [dispatch, branch?.id]);
 
-  // const handleEditEmployee = (updatedEmployeeData) => {
-  //   const updatedEmployees = employees.map((employee) =>
-  //     employee.id === updatedEmployeeData.id
-  //       ? {
-  //           ...updatedEmployeeData,
-  //           status: updatedEmployeeData.loginAccess ? "Active" : "Inactive",
-  //         }
-  //       : employee
-  //   );
-  //   setEmployees(updatedEmployees);
-  //   setIsEditDialogOpen(false);
-  // };
-
-  const handleToggleAccess = (employee) => {
-    void employees.map((emp) =>
-      emp.id === employee.id
-        ? {
-            ...emp,
-            loginAccess: !emp.loginAccess,
-            status: !emp.loginAccess ? "Inactive" : "Active",
-          }
-        : emp
-    );
-    // setEmployees(updatedEmployees);
+  const handleToggleAccess = async (employee) => {
+    const nextAccess = !(employee?.verified ?? false);
+    try {
+      await dispatch(
+        updateEmployee({
+          employeeId: employee.id,
+          employeeDetails: { verified: nextAccess },
+          token: localStorage.getItem("jwt"),
+        })
+      ).unwrap();
+      if (branch?.id) {
+        await dispatch(findBranchEmployees({ branchId: branch?.id }));
+      }
+      toast({
+        title: nextAccess ? "Access enabled" : "Access disabled",
+        description: `${employee.fullName}'s login access is now ${nextAccess ? "enabled" : "disabled"}.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Access update failed",
+        description: typeof error === "string" ? error : "Could not change login access.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleResetPassword = () => {
-    console.log(`Password reset for ${selectedEmployee?.fullName || selectedEmployee?.name}`);
-    setIsResetPasswordDialogOpen(false);
+  const handleResetPassword = async () => {
+    if (!selectedEmployee?.id) return;
+    const tempPassword = Math.random().toString(36).slice(-10) + "A1!";
+    try {
+      await dispatch(
+        updateEmployee({
+          employeeId: selectedEmployee.id,
+          employeeDetails: { password: tempPassword },
+          token: localStorage.getItem("jwt"),
+        })
+      ).unwrap();
+      setIsResetPasswordDialogOpen(false);
+      toast({
+        title: "Password reset successful",
+        description: `Temporary password for ${selectedEmployee?.fullName || selectedEmployee?.name}: ${tempPassword}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Password reset failed",
+        description: typeof error === "string" ? error : "Could not reset password.",
+        variant: "destructive",
+      });
+    }
   };
 
   const openEditDialog = (employee) => {
@@ -135,6 +151,33 @@ const BranchEmployees = () => {
     setIsPerformanceDialogOpen(true);
   };
 
+  const selectedEmployeePerformance = useMemo(() => {
+    if (!selectedEmployee?.id) {
+      return null;
+    }
+    const employeeOrders = (orders || []).filter(
+      (order) => String(order.cashierId) === String(selectedEmployee.id)
+    );
+    const last30DaysCutoff = new Date();
+    last30DaysCutoff.setDate(last30DaysCutoff.getDate() - 30);
+    const recentOrders = employeeOrders.filter((order) => {
+      if (!order.createdAt) return false;
+      return new Date(order.createdAt) >= last30DaysCutoff;
+    });
+    const totalSales = recentOrders.reduce(
+      (sum, order) => sum + Number(order.totalAmount || 0),
+      0
+    );
+    const avgOrderValue = recentOrders.length ? totalSales / recentOrders.length : 0;
+
+    return {
+      ordersProcessed: recentOrders.length,
+      totalSales,
+      avgOrderValue,
+      recentOrders: recentOrders.slice(0, 5),
+    };
+  }, [orders, selectedEmployee]);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -151,7 +194,6 @@ const BranchEmployees = () => {
       <EmployeeStats employees={employees} />
       <EmployeeTable
         employees={employees}
-        getStatusColor={getStatusColor}
         handleToggleAccess={handleToggleAccess}
         openEditDialog={openEditDialog}
         openResetPasswordDialog={openResetPasswordDialog}
@@ -177,6 +219,7 @@ const BranchEmployees = () => {
         isPerformanceDialogOpen={isPerformanceDialogOpen}
         setIsPerformanceDialogOpen={setIsPerformanceDialogOpen}
         selectedEmployee={selectedEmployee}
+        performanceData={selectedEmployeePerformance}
       />
     </div>
   );
