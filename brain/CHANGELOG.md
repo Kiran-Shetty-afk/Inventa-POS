@@ -1,5 +1,14 @@
 # Brain Changelog
 
+## v2026.04.23.35 - Dark green tab logo background
+- Updated `POS---System-frontend/public/shopping-cart-logo.svg` background color to `darkgreen` to match requested branding on the title/tab logo.
+
+## v2026.04.23.34 - Frontend shopping cart favicon
+- Added `POS---System-frontend/public/shopping-cart-logo.svg` and switched `POS---System-frontend/index.html` favicon link to this shopping cart logo so the browser tab icon matches landing-page branding.
+
+## v2026.04.23.33 - Frontend page title updated
+- Updated the global frontend document title in `POS---System-frontend/index.html` from `Zosh POS` to `inventaa`.
+
 ## v2026.04.23.32 - Store sales KPI count correction and reports CSV export
 - Fixed `/store/sales` KPI reliability by updating store overview backend aggregation to compute `todayOrders`, `yesterdayOrders`, `activeCashiers`, and average order values from time windows without requiring `COMPLETED`-only status.
 - Added new store-admin time-window repository queries for order count, distinct cashier count, and average order value to support the corrected KPI behavior.
