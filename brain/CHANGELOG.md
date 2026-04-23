@@ -1,5 +1,11 @@
 # Brain Changelog
 
+## v2026.04.23.32 - Store sales KPI count correction and reports CSV export
+- Fixed `/store/sales` KPI reliability by updating store overview backend aggregation to compute `todayOrders`, `yesterdayOrders`, `activeCashiers`, and average order values from time windows without requiring `COMPLETED`-only status.
+- Added new store-admin time-window repository queries for order count, distinct cashier count, and average order value to support the corrected KPI behavior.
+- Added `Export CSV` button on `/store/reports` and wired multi-file CSV export for monthly sales, category sales, branch sales, and payment-method breakdown tables with filter-aware filenames.
+- Added knowledge note `014-store-sales-kpi-and-reports-export-apr-23.md` and updated `brain/INDEX.md`.
+
 ## v2026.04.23.31 - Defensive payment enum normalization
 - Added a defensive checkout guard in cashier `PaymentDialog` to normalize `paymentType` to uppercase backend enum values (`CASH`, `CARD`, `UPI`) before submitting orders.
 - Unknown payment values now safely fall back to `CASH`, preventing future enum parse errors even if client state becomes inconsistent.

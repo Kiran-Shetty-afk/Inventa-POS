@@ -131,6 +131,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     );
 
     @Query("""
+    SELECT COUNT(o)
+    FROM Order o
+    WHERE o.branch.store.storeAdmin.id = :storeAdminId
+    AND o.createdAt >= :start
+    AND o.createdAt < :end
+""")
+    int countByStoreAdminIdAndCreatedAtBetween(
+            @Param("storeAdminId") Long storeAdminId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("""
     SELECT COUNT(DISTINCT o.cashier.id)
     FROM Order o
     WHERE o.branch.store.storeAdmin.id = :storeAdminId
@@ -146,6 +159,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     );
 
     @Query("""
+    SELECT COUNT(DISTINCT o.cashier.id)
+    FROM Order o
+    WHERE o.branch.store.storeAdmin.id = :storeAdminId
+    AND o.createdAt >= :start
+    AND o.createdAt < :end
+""")
+    int countDistinctCashiersByStoreAdminIdAndCreatedAtBetween(
+            @Param("storeAdminId") Long storeAdminId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("""
     SELECT AVG(o.totalAmount)
     FROM Order o
     WHERE o.branch.store.storeAdmin.id = :storeAdminId
@@ -156,6 +182,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Double> averageOrderValueByStoreAdminIdAndStatusBetween(
             @Param("storeAdminId") Long storeAdminId,
             @Param("status") OrderStatus status,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("""
+    SELECT AVG(o.totalAmount)
+    FROM Order o
+    WHERE o.branch.store.storeAdmin.id = :storeAdminId
+    AND o.createdAt >= :start
+    AND o.createdAt < :end
+""")
+    Optional<Double> averageOrderValueByStoreAdminIdAndCreatedAtBetween(
+            @Param("storeAdminId") Long storeAdminId,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
     );

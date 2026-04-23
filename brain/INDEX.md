@@ -16,6 +16,7 @@ This folder is the workspace knowledge base.
 - `011-cashier-returns-store-sales-fixes-apr-23.md`: Fixes cashier shift/returns flows and store sales dashboard KPI contract mismatches.
 - `012-ai-branch-health-copilot-v1-apr-23.md`: Added on-demand Gemini-powered branch health narrative with fallback and dashboard/report integration.
 - `013-store-reports-sales-filters-apr-23.md`: Adds branch/month filters and analytics tables on store reports and sales pages.
+- `014-store-sales-kpi-and-reports-export-apr-23.md`: Fixes store sales KPI counts and adds `/store/reports` CSV export action.
 - `CHANGELOG.md`: Versioned log of important changes and fixes.
 
 ## Update Rules

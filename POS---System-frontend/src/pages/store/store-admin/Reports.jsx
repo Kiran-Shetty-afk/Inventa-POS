@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
+import { Download } from "lucide-react";
 import { 
   getMonthlySales, 
   getSalesByCategory,
@@ -13,6 +15,7 @@ import {
 } from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
 import { getAllBranchesByStore } from "@/Redux Toolkit/features/branch/branchThunks";
 import { useToast } from "@/components/ui/use-toast";
+import { buildCsv, downloadCsvFile } from "@/utils/csvExport";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
@@ -129,9 +132,77 @@ export default function Reports() {
     return config;
   }, {});
 
+  const handleExportReportsCsv = () => {
+    if (!userProfile?.id) {
+      toast({
+        title: "Not signed in",
+        description: "Store admin profile is required to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const monthTag = selectedMonth || "all-months";
+    const branchTag =
+      selectedBranchId === "all"
+        ? "all-branches"
+        : branches.find((branch) => String(branch.id) === selectedBranchId)?.name?.toLowerCase().replace(/\s+/g, "-") ||
+          "selected-branch";
+
+    const monthlyRows = filteredSalesData.map((item) => [item.name, item.sales ?? ""]);
+    const categoryRows = categoryData.map((item) => [item.name, item.value ?? ""]);
+    const branchRows = selectedBranchRows.map((row) => [row.branchName ?? "", row.totalSales ?? ""]);
+    const paymentRowsCsv = paymentRows.map((row) => [row.paymentMethod ?? "", row.totalAmount ?? ""]);
+
+    if (!monthlyRows.length && !categoryRows.length && !branchRows.length && !paymentRowsCsv.length) {
+      toast({
+        title: "Nothing to export",
+        description: "No report data loaded yet.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const baseName = `store-reports-${userProfile.id}-${branchTag}-${monthTag}-${today}`;
+    const exports = [
+      monthlyRows.length && {
+        name: `${baseName}-monthly-sales.csv`,
+        headers: ["Month", "Sales"],
+        rows: monthlyRows,
+      },
+      categoryRows.length && {
+        name: `${baseName}-category-sales.csv`,
+        headers: ["Category", "Sales"],
+        rows: categoryRows,
+      },
+      branchRows.length && {
+        name: `${baseName}-branch-sales.csv`,
+        headers: ["Branch", "Sales"],
+        rows: branchRows,
+      },
+      paymentRowsCsv.length && {
+        name: `${baseName}-payment-methods.csv`,
+        headers: ["Payment Method", "Sales"],
+        rows: paymentRowsCsv,
+      },
+    ].filter(Boolean);
+
+    exports.forEach((item, index) => {
+      setTimeout(() => {
+        downloadCsvFile(item.name, buildCsv(item.headers, item.rows));
+      }, index * 200);
+    });
+
+    toast({
+      title: "Export ready",
+      description: `${exports.length} CSV file${exports.length > 1 ? "s" : ""} downloaded.`,
+    });
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
         <div className="flex gap-2 flex-wrap">
           <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
@@ -153,6 +224,9 @@ export default function Reports() {
             value={selectedMonth}
             onChange={(event) => setSelectedMonth(event.target.value)}
           />
+          <Button type="button" variant="outline" onClick={handleExportReportsCsv}>
+            <Download className="mr-2 h-4 w-4" /> Export CSV
+          </Button>
         </div>
       </div>
 

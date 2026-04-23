@@ -44,36 +44,27 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
         LocalDateTime lastWeekStart = now.minusDays(7);
         LocalDateTime previousWeekStart = now.minusDays(14);
 
-        int todayOrders = orderRepository.countByStoreAdminIdAndStatusBetween(
+        int todayOrders = orderRepository.countByStoreAdminIdAndCreatedAtBetween(
                 storeAdminId,
-                OrderStatus.COMPLETED,
                 todayStart,
                 tomorrowStart
         );
-        int yesterdayOrders = orderRepository.countByStoreAdminIdAndStatusBetween(
+        int yesterdayOrders = orderRepository.countByStoreAdminIdAndCreatedAtBetween(
                 storeAdminId,
-                OrderStatus.COMPLETED,
                 yesterdayStart,
                 todayStart
         );
-        int activeCashiers = orderRepository.countDistinctCashiersByStoreAdminIdAndStatusBetween(
+        int activeCashiers = orderRepository.countDistinctCashiersByStoreAdminIdAndCreatedAtBetween(
                 storeAdminId,
-                OrderStatus.COMPLETED,
                 todayStart,
                 tomorrowStart
         );
         double averageOrderValue = orderRepository
-                .averageOrderValueByStoreAdminIdAndStatusBetween(
-                        storeAdminId,
-                        OrderStatus.COMPLETED,
-                        lastWeekStart,
-                        now
-                )
+                .averageOrderValueByStoreAdminIdAndCreatedAtBetween(storeAdminId, lastWeekStart, now)
                 .orElse(0.0);
         double previousPeriodAverageOrderValue = orderRepository
-                .averageOrderValueByStoreAdminIdAndStatusBetween(
+                .averageOrderValueByStoreAdminIdAndCreatedAtBetween(
                         storeAdminId,
-                        OrderStatus.COMPLETED,
                         previousWeekStart,
                         lastWeekStart
                 )
