@@ -250,8 +250,20 @@ public class BaseEntitySeeder {
     private String buildStockImageUrl(String categoryName, int sequence) {
         String normalizedCategory = categoryName == null
                 ? "product"
-                : categoryName.toLowerCase(Locale.ROOT).replace(" ", "-");
-        return "https://picsum.photos/seed/stock-" + normalizedCategory + "-" + sequence + "/640/640";
+                : categoryName.toLowerCase(Locale.ROOT).trim();
+
+        String tags = switch (normalizedCategory) {
+            case "beverages" -> "beverage,drink,bottle";
+            case "snacks" -> "snack,chips,packaged-food";
+            case "dairy" -> "dairy,milk,cheese";
+            case "bakery" -> "bakery,bread,pastry";
+            case "personal care" -> "toiletries,personal-care,hygiene";
+            case "household" -> "household,cleaning,supplies";
+            default -> "grocery,retail,product";
+        };
+
+        // loremflickr returns stock-like images by keyword and `lock` keeps deterministic output.
+        return "https://loremflickr.com/640/640/" + tags + "?lock=" + sequence;
     }
 
     private int seedInventory(List<Branch> branches, List<Product> products, Random random) {

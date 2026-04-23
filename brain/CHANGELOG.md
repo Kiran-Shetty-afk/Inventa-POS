@@ -1,5 +1,9 @@
 # Brain Changelog
 
+## v2026.04.23.15 - Category-aware seeded product images
+- Updated historical seeder product image generation to use category-specific stock keywords instead of fully random image seeds.
+- Mapped seeded categories (`Beverages`, `Snacks`, `Dairy`, `Bakery`, `Personal Care`, `Household`) to matching stock-image tag sets for more realistic product visuals.
+
 ## v2026.04.23.14 - Ignore backend application config
 - Added `POS---System/src/main/resources/application.yml` to root `.gitignore`.
 - Prepared repo state so future commits and pushes skip this local config file.
