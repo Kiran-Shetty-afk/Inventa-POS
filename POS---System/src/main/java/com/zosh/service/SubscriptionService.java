@@ -2,12 +2,10 @@ package com.zosh.service;
 
 import com.zosh.domain.PaymentStatus;
 import com.zosh.domain.SubscriptionStatus;
-import com.zosh.modal.Store;
 import com.zosh.modal.Subscription;
-import com.zosh.modal.SubscriptionPlan;
+import com.zosh.payload.dto.SubscriptionDTO;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface SubscriptionService {
 
@@ -36,13 +34,13 @@ public interface SubscriptionService {
     Subscription updatePaymentStatus(Long subscriptionId, PaymentStatus status);
 
     // 📋 🔍 Get all or filtered subscriptions of a store (if status provided)
-    List<Subscription> getSubscriptionsByStore(Long storeId, SubscriptionStatus status); // combine active + history
+    List<SubscriptionDTO> getSubscriptionsByStore(Long storeId, SubscriptionStatus status); // combine active + history
 
     // 📦 📍 Get all or filtered subscriptions (for admin)
-    List<Subscription> getAllSubscriptions(SubscriptionStatus status); // null status = all
+    List<SubscriptionDTO> getAllSubscriptions(SubscriptionStatus status); // null status = all
 
     // 📅 Get subscriptions expiring in next X days
-    List<Subscription> getExpiringSubscriptionsWithin(int days);
+    List<SubscriptionDTO> getExpiringSubscriptionsWithin(int days);
 
     // 📈 Count subscriptions by status
     Long countByStatus(SubscriptionStatus status);

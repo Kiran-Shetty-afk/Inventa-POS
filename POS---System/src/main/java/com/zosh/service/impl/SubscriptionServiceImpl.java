@@ -7,7 +7,7 @@ import com.zosh.mapper.SubscriptionMapper;
 import com.zosh.modal.Store;
 import com.zosh.modal.Subscription;
 import com.zosh.modal.SubscriptionPlan;
-//import com.zosh.payload.SubscriptionDTO;
+import com.zosh.payload.dto.SubscriptionDTO;
 import com.zosh.repository.StoreRepository;
 import com.zosh.repository.SubscriptionPlanRepository;
 import com.zosh.repository.SubscriptionRepository;
@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,6 +28,10 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final StoreRepository storeRepository;
 
     private final SubscriptionPlanRepository planRepository;
+
+    private SubscriptionDTO toDto(Subscription subscription) {
+        return SubscriptionMapper.toDto(subscription);
+    }
 
     @Override
     public Subscription createSubscription(Long storeId,
@@ -127,31 +130,34 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
-    public List<Subscription> getSubscriptionsByStore(
+    public List<SubscriptionDTO> getSubscriptionsByStore(
             Long storeId,
             SubscriptionStatus status) {
         Store store = storeRepository.findById(storeId).orElseThrow(
                 () -> new EntityNotFoundException("Store not found")
         );
-        if (status != null) {
-            return subscriptionRepository.findByStoreAndStatus(store, status);
-        }
-        return subscriptionRepository.findByStore(store);
+        List<Subscription> subscriptions = status != null
+                ? subscriptionRepository.findByStoreAndStatus(store, status)
+                : subscriptionRepository.findByStore(store);
+        return subscriptions.stream().map(this::toDto).collect(Collectors.toList());
     }
 
     @Override
-    public List<Subscription> getAllSubscriptions(SubscriptionStatus status) {
-        if (status != null) {
-            return subscriptionRepository.findByStatus(status);
-        }
-        return subscriptionRepository.findAll();
+    public List<SubscriptionDTO> getAllSubscriptions(SubscriptionStatus status) {
+        List<Subscription> subscriptions = status != null
+                ? subscriptionRepository.findByStatus(status)
+                : subscriptionRepository.findAll();
+        return subscriptions.stream().map(this::toDto).collect(Collectors.toList());
     }
 
     @Override
-    public List<Subscription> getExpiringSubscriptionsWithin(int days) {
+    public List<SubscriptionDTO> getExpiringSubscriptionsWithin(int days) {
         LocalDate today = LocalDate.now();
         LocalDate future = today.plusDays(days);
-        return subscriptionRepository.findByEndDateBetween(today, future);
+        return subscriptionRepository.findByEndDateBetween(today, future)
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
     @Override

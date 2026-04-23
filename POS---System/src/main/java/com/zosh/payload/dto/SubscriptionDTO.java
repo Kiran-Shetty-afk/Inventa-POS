@@ -13,11 +13,31 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SubscriptionDTO {
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StoreSummaryDTO {
+        private Long id;
+        private String brand;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PlanSummaryDTO {
+        private Long id;
+        private String name;
+        private String description;
+    }
 
     private Long id;
     private Long storeId;
     private String storeName;
     private String planName;
+    private StoreSummaryDTO store;
+    private PlanSummaryDTO plan;
     private LocalDate startDate;
     private LocalDate endDate;
     private SubscriptionStatus status;

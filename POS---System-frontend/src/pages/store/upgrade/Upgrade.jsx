@@ -14,9 +14,23 @@ const Upgrade = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const planList = Array.isArray(plans)
+    ? plans
+    : Array.isArray(plans?.content)
+    ? plans.content
+    : Array.isArray(plans?.data)
+    ? plans.data
+    : [];
+  const subscriptionList = Array.isArray(subscriptions)
+    ? subscriptions
+    : Array.isArray(subscriptions?.content)
+    ? subscriptions.content
+    : Array.isArray(subscriptions?.data)
+    ? subscriptions.data
+    : [];
 
   // Get current active subscription for this store
-  const currentSubscription = subscriptions?.find(
+  const currentSubscription = subscriptionList.find(
     (sub) => sub.store?.id === store?.id && sub.status === 'ACTIVE'
   );
 
@@ -37,7 +51,7 @@ const Upgrade = () => {
         // Upgrade
         await dispatch(upgradeSubscription({ storeId: store.id, planId })).unwrap();
         // setSuccessMsg('Subscription upgraded successfully!');
-        dispatch(createPaymentLinkThunk({planId, paymentMethod: 'STRIPE'})).unwrap();
+        await dispatch(createPaymentLinkThunk({planId, paymentMethod: 'STRIPE'})).unwrap();
       } else {
         // New subscription
         await dispatch(subscribeToPlan({ storeId: store.id, planId })).unwrap();
@@ -72,7 +86,7 @@ const Upgrade = () => {
             </div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {plans?.map((plan) => (
+            {planList.map((plan) => (
               <div
                 key={plan.id}
                 className={`bg-card rounded-2xl p-8 shadow-lg border relative flex flex-col ${
