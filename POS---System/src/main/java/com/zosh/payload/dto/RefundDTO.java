@@ -21,4 +21,24 @@ public class RefundDTO {
     private Long branchId;
     private LocalDateTime createdAt;
     private PaymentType paymentType;
+
+    public RefundDTO(
+            Long id,
+            Long orderId,
+            String reason,
+            Double amount,
+            String cashierName,
+            Long shiftReportId,
+            Long branchId,
+            LocalDateTime createdAt
+    ) {
+        this.id = id;
+        this.orderId = orderId;
+        this.reason = reason;
+        this.amount = amount;
+        this.cashierName = cashierName;
+        this.shiftReportId = shiftReportId;
+        this.branchId = branchId;
+        this.createdAt = createdAt;
+    }
 }

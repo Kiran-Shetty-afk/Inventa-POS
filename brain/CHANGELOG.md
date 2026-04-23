@@ -1,5 +1,9 @@
 # Brain Changelog
 
+## v2026.04.23.24 - RefundDTO constructor compatibility hotfix
+- Added an explicit 8-argument `RefundDTO` constructor to preserve compatibility with existing JPQL constructor projections during backend startup.
+- This fixes runtime startup failure (`Missing constructor for type 'RefundDTO'`) introduced after extending `RefundDTO` with `paymentType`.
+
 ## v2026.04.23.23 - Cashier returns and store sales stabilization
 - Fixed cashier route/load issues by adding `/cashier/shiftsummary` redirect and making cashier login await shift start before navigation.
 - Fixed cashier customer/payment wiring (`fullName` display fallback, selected customer normalization, correct branch resolution in order payload).
