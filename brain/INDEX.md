@@ -10,6 +10,7 @@ This folder is the workspace knowledge base.
 - `005-branch-manager-month-filters-apr-23.md`: Month-wise filter implementation notes for branch dashboard and reports analytics.
 - `006-branch-day-wise-toggle-apr-23.md`: Added day-wise mode toggle and date filtering across branch dashboard/reports.
 - `007-branch-employees-action-fixes-apr-23.md`: Fixes for non-working employee actions and static branch employee performance info.
+- `008-export-flows-hardening-apr-23.md`: Made transaction and super-admin export flows reachable and data-backed.
 - `CHANGELOG.md`: Versioned log of important changes and fixes.
 
 ## Update Rules

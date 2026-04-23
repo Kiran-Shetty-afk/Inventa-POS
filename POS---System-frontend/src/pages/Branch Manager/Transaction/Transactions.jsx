@@ -75,7 +75,45 @@ export default function Transactions() {
   };
 
   const handleExportCsv = () => {
-    if (!orders?.length) {
+    const orderRows = (orders || []).map((t) => ({
+      id: t.id ?? "",
+      createdAt: t.createdAt ?? "",
+      cashierId: t.cashierId ?? "",
+      customerName: t.customer?.fullName ?? "",
+      amount:
+        typeof t.totalAmount === "number"
+          ? t.totalAmount
+          : Number(t.totalAmount ?? 0),
+      paymentMethod: t.paymentType ?? "",
+      status: t.status ?? "",
+      type: t.type ?? "ORDER",
+    }));
+
+    const refundRows = (refundsByBranch || []).map((refund) => {
+      const rawAmount =
+        typeof refund.amount === "number"
+          ? refund.amount
+          : Number(refund.amount ?? 0);
+      const amount = rawAmount > 0 ? -rawAmount : rawAmount;
+      return {
+        id: refund.id ?? refund.orderId ?? "",
+        createdAt: refund.createdAt ?? "",
+        cashierId: refund.cashierId ?? "",
+        customerName: refund.customerName ?? "",
+        amount,
+        paymentMethod: refund.paymentType ?? "Refund",
+        status: refund.status ?? "REFUNDED",
+        type: "REFUND",
+      };
+    });
+
+    const allTransactions = [...orderRows, ...refundRows].sort((a, b) => {
+      const aTime = Date.parse(a.createdAt || "") || 0;
+      const bTime = Date.parse(b.createdAt || "") || 0;
+      return bTime - aTime;
+    });
+
+    if (!allTransactions.length) {
       toast({
         title: "Nothing to export",
         description: "There are no transactions to download.",
@@ -95,17 +133,15 @@ export default function Transactions() {
       "Type",
     ];
 
-    const dataRows = orders.map((t) => [
-      t.id ?? "",
-      t.createdAt ?? "",
-      t.cashierId ?? "",
-      t.customer?.fullName ?? "",
-      typeof t.totalAmount === "number"
-        ? t.totalAmount.toFixed(2)
-        : (t.totalAmount ?? ""),
-      t.paymentType ?? "",
-      t.status ?? "",
-      t.type ?? "",
+    const dataRows = allTransactions.map((t) => [
+      t.id,
+      t.createdAt,
+      t.cashierId,
+      t.customerName,
+      Number.isFinite(Number(t.amount)) ? Number(t.amount).toFixed(2) : "",
+      t.paymentMethod,
+      t.status,
+      t.type,
     ]);
 
     const csv = buildCsv(headers, dataRows);
@@ -115,7 +151,7 @@ export default function Transactions() {
 
     toast({
       title: "Export ready",
-      description: `Downloaded ${orders.length} row(s) as CSV.`,
+      description: `Downloaded ${allTransactions.length} row(s) as CSV.`,
     });
   };
 

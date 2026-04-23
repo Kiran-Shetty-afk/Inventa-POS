@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -8,7 +9,8 @@ import { Badge } from "../../components/ui/badge";
 import { Download, FileText, Calendar, Filter, CheckCircle } from "lucide-react";
 import { useToast } from "../../components/ui/use-toast";
 import { buildCsv, downloadCsvFile } from "@/utils/csvExport";
-// import { useToast } from "../../hooks/use-toast";
+import { getAllStores } from "@/Redux Toolkit/features/store/storeThunks";
+import { useEffect } from "react";
 
 const exportTypes = [
   {
@@ -41,38 +43,103 @@ const exportTypes = [
   },
 ];
 
-const recentExports = [
-  {
-    id: 1,
-    type: "Store List",
-    date: "2025-01-15 14:30",
-    status: "completed",
-    size: "2.3 MB",
-    downloads: 3,
-  },
-  {
-    id: 2,
-    type: "Commission Report",
-    date: "2025-01-14 09:15",
-    status: "completed",
-    size: "1.8 MB",
-    downloads: 1,
-  },
-  {
-    id: 3,
-    type: "Store Status Summary",
-    date: "2025-01-13 16:45",
-    status: "completed",
-    size: "1.2 MB",
-    downloads: 2,
-  },
-];
-
 export default function ExportsPage() {
+  const dispatch = useDispatch();
+  const { stores } = useSelector((state) => state.store);
   const [selectedType, setSelectedType] = useState("");
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
   const [isExporting, setIsExporting] = useState(false);
+  const [recentExports, setRecentExports] = useState([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    dispatch(getAllStores());
+  }, [dispatch]);
+
+  const toDate = (value) => {
+    if (!value) return null;
+    const dt = new Date(value);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  };
+
+  const filterByDateRange = (list) => {
+    const fromDate = toDate(dateRange.from);
+    const toDateValue = toDate(dateRange.to);
+    if (!fromDate && !toDateValue) return list;
+    return (list || []).filter((item) => {
+      const createdAt = toDate(item?.createdAt);
+      if (!createdAt) return false;
+      const startsAfterFrom = !fromDate || createdAt >= fromDate;
+      const endsBeforeTo =
+        !toDateValue || createdAt <= new Date(`${dateRange.to}T23:59:59.999`);
+      return startsAfterFrom && endsBeforeTo;
+    });
+  };
+
+  const getStatusSummaryRows = (storeList) => {
+    const statusCounts = (storeList || []).reduce((acc, store) => {
+      const key = (store?.status || "UNKNOWN").toUpperCase();
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(statusCounts).map(([status, count]) => [status, String(count)]);
+  };
+
+  const buildExportPayload = (type) => {
+    const filteredStores = filterByDateRange(stores || []);
+    const today = new Date().toISOString().slice(0, 10);
+
+    switch (type) {
+      case "store-list":
+        return {
+          filename: `superadmin-store-list-${today}.csv`,
+          headers: ["Store ID", "Brand", "Owner", "Status", "Store Type", "Created At"],
+          rows: filteredStores.map((store) => [
+            String(store?.id ?? ""),
+            String(store?.brand ?? ""),
+            String(store?.storeAdmin?.fullName ?? ""),
+            String(store?.status ?? ""),
+            String(store?.storeType ?? ""),
+            String(store?.createdAt ?? ""),
+          ]),
+        };
+      case "store-status":
+        return {
+          filename: `superadmin-store-status-summary-${today}.csv`,
+          headers: ["Status", "Store Count"],
+          rows: getStatusSummaryRows(filteredStores),
+        };
+      case "commission-report":
+        return {
+          filename: `superadmin-commission-report-${today}.csv`,
+          headers: ["Store ID", "Brand", "Status", "Subscription Plan", "Plan Price"],
+          rows: filteredStores.map((store) => [
+            String(store?.id ?? ""),
+            String(store?.brand ?? ""),
+            String(store?.status ?? ""),
+            String(store?.subscriptionPlan?.name ?? ""),
+            String(store?.subscriptionPlan?.price ?? ""),
+          ]),
+        };
+      case "pending-requests":
+        return {
+          filename: `superadmin-pending-requests-${today}.csv`,
+          headers: ["Store ID", "Brand", "Owner", "Email", "Phone", "Submitted On"],
+          rows: filteredStores
+            .filter((store) => String(store?.status || "").toUpperCase() === "PENDING")
+            .map((store) => [
+              String(store?.id ?? ""),
+              String(store?.brand ?? ""),
+              String(store?.storeAdmin?.fullName ?? ""),
+              String(store?.contact?.email ?? ""),
+              String(store?.contact?.phone ?? ""),
+              String(store?.createdAt ?? ""),
+            ]),
+        };
+      default:
+        return null;
+    }
+  };
 
   const handleExport = async () => {
     if (!selectedType) {
@@ -85,57 +152,63 @@ export default function ExportsPage() {
     }
 
     setIsExporting(true);
-
-    setTimeout(() => {
+    try {
       const exportType = exportTypes.find((type) => type.id === selectedType);
-      if (!exportType) {
-        setIsExporting(false);
+      const payload = buildExportPayload(selectedType);
+      if (!exportType || !payload) {
+        toast({
+          title: "Export failed",
+          description: "Unsupported export type.",
+          variant: "destructive",
+        });
         return;
       }
-      const headers = [
-        "Export Type",
-        "Description",
-        "Format",
-        "Date From",
-        "Date To",
-        "Generated At",
-      ];
-      const rows = [
-        [
-          exportType.name,
-          exportType.description,
-          exportType.format,
-          dateRange.from || "",
-          dateRange.to || "",
-          new Date().toISOString(),
-        ],
-      ];
-      downloadCsvFile(
-        `superadmin-export-${selectedType}-${new Date().toISOString().slice(0, 10)}.csv`,
-        buildCsv(headers, rows)
-      );
+      if (!payload.rows.length) {
+        toast({
+          title: "Nothing to export",
+          description: "No records matched your current filters.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const csv = buildCsv(payload.headers, payload.rows);
+      downloadCsvFile(payload.filename, csv);
+      setRecentExports((prev) => [
+        {
+          id: Date.now(),
+          type: exportType.name,
+          date: new Date().toLocaleString("en-IN"),
+          status: "completed",
+          size: `${(new Blob([csv]).size / 1024).toFixed(1)} KB`,
+          downloads: 1,
+          filename: payload.filename,
+          csv,
+        },
+        ...prev,
+      ]);
+
       toast({
         title: "Export ready",
         description: `${exportType.name} saved as CSV.`,
       });
+    } finally {
       setIsExporting(false);
       setSelectedType("");
       setDateRange({ from: "", to: "" });
-    }, 2000);
+    }
   };
 
   const handleDownload = (exportItem) => {
-    const headers = ["Type", "Date", "Status", "Size", "Downloads"];
-    const rows = [
-      [
-        exportItem.type,
-        exportItem.date,
-        exportItem.status,
-        exportItem.size,
-        String(exportItem.downloads),
-      ],
-    ];
-    downloadCsvFile(`export-record-${exportItem.id}.csv`, buildCsv(headers, rows));
+    if (!exportItem?.csv || !exportItem?.filename) return;
+    downloadCsvFile(exportItem.filename, exportItem.csv);
+    setRecentExports((prev) =>
+      prev.map((row) =>
+        row.id === exportItem.id
+          ? { ...row, downloads: Number(row.downloads || 0) + 1 }
+          : row
+      )
+    );
     toast({
       title: "Download ready",
       description: "CSV file saved.",

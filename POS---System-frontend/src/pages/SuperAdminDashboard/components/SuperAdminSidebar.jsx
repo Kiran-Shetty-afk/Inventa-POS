@@ -34,7 +34,11 @@ const navLinks = [
     path: "/super-admin/requests",
     icon: <Clock className="w-5 h-5" />,
   },
- 
+  {
+    name: "Exports",
+    path: "/super-admin/exports",
+    icon: <Download className="w-5 h-5" />,
+  },
 
   {
     name: "Settings",

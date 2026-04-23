@@ -1,5 +1,11 @@
 # Brain Changelog
 
+## v2026.04.23.20 - Export flows wired and data-backed
+- Fixed branch transactions CSV export to include both order and refund records in a single download with normalized transaction rows.
+- Replaced Super Admin exports mock/timer behavior with live store-backed CSV generation for store list, status summary, pending requests, and commission report exports.
+- Added route and sidebar wiring for `/super-admin/exports` so export actions are reachable in normal Super Admin navigation.
+- Added new knowledge note `008-export-flows-hardening-apr-23.md` and updated `brain/INDEX.md`.
+
 ## v2026.04.23.19 - Branch employee actions made functional
 - Fixed `branch/employees` action behavior by replacing placeholder login-access toggle and reset-password handlers with real update API calls.
 - Updated backend employee mapping/service to expose and persist `verified`, `createdAt`, `lastLogin`, and encoded password updates.
