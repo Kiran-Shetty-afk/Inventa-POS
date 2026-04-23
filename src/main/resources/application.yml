@@ -6,7 +6,7 @@ spring:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:pos}
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root}
+    password: ${DB_PASSWORD:Poonamdate19}
 
   jpa:
     hibernate:
@@ -16,8 +16,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: kiranshetty2004@gmail.com
+    password: dlyy jdie bzar sswq
     properties:
       mail:
         smtp:
@@ -34,8 +34,8 @@ server:
 
 razorpay:
   api:
-    key: ${RAZORPAY_KEY}
-    secret: ${RAZORPAY_SECRET}
+    key: rzp_test_SbTRKjAd1YcufV
+    secret: 3kFn0T2C9IQwp048Mz1dZpcy
 
 stripe:
   api:
@@ -48,6 +48,14 @@ payments:
 app:
   frontend:
     reset-url: http://localhost:5173/auth/reset-password?token=
+  seed:
+    historical:
+      enabled: false
+      volume: small
+      days: 90
+      reset: false
+      random: 42
+      shifts: true
 
 logging:
   level:
