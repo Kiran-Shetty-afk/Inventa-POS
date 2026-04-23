@@ -1,5 +1,13 @@
 # Brain Changelog
 
+## v2026.04.23.14 - Ignore backend application config
+- Added `POS---System/src/main/resources/application.yml` to root `.gitignore`.
+- Prepared repo state so future commits and pushes skip this local config file.
+
+## v2026.04.23.13 - Monorepo backend dedup cleanup
+- Removed duplicate root-level backend files (`src`, `pom.xml`, `mvnw`, `mvnw.cmd`, `.mvn`) from the unified repo.
+- Kept `POS---System/` as the single backend source of truth, as requested.
+
 ## v2026.04.22.1 - Historical seeder scaffolding
 - Added a manual historical seeding module under `com.zosh.seed` with configurable volume, date span, reset mode, and deterministic random seed.
 - Introduced seed idempotency tracking with `SeedRun` (`seed_runs` table) and scenario keys.

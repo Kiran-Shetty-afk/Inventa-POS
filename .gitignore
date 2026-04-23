@@ -36,3 +36,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Local backend secrets/config
+POS---System/src/main/resources/application.yml
