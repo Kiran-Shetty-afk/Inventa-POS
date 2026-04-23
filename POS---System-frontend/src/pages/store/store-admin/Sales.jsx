@@ -1,19 +1,19 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Search, Filter, Calendar, Download, Plus, Edit, Trash2, CreditCard, DollarSign, User, Store } from "lucide-react";
+import { Download, Plus, CreditCard, DollarSign, User, Store, Building2 } from "lucide-react";
 import { 
   getStoreOverview, 
   getDailySales, 
-  getSalesByPaymentMethod 
+  getSalesByPaymentMethod,
+  getSalesByBranch,
 } from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
+import { getAllBranchesByStore } from "@/Redux Toolkit/features/branch/branchThunks";
 import { useToast } from "@/components/ui/use-toast";
 import { buildCsv, downloadCsvFile } from "@/utils/csvExport";
 
@@ -21,21 +21,38 @@ export default function Sales() {
   const dispatch = useDispatch();
   const { toast } = useToast();
   const { userProfile } = useSelector((state) => state.user);
+  const { store } = useSelector((state) => state.store);
+  const { branches } = useSelector((state) => state.branch);
   const { 
     storeOverview, 
     dailySales, 
     salesByPaymentMethod, 
+    salesByBranch,
     loading 
   } = useSelector((state) => state.storeAnalytics);
+  const [selectedBranchId, setSelectedBranchId] = useState("all");
+
+  useEffect(() => {
+    if (!store?.id || branches?.length > 0) return;
+    dispatch(
+      getAllBranchesByStore({
+        storeId: store.id,
+        jwt: localStorage.getItem("jwt"),
+      })
+    );
+  }, [dispatch, store?.id, branches?.length]);
 
 
   const fetchSalesData = useCallback(async () => {
     if (!userProfile?.id) return;
+    const branchId =
+      selectedBranchId !== "all" ? Number(selectedBranchId) : undefined;
     try {
       await Promise.all([
-        dispatch(getStoreOverview(userProfile.id)).unwrap(),
-        dispatch(getDailySales(userProfile.id)).unwrap(),
-        dispatch(getSalesByPaymentMethod(userProfile.id)).unwrap(),
+        dispatch(getStoreOverview({ storeAdminId: userProfile.id, branchId })).unwrap(),
+        dispatch(getDailySales({ storeAdminId: userProfile.id, branchId })).unwrap(),
+        dispatch(getSalesByPaymentMethod({ storeAdminId: userProfile.id, branchId })).unwrap(),
+        dispatch(getSalesByBranch({ storeAdminId: userProfile.id, branchId })).unwrap(),
       ]);
     } catch (err) {
       toast({
@@ -44,13 +61,13 @@ export default function Sales() {
         variant: "destructive",
       });
     }
-  }, [dispatch, toast, userProfile]);
+  }, [dispatch, toast, userProfile, selectedBranchId]);
 
   useEffect(() => {
     if (userProfile?.id) {
       fetchSalesData();
     }
-  }, [userProfile, fetchSalesData]);
+  }, [userProfile?.id, fetchSalesData]);
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -80,6 +97,17 @@ export default function Sales() {
     name: item.paymentMethod,
     value: item.totalAmount
   })) || [];
+  const branchSalesRows = useMemo(() => {
+    const rows = salesByBranch || [];
+    if (selectedBranchId === "all") return rows;
+    const selectedBranchName =
+      branches.find((branch) => String(branch.id) === selectedBranchId)?.name ?? "";
+    return rows.filter((row) => row.branchName === selectedBranchName);
+  }, [salesByBranch, selectedBranchId, branches]);
+  const selectedBranchSales = branchSalesRows.reduce(
+    (sum, row) => sum + Number(row.totalSales || 0),
+    0
+  );
 
   const salesConfig = {
     sales: {
@@ -148,7 +176,20 @@ export default function Sales() {
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Sales Management</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Filter by branch" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Branches</SelectItem>
+              {branches.map((branch) => (
+                <SelectItem key={branch.id} value={String(branch.id)}>
+                  {branch.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button type="button" variant="outline" onClick={handleExportSalesCsv}>
             <Download className="mr-2 h-4 w-4" /> Export CSV
           </Button>
@@ -159,7 +200,7 @@ export default function Sales() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -266,6 +307,29 @@ export default function Sales() {
               </div>
               <div className="p-3 bg-orange-100 rounded-full">
                 <CreditCard className="w-8 h-8 text-orange-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Selected Branch Sales</p>
+                <h3 className="text-2xl font-bold mt-1">
+                  {loading ? (
+                    <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+                  ) : (
+                    formatCurrency(selectedBranchSales)
+                  )}
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  {selectedBranchId === "all" ? "All branches combined" : "Current branch total"}
+                </p>
+              </div>
+              <div className="p-3 bg-indigo-100 rounded-full">
+                <Building2 className="w-8 h-8 text-indigo-600" />
               </div>
             </div>
           </CardContent>
@@ -389,7 +453,37 @@ export default function Sales() {
         </Card>
       </div>
 
-    
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Branch-wise Sales</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <p className="text-sm text-gray-500">Loading branch sales...</p>
+          ) : branchSalesRows.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Branch</TableHead>
+                  <TableHead className="text-right">Total Sales</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {branchSalesRows.map((row, index) => (
+                  <TableRow key={`${row.branchName}-${index}`}>
+                    <TableCell>{row.branchName}</TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(row.totalSales)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-sm text-gray-500">No branch sales data available for this filter.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router";
 
 import {
   OrderDetailsSection,
@@ -7,7 +8,10 @@ import {
   ReturnReceiptDialog,
 } from "./components";
 import { useDispatch, useSelector } from "react-redux";
-import { getOrdersByBranch } from "../../../Redux Toolkit/features/order/orderThunks";
+import {
+  getOrdersByBranch,
+  getOrdersByCashier,
+} from "../../../Redux Toolkit/features/order/orderThunks";
 import OrderTable from "./components/OrderTable";
 
 // Return reasons
@@ -17,18 +21,32 @@ const ReturnOrderPage = () => {
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
 
   const dispatch = useDispatch();
+  const location = useLocation();
   const { branch } = useSelector((state) => state.branch);
+  const { userProfile } = useSelector((state) => state.user);
+  const branchId = branch?.id ?? userProfile?.branchId ?? userProfile?.branch?.id;
+  const preselectedOrder = location.state?.selectedOrder;
+
   const loadRefundableOrders = React.useCallback(() => {
-    if (branch?.id) {
-      dispatch(getOrdersByBranch({ branchId: branch.id, status: "COMPLETED" }));
+    if (branchId) {
+      dispatch(getOrdersByBranch({ branchId, status: "COMPLETED" }));
+      return;
     }
-  }, [dispatch, branch?.id]);
+    if (userProfile?.id) {
+      dispatch(getOrdersByCashier(userProfile.id));
+    }
+  }, [dispatch, branchId, userProfile?.id]);
 
   // Fetch orders for the branch on mount or when branch changes
   useEffect(() => {
     loadRefundableOrders();
   }, [loadRefundableOrders]);
 
+  useEffect(() => {
+    if (preselectedOrder) {
+      setSelectedOrder(preselectedOrder);
+    }
+  }, [preselectedOrder]);
 
 
   const handleSelectOrder = (order) => {

@@ -50,4 +50,30 @@ public interface RefundRepository extends JpaRepository<Refund, Long> {
     """)
     List<RefundDTO> findRefundSpikes(@Param("storeAdminId") Long storeAdminId);
 
+    @Query("""
+        SELECT COUNT(r), COALESCE(SUM(r.amount), 0.0)
+        FROM Refund r
+        WHERE r.branch.id = :branchId
+          AND r.createdAt BETWEEN :start AND :end
+    """)
+    Object[] getBranchRefundSummary(
+            @Param("branchId") Long branchId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("""
+        SELECT FUNCTION('HOUR', r.createdAt), COUNT(r), COALESCE(SUM(r.amount), 0.0)
+        FROM Refund r
+        WHERE r.branch.id = :branchId
+          AND r.createdAt BETWEEN :start AND :end
+        GROUP BY FUNCTION('HOUR', r.createdAt)
+        ORDER BY COUNT(r) DESC, COALESCE(SUM(r.amount), 0.0) DESC
+    """)
+    List<Object[]> getBranchRefundHourlySummary(
+            @Param("branchId") Long branchId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
 }

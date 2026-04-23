@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import reducer, { clearBranchAnalyticsState } from "./branchAnalyticsSlice";
-import { getDemandForecast } from "./branchAnalyticsThunks";
+import { getDemandForecast, getBranchHealthCopilotSummary } from "./branchAnalyticsThunks";
 
 describe("branchAnalyticsSlice demand forecast", () => {
   it("sets loading and clears error on pending", () => {
@@ -50,5 +50,31 @@ describe("branchAnalyticsSlice demand forecast", () => {
     expect(state.demandForecast).toEqual([]);
     expect(state.demandForecastLoading).toBe(false);
     expect(state.demandForecastError).toBeNull();
+  });
+
+  it("stores copilot summary on fulfilled", () => {
+    const payload = {
+      headline: "Branch health summary",
+      summary: "Sales improved with low refund risk.",
+      highlights: ["Sales up 8%"],
+      risks: ["Refund spike at 18:00"],
+      recommendedActions: ["Audit refund reasons at peak hour"],
+    };
+    const action = { type: getBranchHealthCopilotSummary.fulfilled.type, payload };
+    const state = reducer(undefined, action);
+
+    expect(state.copilotSummaryLoading).toBe(false);
+    expect(state.copilotSummary).toEqual(payload);
+  });
+
+  it("stores copilot API error on rejected", () => {
+    const action = {
+      type: getBranchHealthCopilotSummary.rejected.type,
+      payload: "Failed to generate AI branch summary",
+    };
+    const state = reducer(undefined, action);
+
+    expect(state.copilotSummaryLoading).toBe(false);
+    expect(state.copilotSummaryError).toBe("Failed to generate AI branch summary");
   });
 });

@@ -4,6 +4,8 @@ import com.zosh.payload.dto.ProductDemandForecastDTO;
 import com.zosh.repository.InventoryRepository;
 import com.zosh.repository.OrderItemRepository;
 import com.zosh.repository.OrderRepository;
+import com.zosh.repository.RefundRepository;
+import com.zosh.service.BranchHealthNarrativeGenerator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,6 +36,12 @@ class BranchAnalyticsServiceImplDemandForecastTest {
 
     @Mock
     private InventoryRepository inventoryRepository;
+
+    @Mock
+    private RefundRepository refundRepository;
+
+    @Mock
+    private BranchHealthNarrativeGenerator branchHealthNarrativeGenerator;
 
     @InjectMocks
     private BranchAnalyticsServiceImpl branchAnalyticsService;

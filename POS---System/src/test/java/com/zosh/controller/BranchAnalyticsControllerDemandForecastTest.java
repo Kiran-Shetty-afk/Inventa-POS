@@ -1,6 +1,8 @@
 package com.zosh.controller;
 
 import com.zosh.payload.dto.ProductDemandForecastDTO;
+import com.zosh.payload.dto.BranchHealthCopilotRequestDTO;
+import com.zosh.payload.dto.BranchHealthCopilotResponseDTO;
 import com.zosh.service.BranchAnalyticsService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,5 +51,26 @@ class BranchAnalyticsControllerDemandForecastTest {
         assertEquals(200, response.getStatusCode().value());
         assertEquals(expected, response.getBody());
         verify(branchAnalyticsService).getDemandForecast(8L, List.of(7, 14, 30), 90, LocalDate.of(2026, 4, 23));
+    }
+
+    @Test
+    void generateHealthCopilotSummaryDelegatesToServiceAndReturnsPayload() {
+        BranchHealthCopilotRequestDTO request = new BranchHealthCopilotRequestDTO();
+        request.setBranchId(8L);
+        request.setDate(LocalDate.of(2026, 4, 23));
+
+        BranchHealthCopilotResponseDTO expected = BranchHealthCopilotResponseDTO.builder()
+                .headline("Health summary")
+                .summary("Summary body")
+                .build();
+
+        when(branchAnalyticsService.generateHealthCopilotSummary(request)).thenReturn(expected);
+
+        ResponseEntity<BranchHealthCopilotResponseDTO> response =
+                branchAnalyticsController.generateHealthCopilotSummary(request);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(expected, response.getBody());
+        verify(branchAnalyticsService).generateHealthCopilotSummary(request);
     }
 }

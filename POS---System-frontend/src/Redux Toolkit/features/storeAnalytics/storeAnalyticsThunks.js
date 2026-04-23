@@ -19,15 +19,35 @@ const getAuthHeaders = () => {
   };
 };
 
+const normalizeAnalyticsPayload = (payload) => {
+  if (typeof payload === "object" && payload !== null) {
+    return payload;
+  }
+  return { storeAdminId: payload };
+};
+
+const buildAnalyticsQuery = ({ branchId, year, month, period }) => {
+  const params = new URLSearchParams();
+  if (branchId) params.set("branchId", String(branchId));
+  if (year) params.set("year", String(year));
+  if (month) params.set("month", String(month));
+  if (period) params.set("period", String(period));
+  const query = params.toString();
+  return query ? `?${query}` : "";
+};
+
 // 🔹 Get Store Overview (KPI Summary)
 export const getStoreOverview = createAsyncThunk(
   "storeAnalytics/getStoreOverview",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
+    const { storeAdminId, branchId, year, month } =
+      normalizeAnalyticsPayload(payload);
     try {
       console.log('🔄 Fetching store overview...', { storeAdminId });
       
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/store/analytics/${storeAdminId}/overview`, { headers });
+      const query = buildAnalyticsQuery({ branchId, year, month });
+      const res = await api.get(`/api/store/analytics/${storeAdminId}/overview${query}`, { headers });
       
       console.log('✅ Store overview fetched successfully:', {
         storeAdminId,
@@ -53,12 +73,15 @@ export const getStoreOverview = createAsyncThunk(
 // 🔹 Get Sales Trends by Time (daily/weekly/monthly)
 export const getSalesTrends = createAsyncThunk(
   "storeAnalytics/getSalesTrends",
-  async ({ storeAdminId, period }, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
+    const { storeAdminId, period, branchId, year, month } =
+      normalizeAnalyticsPayload(payload);
     try {
       console.log('🔄 Fetching sales trends...', { storeAdminId, period });
       
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/store/analytics/${storeAdminId}/sales-trends?period=${period}`, { headers });
+      const query = buildAnalyticsQuery({ period, branchId, year, month });
+      const res = await api.get(`/api/store/analytics/${storeAdminId}/sales-trends${query}`, { headers });
       
       console.log('✅ Sales trends fetched successfully:', {
         storeAdminId,
@@ -86,12 +109,15 @@ export const getSalesTrends = createAsyncThunk(
 // 🔹 Get Monthly Sales Chart (line)
 export const getMonthlySales = createAsyncThunk(
   "storeAnalytics/getMonthlySales",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
+    const { storeAdminId, branchId, year, month } =
+      normalizeAnalyticsPayload(payload);
     try {
       console.log('🔄 Fetching monthly sales...', { storeAdminId });
       
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/monthly`, { headers });
+      const query = buildAnalyticsQuery({ branchId, year, month });
+      const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/monthly${query}`, { headers });
       
       console.log('✅ Monthly sales fetched successfully:', {
         storeAdminId,
@@ -118,12 +144,15 @@ export const getMonthlySales = createAsyncThunk(
 // 🔹 Get Daily Sales Chart (line)
 export const getDailySales = createAsyncThunk(
   "storeAnalytics/getDailySales",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
+    const { storeAdminId, branchId, year, month } =
+      normalizeAnalyticsPayload(payload);
     try {
       console.log('🔄 Fetching daily sales...', { storeAdminId });
       
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/daily`, { headers });
+      const query = buildAnalyticsQuery({ branchId, year, month });
+      const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/daily${query}`, { headers });
       
       console.log('✅ Daily sales fetched successfully:', {
         storeAdminId,
@@ -150,12 +179,15 @@ export const getDailySales = createAsyncThunk(
 // 🔹 Get Sales by Product Category (pie/bar)
 export const getSalesByCategory = createAsyncThunk(
   "storeAnalytics/getSalesByCategory",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
+    const { storeAdminId, branchId, year, month } =
+      normalizeAnalyticsPayload(payload);
     try {
       console.log('🔄 Fetching sales by category...', { storeAdminId });
       
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/category`, { headers });
+      const query = buildAnalyticsQuery({ branchId, year, month });
+      const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/category${query}`, { headers });
       
       console.log('✅ Sales by category fetched successfully:', {
         storeAdminId,
@@ -182,12 +214,15 @@ export const getSalesByCategory = createAsyncThunk(
 // 🔹 Get Sales by Payment Method (pie)
 export const getSalesByPaymentMethod = createAsyncThunk(
   "storeAnalytics/getSalesByPaymentMethod",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
+    const { storeAdminId, branchId, year, month } =
+      normalizeAnalyticsPayload(payload);
     try {
       console.log('🔄 Fetching sales by payment method...', { storeAdminId });
       
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/payment-method`, { headers });
+      const query = buildAnalyticsQuery({ branchId, year, month });
+      const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/payment-method${query}`, { headers });
       
       console.log('✅ Sales by payment method fetched successfully:', {
         storeAdminId,
@@ -214,12 +249,15 @@ export const getSalesByPaymentMethod = createAsyncThunk(
 // 🔹 Get Sales by Branch (bar)
 export const getSalesByBranch = createAsyncThunk(
   "storeAnalytics/getSalesByBranch",
-  async (storeAdminId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
+    const { storeAdminId, branchId, year, month } =
+      normalizeAnalyticsPayload(payload);
     try {
       console.log('🔄 Fetching sales by branch...', { storeAdminId });
       
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/branch`, { headers });
+      const query = buildAnalyticsQuery({ branchId, year, month });
+      const res = await api.get(`/api/store/analytics/${storeAdminId}/sales/branch${query}`, { headers });
       
       console.log('✅ Sales by branch fetched successfully:', {
         storeAdminId,

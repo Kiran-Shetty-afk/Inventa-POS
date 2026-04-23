@@ -14,6 +14,8 @@ This folder is the workspace knowledge base.
 - `009-day-wise-dashboard-reports-dataflow-fix-apr-23.md`: Fixes day-wise sales/cashier charts and selected-date dashboard KPI stat cards.
 - `010-demand-forecast-smart-reorder-v1-apr-23.md`: Added seasonality-aware demand forecast and smart reorder suggestions to branch reports.
 - `011-cashier-returns-store-sales-fixes-apr-23.md`: Fixes cashier shift/returns flows and store sales dashboard KPI contract mismatches.
+- `012-ai-branch-health-copilot-v1-apr-23.md`: Added on-demand Gemini-powered branch health narrative with fallback and dashboard/report integration.
+- `013-store-reports-sales-filters-apr-23.md`: Adds branch/month filters and analytics tables on store reports and sales pages.
 - `CHANGELOG.md`: Versioned log of important changes and fixes.
 
 ## Update Rules

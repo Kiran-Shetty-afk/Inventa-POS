@@ -1,5 +1,36 @@
 # Brain Changelog
 
+## v2026.04.23.29 - Cashier post-payment order sync
+- Added post-payment data sync in cashier checkout flow so successful order creation immediately refreshes cashier order history and branch-completed order list.
+- This keeps `/cashier/orders` and `/cashier/returns` updated sooner after a new POS order without manual refresh.
+- Updated frontend knowledge log at `POS---System-frontend/brain/CHANGELOG.md`.
+
+## v2026.04.23.28 - Cashier returns/order actions fix
+- Fixed cashier returns order loading by adding branch-resolution fallback in `ReturnOrderPage` (`branch.id` -> `userProfile.branchId` -> `userProfile.branch.id`) and cashier-order fallback fetch when branch context is unavailable.
+- Fixed `/cashier/orders` row action behavior by wiring real handlers: Return now navigates to `/cashier/returns` with selected order state; Print now opens a printable invoice window instead of only showing a toast.
+- Updated frontend knowledge log at `POS---System-frontend/brain/CHANGELOG.md`.
+
+## v2026.04.23.27 - Store reports and sales filter enhancement
+- Added branch filter support on `/store/sales` with filter-aware analytics fetch payloads and a branch-wise sales table.
+- Added branch + month filtering controls on `/store/reports` and wired filtered fetch payloads for monthly/category/branch/payment datasets.
+- Added practical report tables for month-wise sales, branch-wise sales, and payment-method breakdown.
+- Updated store analytics thunks to support backward-compatible object payloads with optional `branchId`, `year`, and `month` query params.
+- Added knowledge note `013-store-reports-sales-filters-apr-23.md` and updated `brain/INDEX.md`.
+
+## v2026.04.23.26 - Cashier shift summary first-load crash guard
+- Fixed cashier shift summary initial white-screen crash by guarding nested shift fields in `ShiftInformationCard` (`cashier`, `shiftStart`, `shiftEnd`) and rendering safe fallbacks when payload hydration is partial.
+- Updated `POS---System-frontend/brain/CHANGELOG.md` with the corresponding frontend-level change note.
+
+## v2026.04.23.25 - AI branch health copilot V1
+- Added `POST /api/branch-analytics/health-copilot-summary` for on-demand branch narrative generation based on active day/month filters.
+- Added structured copilot request/response DTOs plus supporting metrics payload (sales trend, top cashier/category, low stock, refund count/amount/spike hour).
+- Added Gemini-backed narrative generator service with environment-driven config and strict JSON response parsing.
+- Added deterministic fallback summary path when Gemini is unavailable or returns malformed output.
+- Added refund analytics queries for branch summary and hourly spike detection to support risk narratives.
+- Added frontend copilot thunk/slice state and reusable `BranchHealthCopilotCard` integrated into branch dashboard and reports.
+- Added backend/frontend tests for copilot flow and updated branch analytics tests for constructor changes.
+- Added knowledge note `012-ai-branch-health-copilot-v1-apr-23.md` and updated `brain/INDEX.md`.
+
 ## v2026.04.23.24 - RefundDTO constructor compatibility hotfix
 - Added an explicit 8-argument `RefundDTO` constructor to preserve compatibility with existing JPQL constructor projections during backend startup.
 - This fixes runtime startup failure (`Missing constructor for type 'RefundDTO'`) introduced after extending `RefundDTO` with `paymentType`.

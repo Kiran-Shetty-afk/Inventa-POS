@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import { handleDownloadOrderPDF } from "./pdf/pdfUtils";
 
 const OrderHistoryPage = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { userProfile } = useSelector((state) => state.user);
   const { orders, loading, error } = useSelector((state) => state.order);
@@ -105,6 +107,75 @@ const OrderHistoryPage = () => {
   };
 
   const handlePrintInvoice = (order) => {
+    if (!order) return;
+    const customerName = order.customer?.fullName || "Walk-in Customer";
+    const itemsHtml = (order.items || [])
+      .map(
+        (item) =>
+          `<tr>
+            <td>${item.product?.name || item.productName || "Item"}</td>
+            <td style="text-align:center;">${item.quantity ?? 0}</td>
+            <td style="text-align:right;">₹${Number(item.price ?? 0).toFixed(2)}</td>
+            <td style="text-align:right;">₹${Number(item.total ?? item.price ?? 0).toFixed(2)}</td>
+          </tr>`
+      )
+      .join("");
+
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow) {
+      toast({
+        title: "Print blocked",
+        description: "Please allow pop-ups to print invoices.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Invoice #${order.id}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
+            h1 { margin-bottom: 6px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+            th, td { border: 1px solid #ddd; padding: 8px; font-size: 14px; }
+            th { background: #f5f5f5; text-align: left; }
+            .meta p { margin: 2px 0; }
+            .total { margin-top: 16px; text-align: right; font-weight: bold; font-size: 16px; }
+          </style>
+        </head>
+        <body>
+          <h1>POS Invoice</h1>
+          <div class="meta">
+            <p><strong>Order:</strong> #${order.id ?? "-"}</p>
+            <p><strong>Date:</strong> ${order.createdAt ? new Date(order.createdAt).toLocaleString() : "-"}</p>
+            <p><strong>Customer:</strong> ${customerName}</p>
+            <p><strong>Payment:</strong> ${order.paymentType ?? "-"}</p>
+            <p><strong>Status:</strong> ${order.status ?? "-"}</p>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th style="text-align:center;">Qty</th>
+                <th style="text-align:right;">Price</th>
+                <th style="text-align:right;">Line Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml || '<tr><td colspan="4" style="text-align:center;">No line items available</td></tr>'}
+            </tbody>
+          </table>
+          <div class="total">Total: ₹${Number(order.totalAmount ?? 0).toFixed(2)}</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+
     toast({
       title: "Printing Invoice",
       description: `Printing invoice for order ${order.id}`,
@@ -112,11 +183,7 @@ const OrderHistoryPage = () => {
   };
 
   const handleInitiateReturn = (order) => {
-    // In a real app, this would navigate to the return page with the order pre-selected
-    toast({
-      title: "Initiating Return",
-      description: `Navigating to returns page for order ${order.id}`,
-    });
+    navigate("/cashier/returns", { state: { selectedOrder: order } });
   };
 
   
@@ -274,7 +341,7 @@ const OrderHistoryPage = () => {
                 Download PDF
               </Button>
               <Button
-                variant=""
+                variant="outline"
                 onClick={() => handlePrintInvoice(selectedOrder)}
               >
                 <PrinterIcon className="h-4 w-4 mr-2" />

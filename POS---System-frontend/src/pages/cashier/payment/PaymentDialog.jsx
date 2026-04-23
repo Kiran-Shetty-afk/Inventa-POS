@@ -20,6 +20,10 @@ import {
 import { useToast } from "../../../components/ui/use-toast";
 import { useDispatch } from "react-redux";
 import { createOrder } from "../../../Redux Toolkit/features/order/orderThunks";
+import {
+  getOrdersByBranch,
+  getOrdersByCashier,
+} from "../../../Redux Toolkit/features/order/orderThunks";
 import { paymentMethods } from "./data";
 
 const PaymentDialog = ({
@@ -62,10 +66,11 @@ const PaymentDialog = ({
     }
 
     try {
+      const resolvedBranchId = branch?.id ?? userProfile?.branchId;
       // Prepare order data according to OrderDTO structure
       const orderData = {
         totalAmount: Number(total.toFixed(2)),
-        branchId: branch?.id ?? userProfile?.branchId,
+        branchId: resolvedBranchId,
         cashierId: userProfile.id,
         customer: selectedCustomer || null,
         items: cart.map((item) => ({
@@ -83,6 +88,18 @@ const PaymentDialog = ({
       // Create order
       const createdOrder = await dispatch(createOrder(orderData)).unwrap();
       dispatch(setCurrentOrder(createdOrder));
+
+      // Keep cashier Orders and Returns views immediately in sync after checkout.
+      const refreshPromises = [];
+      if (userProfile?.id) {
+        refreshPromises.push(dispatch(getOrdersByCashier(userProfile.id)));
+      }
+      if (resolvedBranchId) {
+        refreshPromises.push(
+          dispatch(getOrdersByBranch({ branchId: resolvedBranchId, status: "COMPLETED" }))
+        );
+      }
+      await Promise.allSettled(refreshPromises);
 
       setShowPaymentDialog(false);
       setShowReceiptDialog(true);

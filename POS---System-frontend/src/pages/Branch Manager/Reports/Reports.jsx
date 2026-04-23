@@ -14,7 +14,9 @@ import {
   getCategoryWiseSalesBreakdown,
   getTopCashiersByRevenue,
   getDemandForecast,
+  getBranchHealthCopilotSummary,
 } from "@/Redux Toolkit/features/branchAnalytics/branchAnalyticsThunks";
+import BranchHealthCopilotCard from "@/components/branch/BranchHealthCopilotCard";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -37,6 +39,9 @@ const Reports = () => {
     topCashiers,
     demandForecast,
     demandForecastLoading,
+    copilotSummary,
+    copilotSummaryLoading,
+    copilotSummaryError,
   } = useSelector((state) => state.branchAnalytics);
 
   useEffect(() => {
@@ -343,6 +348,24 @@ const Reports = () => {
     }
   };
 
+  const handleGenerateCopilotSummary = () => {
+    if (!branchId) {
+      return;
+    }
+
+    if (viewMode === "month") {
+      const [year, month] = selectedMonth.split("-").map(Number);
+      if (Number.isInteger(year) && Number.isInteger(month)) {
+        dispatch(getBranchHealthCopilotSummary({ branchId, year, month }));
+      }
+      return;
+    }
+
+    if (selectedDate) {
+      dispatch(getBranchHealthCopilotSummary({ branchId, date: selectedDate }));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -393,6 +416,13 @@ const Reports = () => {
           </Button>
         </div>
       </div>
+
+      <BranchHealthCopilotCard
+        summary={copilotSummary}
+        loading={copilotSummaryLoading}
+        error={copilotSummaryError}
+        onGenerate={handleGenerateCopilotSummary}
+      />
 
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>

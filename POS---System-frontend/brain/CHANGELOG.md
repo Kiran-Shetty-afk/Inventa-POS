@@ -4,6 +4,36 @@ All entries are dated and versioned for uniqueness.
 
 ---
 
+## brain-2026-04-23-037
+
+**Date:** 2026-04-23
+
+**Summary:** Added post-payment order-list synchronization for cashier flows. After a successful checkout in `PaymentDialog`, frontend now refreshes cashier order history (`getOrdersByCashier`) and refundable branch orders (`getOrdersByBranch` with `COMPLETED`) so newly created orders appear quickly in `/cashier/orders` and `/cashier/returns`.
+
+**Changed:** `src/pages/cashier/payment/PaymentDialog.jsx`, `brain/CHANGELOG.md`
+
+---
+
+## brain-2026-04-23-036
+
+**Date:** 2026-04-23
+
+**Summary:** Fixed cashier returns/order-history flow regressions. `ReturnOrderPage` now loads refundable orders with robust branch fallback (`state.branch`, `userProfile.branchId`, `userProfile.branch.id`) and falls back to cashier orders when branch context is unavailable. Order History action buttons now perform real actions: Return navigates to `/cashier/returns` with preselected order state, and Print opens a printable invoice window.
+
+**Changed:** `src/pages/cashier/return/ReturnOrderPage.jsx`, `src/pages/cashier/order/OrderHistoryPage.jsx`, `brain/CHANGELOG.md`
+
+---
+
+## brain-2026-04-23-035
+
+**Date:** 2026-04-23
+
+**Summary:** Fixed `/cashier/shiftsummary` first-load blank screen by guarding shift summary header rendering against missing nested cashier/time fields during initial payload hydration. `ShiftInformationCard` now renders safe fallbacks instead of throwing on `shiftData.cashier.fullName`.
+
+**Changed:** `src/pages/cashier/ShiftSummary/components/ShiftInformationCard.jsx`, `brain/CHANGELOG.md`
+
+---
+
 ## brain-2026-04-22-034
 
 **Date:** 2026-04-22

@@ -6,7 +6,8 @@ import {
   getCategoryWiseSalesBreakdown,
   getTodayOverview,
   getPaymentBreakdown,
-  getDemandForecast
+  getDemandForecast,
+  getBranchHealthCopilotSummary
 } from './branchAnalyticsThunks';
 
 const initialState = {
@@ -19,6 +20,9 @@ const initialState = {
   demandForecast: [],
   demandForecastLoading: false,
   demandForecastError: null,
+  copilotSummary: null,
+  copilotSummaryLoading: false,
+  copilotSummaryError: null,
   loading: false,
   error: null,
 };
@@ -37,6 +41,9 @@ const branchAnalyticsSlice = createSlice({
       state.demandForecast = [];
       state.demandForecastLoading = false;
       state.demandForecastError = null;
+      state.copilotSummary = null;
+      state.copilotSummaryLoading = false;
+      state.copilotSummaryError = null;
       state.error = null;
     },
   },
@@ -126,6 +133,19 @@ const branchAnalyticsSlice = createSlice({
       .addCase(getDemandForecast.rejected, (state, action) => {
         state.demandForecastLoading = false;
         state.demandForecastError = action.payload;
+      })
+      // Copilot Summary
+      .addCase(getBranchHealthCopilotSummary.pending, (state) => {
+        state.copilotSummaryLoading = true;
+        state.copilotSummaryError = null;
+      })
+      .addCase(getBranchHealthCopilotSummary.fulfilled, (state, action) => {
+        state.copilotSummaryLoading = false;
+        state.copilotSummary = action.payload ?? null;
+      })
+      .addCase(getBranchHealthCopilotSummary.rejected, (state, action) => {
+        state.copilotSummaryLoading = false;
+        state.copilotSummaryError = action.payload;
       })
       // Generic error matcher
       .addMatcher(

@@ -115,4 +115,12 @@ public class BranchAnalyticsController {
         );
     }
 
+    @PostMapping("/health-copilot-summary")
+    @PreAuthorize(ALLOWED_ROLES)
+    public ResponseEntity<BranchHealthCopilotResponseDTO> generateHealthCopilotSummary(
+            @RequestBody BranchHealthCopilotRequestDTO request
+    ) {
+        return ResponseEntity.ok(branchAnalyticsService.generateHealthCopilotSummary(request));
+    }
+
 }

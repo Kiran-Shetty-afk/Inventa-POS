@@ -56,6 +56,19 @@ const buildDemandForecastQuery = ({ branchId, horizons = [7, 14, 30], lookbackDa
   return params.toString();
 };
 
+const buildCopilotPayload = ({ branchId, date, year, month, days }) => {
+  const payload = { branchId };
+  if (date) payload.date = date;
+  if (Number.isInteger(year) && Number.isInteger(month)) {
+    payload.year = year;
+    payload.month = month;
+  }
+  if (Number.isInteger(days) && days > 0) {
+    payload.days = days;
+  }
+  return payload;
+};
+
 // Get daily sales chart data (last n days)
 export const getDailySalesChart = createAsyncThunk(
   'branchAnalytics/getDailySalesChart',
@@ -175,6 +188,21 @@ export const getDemandForecast = createAsyncThunk(
     } catch (err) {
       if (isRequestCanceled(err)) throw err;
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch demand forecast');
+    }
+  }
+);
+
+export const getBranchHealthCopilotSummary = createAsyncThunk(
+  'branchAnalytics/getBranchHealthCopilotSummary',
+  async ({ branchId, date, year, month, days }, { rejectWithValue, signal }) => {
+    try {
+      const headers = getAuthHeaders();
+      const payload = buildCopilotPayload({ branchId, date, year, month, days });
+      const res = await api.post('/api/branch-analytics/health-copilot-summary', payload, { headers, signal });
+      return res.data;
+    } catch (err) {
+      if (isRequestCanceled(err)) throw err;
+      return rejectWithValue(err.response?.data?.message || 'Failed to generate AI branch summary');
     }
   }
 );

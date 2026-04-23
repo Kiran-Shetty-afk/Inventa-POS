@@ -10,9 +10,14 @@ import SalesChart from "./SalesChart";
 import TopProducts from "./TopProducts";
 import CashierPerformance from "./CashierPerformance";
 import RecentOrders from "./RecentOrders";
-import { getTodayOverview, getPaymentBreakdown } from "@/Redux Toolkit/features/branchAnalytics/branchAnalyticsThunks";
+import {
+  getTodayOverview,
+  getPaymentBreakdown,
+  getBranchHealthCopilotSummary,
+} from "@/Redux Toolkit/features/branchAnalytics/branchAnalyticsThunks";
 import PaymentBreakdown from "./PaymentBreakdown";
 import TodayOverview from "./TodayOverview";
+import BranchHealthCopilotCard from "@/components/branch/BranchHealthCopilotCard";
 
 export default function Dashboard() {
   const dispatch = useDispatch();
@@ -26,6 +31,9 @@ export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedDate, setSelectedDate] = useState(currentDate);
   const [viewMode, setViewMode] = useState("month");
+  const { copilotSummary, copilotSummaryLoading, copilotSummaryError } = useSelector(
+    (state) => state.branchAnalytics
+  );
 
   useEffect(() => {
     if (branchId) {
@@ -46,6 +54,24 @@ export default function Dashboard() {
       };
     }
   }, [branchId, dispatch, selectedMonth, selectedDate, viewMode]);
+
+  const handleGenerateCopilotSummary = () => {
+    if (!branchId) {
+      return;
+    }
+
+    if (viewMode === "month") {
+      const [year, month] = selectedMonth.split("-").map(Number);
+      if (Number.isInteger(year) && Number.isInteger(month)) {
+        dispatch(getBranchHealthCopilotSummary({ branchId, year, month }));
+      }
+      return;
+    }
+
+    if (selectedDate) {
+      dispatch(getBranchHealthCopilotSummary({ branchId, date: selectedDate }));
+    }
+  };
 
   // Helper to determine changeType
  
@@ -101,6 +127,13 @@ export default function Dashboard() {
       </div>
       {/* KPI Cards */}
       <TodayOverview/>
+
+      <BranchHealthCopilotCard
+        summary={copilotSummary}
+        loading={copilotSummaryLoading}
+        error={copilotSummaryError}
+        onGenerate={handleGenerateCopilotSummary}
+      />
       
       {/* Payment Breakdown */}
       <PaymentBreakdown/>

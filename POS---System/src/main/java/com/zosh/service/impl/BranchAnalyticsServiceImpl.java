@@ -1,19 +1,21 @@
 package com.zosh.service.impl;
 
 import com.zosh.domain.PaymentType;
-import com.zosh.modal.Inventory;
 import com.zosh.modal.PaymentSummary;
 import com.zosh.payload.dto.*;
 import com.zosh.repository.InventoryRepository;
 import com.zosh.repository.OrderItemRepository;
 import com.zosh.repository.OrderRepository;
+import com.zosh.repository.RefundRepository;
 import com.zosh.service.BranchAnalyticsService;
+import com.zosh.service.BranchHealthNarrativeGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -36,6 +38,8 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final InventoryRepository inventoryRepository;
+    private final RefundRepository refundRepository;
+    private final BranchHealthNarrativeGenerator branchHealthNarrativeGenerator;
 
     private static final int DEFAULT_LOOKBACK_DAYS = 90;
     private static final int MIN_LOOKBACK_DAYS = 14;
@@ -210,6 +214,85 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public BranchHealthCopilotResponseDTO generateHealthCopilotSummary(BranchHealthCopilotRequestDTO request) {
+        if (request == null || request.getBranchId() == null) {
+            throw new IllegalArgumentException("branchId is required to generate health copilot summary");
+        }
+
+        CopilotWindow window = resolveCopilotWindow(request);
+        LocalDateTime[] previousWindow = resolvePreviousWindow(window.start, window.end);
+
+        BigDecimal currentSales = orderRepository
+                .getTotalSalesBetween(request.getBranchId(), window.start, window.end)
+                .orElse(BigDecimal.ZERO);
+        BigDecimal previousSales = orderRepository
+                .getTotalSalesBetween(request.getBranchId(), previousWindow[0], previousWindow[1])
+                .orElse(BigDecimal.ZERO);
+        double salesGrowth = calculateGrowth(currentSales, previousSales);
+
+        int orderCount = orderRepository
+                .findByBranchIdAndCreatedAtBetween(request.getBranchId(), window.start, window.end)
+                .size();
+
+        List<Object[]> topCashiers = orderRepository.getTopCashiersByRevenueBetween(request.getBranchId(), window.start, window.end);
+        String topCashierName = topCashiers.isEmpty() ? "No cashier sales" : (String) topCashiers.get(0)[1];
+        double topCashierRevenue = topCashiers.isEmpty() ? 0.0 : ((Number) topCashiers.get(0)[2]).doubleValue();
+        int activeCashiers = topCashiers.size();
+
+        List<Object[]> categorySales = orderItemRepository.getCategoryWiseSales(request.getBranchId(), window.start, window.end);
+        String topCategoryName = categorySales.isEmpty() ? "No category sales" : (String) categorySales.get(0)[0];
+        double topCategorySales = categorySales.isEmpty() ? 0.0 : ((Number) categorySales.get(0)[1]).doubleValue();
+
+        int lowStockItems = inventoryRepository.countLowStockItems(request.getBranchId());
+
+        Object[] refundSummary = refundRepository.getBranchRefundSummary(request.getBranchId(), window.start, window.end);
+        int refundCount = refundSummary != null && refundSummary[0] instanceof Number
+                ? ((Number) refundSummary[0]).intValue()
+                : 0;
+        double refundAmount = refundSummary != null && refundSummary[1] instanceof Number
+                ? ((Number) refundSummary[1]).doubleValue()
+                : 0.0;
+
+        List<Object[]> refundHourly = refundRepository.getBranchRefundHourlySummary(request.getBranchId(), window.start, window.end);
+        Integer refundSpikeHour = null;
+        int refundSpikeCount = 0;
+        if (!refundHourly.isEmpty()) {
+            Object[] spike = refundHourly.get(0);
+            refundSpikeHour = spike[0] instanceof Number ? ((Number) spike[0]).intValue() : null;
+            refundSpikeCount = spike[1] instanceof Number ? ((Number) spike[1]).intValue() : 0;
+        }
+
+        BranchHealthCopilotResponseDTO.BranchHealthSupportingMetricsDTO metrics =
+                BranchHealthCopilotResponseDTO.BranchHealthSupportingMetricsDTO.builder()
+                        .mode(window.mode)
+                        .windowStart(window.start)
+                        .windowEnd(window.end)
+                        .totalSales(currentSales)
+                        .salesGrowth(roundToTwo(salesGrowth))
+                        .orderCount(orderCount)
+                        .activeCashiers(activeCashiers)
+                        .topCashierName(topCashierName)
+                        .topCashierRevenue(roundToTwo(topCashierRevenue))
+                        .topCategoryName(topCategoryName)
+                        .topCategorySales(roundToTwo(topCategorySales))
+                        .lowStockItems(lowStockItems)
+                        .refundCount(refundCount)
+                        .refundAmount(roundToTwo(refundAmount))
+                        .refundSpikeHour(refundSpikeHour)
+                        .refundSpikeCount(refundSpikeCount)
+                        .build();
+
+        try {
+            BranchHealthCopilotResponseDTO narrative = branchHealthNarrativeGenerator.generateNarrative(metrics);
+            narrative.setSupportingMetrics(metrics);
+            narrative.setGeneratedAt(LocalDateTime.now());
+            return narrative;
+        } catch (Exception ex) {
+            return buildFallbackCopilotSummary(metrics);
+        }
+    }
+
 
     @Override
     public BranchDashboardOverviewDTO getBranchOverview(Long branchId, LocalDate date) {
@@ -272,6 +355,40 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
         return new LocalDateTime[] {
                 targetDate.atStartOfDay(),
                 targetDate.atTime(LocalTime.MAX)
+        };
+    }
+
+    private CopilotWindow resolveCopilotWindow(BranchHealthCopilotRequestDTO request) {
+        if (request.getYear() != null && request.getMonth() != null) {
+            YearMonth yearMonth = YearMonth.of(request.getYear(), request.getMonth());
+            return new CopilotWindow(
+                    yearMonth.atDay(1).atStartOfDay(),
+                    yearMonth.atEndOfMonth().atTime(LocalTime.MAX),
+                    "monthly"
+            );
+        }
+
+        if (request.getDate() != null) {
+            return new CopilotWindow(
+                    request.getDate().atStartOfDay(),
+                    request.getDate().atTime(LocalTime.MAX),
+                    "daily"
+            );
+        }
+
+        int days = request.getDays() != null && request.getDays() > 0 ? request.getDays() : 7;
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(days - 1L);
+        return new CopilotWindow(startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX), "rolling");
+    }
+
+    private LocalDateTime[] resolvePreviousWindow(LocalDateTime windowStart, LocalDateTime windowEnd) {
+        long windowDays = Math.max(Duration.between(windowStart, windowEnd).toDays() + 1, 1);
+        LocalDate previousEndDate = windowStart.toLocalDate().minusDays(1);
+        LocalDate previousStartDate = previousEndDate.minusDays(windowDays - 1);
+        return new LocalDateTime[]{
+                previousStartDate.atStartOfDay(),
+                previousEndDate.atTime(LocalTime.MAX)
         };
     }
 
@@ -347,9 +464,9 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
         double baseline = computeRecencyWeightedBaseline(series.dailyDemand, historyEndDate, lookbackDays);
         double[] seasonalWeights = computeWeekdaySeasonalityWeights(series.dailyDemand, historyStartDate, historyEndDate, lookbackDays);
 
-        double forecast7 = roundToTwo(projectDemand(series, baseline, seasonalWeights, forecastAnchor, 7));
-        double forecast14 = roundToTwo(projectDemand(series, baseline, seasonalWeights, forecastAnchor, 14));
-        double forecast30 = roundToTwo(projectDemand(series, baseline, seasonalWeights, forecastAnchor, 30));
+        double forecast7 = roundToTwo(projectDemand(baseline, seasonalWeights, forecastAnchor, 7));
+        double forecast14 = roundToTwo(projectDemand(baseline, seasonalWeights, forecastAnchor, 14));
+        double forecast30 = roundToTwo(projectDemand(baseline, seasonalWeights, forecastAnchor, 30));
 
         double reorderBaselineForecast = switch (reorderHorizon) {
             case 7 -> forecast7;
@@ -444,7 +561,6 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     }
 
     private double projectDemand(
-            ProductDemandSeries series,
             double baseline,
             double[] seasonalWeights,
             LocalDate forecastAnchor,
@@ -489,6 +605,51 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
         return Math.round(value * 100.0) / 100.0;
     }
 
+    private BranchHealthCopilotResponseDTO buildFallbackCopilotSummary(
+            BranchHealthCopilotResponseDTO.BranchHealthSupportingMetricsDTO metrics
+    ) {
+        List<String> highlights = new ArrayList<>();
+        highlights.add(String.format("Total sales: ₹%s (%s mode).", metrics.getTotalSales(), metrics.getMode()));
+        highlights.add(String.format("Top cashier: %s with ₹%.2f revenue.", metrics.getTopCashierName(), metrics.getTopCashierRevenue()));
+        highlights.add(String.format("Top category: %s with ₹%.2f sales.", metrics.getTopCategoryName(), metrics.getTopCategorySales()));
+
+        List<String> risks = new ArrayList<>();
+        if (metrics.getSalesGrowth() < 0) {
+            risks.add(String.format("Sales are down %.2f%% versus the previous comparable window.", Math.abs(metrics.getSalesGrowth())));
+        }
+        if (metrics.getRefundSpikeHour() != null && metrics.getRefundSpikeCount() > 0) {
+            risks.add(String.format("Refund spike observed at %02d:00 with %d refunds.", metrics.getRefundSpikeHour(), metrics.getRefundSpikeCount()));
+        }
+        if (metrics.getLowStockItems() > 0) {
+            risks.add(String.format("%d low-stock items need replenishment.", metrics.getLowStockItems()));
+        }
+        if (risks.isEmpty()) {
+            risks.add("No major operational risk detected for the selected period.");
+        }
+
+        List<String> actions = new ArrayList<>();
+        actions.add("Review cashier-level refunds and verify return reasons during peak refund hours.");
+        actions.add("Replenish low-stock SKUs for top-performing categories.");
+        actions.add("Monitor payment mix and promote low-friction payment options during high-traffic periods.");
+
+        return BranchHealthCopilotResponseDTO.builder()
+                .headline("Branch health summary")
+                .summary(String.format(
+                        "Sales growth is %.2f%% with %d orders and %d active cashiers. Keep focus on %s and %s for sustained performance.",
+                        metrics.getSalesGrowth(),
+                        metrics.getOrderCount(),
+                        metrics.getActiveCashiers(),
+                        metrics.getTopCashierName(),
+                        metrics.getTopCategoryName()
+                ))
+                .highlights(highlights)
+                .risks(risks)
+                .recommendedActions(actions)
+                .supportingMetrics(metrics)
+                .generatedAt(LocalDateTime.now())
+                .build();
+    }
+
     private static class ProductDemandSeries {
         private final Long productId;
         private String productName;
@@ -499,6 +660,18 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
             this.productId = productId;
             this.productName = productName;
             this.currentStock = 0;
+        }
+    }
+
+    private static class CopilotWindow {
+        private final LocalDateTime start;
+        private final LocalDateTime end;
+        private final String mode;
+
+        private CopilotWindow(LocalDateTime start, LocalDateTime end, String mode) {
+            this.start = start;
+            this.end = end;
+            this.mode = mode;
         }
     }
 
