@@ -4,6 +4,26 @@ All entries are dated and versioned for uniqueness.
 
 ---
 
+## brain-2026-04-23-039
+
+**Date:** 2026-04-23
+
+**Summary:** Added a defensive payment enum normalization guard in cashier checkout. `PaymentDialog` now normalizes outgoing `paymentType` to allowed backend values (`CASH`, `CARD`, `UPI`) and falls back to `CASH` for unknown/invalid values.
+
+**Changed:** `src/pages/cashier/payment/PaymentDialog.jsx`, `brain/CHANGELOG.md`
+
+---
+
+## brain-2026-04-23-038
+
+**Date:** 2026-04-23
+
+**Summary:** Fixed enum serialization mismatch for cashier checkout by normalizing cart default payment method to backend `PaymentType` enum values. `cartSlice` now initializes and resets `paymentMethod` as `CASH` (uppercase) so checkout no longer sends invalid `"cash"` values.
+
+**Changed:** `src/Redux Toolkit/features/cart/cartSlice.js`, `brain/CHANGELOG.md`
+
+---
+
 ## brain-2026-04-23-037
 
 **Date:** 2026-04-23

@@ -5,7 +5,7 @@ const initialState = {
   selectedCustomer: null,
   note: "",
   discount: { type: "percentage", value: 0 },
-  paymentMethod: "cash",
+  paymentMethod: "CASH",
   heldOrders: [],
   currentOrder: null,
 };
@@ -51,7 +51,7 @@ const cartSlice = createSlice({
       state.selectedCustomer = null;
       state.note = "";
       state.discount = { type: "percentage", value: 0 };
-      state.paymentMethod = "cash";
+      state.paymentMethod = "CASH";
       state.currentOrder = null;
     },
 
@@ -112,7 +112,7 @@ const cartSlice = createSlice({
       state.selectedCustomer = null;
       state.note = "";
       state.discount = { type: "percentage", value: 0 };
-      state.paymentMethod = "cash";
+      state.paymentMethod = "CASH";
       state.currentOrder = null;
     },
   },

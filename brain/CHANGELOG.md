@@ -1,5 +1,15 @@
 # Brain Changelog
 
+## v2026.04.23.31 - Defensive payment enum normalization
+- Added a defensive checkout guard in cashier `PaymentDialog` to normalize `paymentType` to uppercase backend enum values (`CASH`, `CARD`, `UPI`) before submitting orders.
+- Unknown payment values now safely fall back to `CASH`, preventing future enum parse errors even if client state becomes inconsistent.
+- Updated frontend knowledge log at `POS---System-frontend/brain/CHANGELOG.md`.
+
+## v2026.04.23.30 - PaymentType enum casing fix
+- Fixed cashier checkout backend parse error (`PaymentType`) by changing cart payment default/reset values from lowercase `cash` to uppercase `CASH`.
+- This ensures requests always send enum-compatible payment type values (`CASH`, `CARD`, `UPI`) even when cashier does not manually switch method in the payment dialog.
+- Updated frontend knowledge log at `POS---System-frontend/brain/CHANGELOG.md`.
+
 ## v2026.04.23.29 - Cashier post-payment order sync
 - Added post-payment data sync in cashier checkout flow so successful order creation immediately refreshes cashier order history and branch-completed order list.
 - This keeps `/cashier/orders` and `/cashier/returns` updated sooner after a new POS order without manual refresh.

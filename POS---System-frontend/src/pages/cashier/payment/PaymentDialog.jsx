@@ -26,6 +26,14 @@ import {
 } from "../../../Redux Toolkit/features/order/orderThunks";
 import { paymentMethods } from "./data";
 
+const normalizePaymentType = (value) => {
+  const upper = String(value ?? "CASH").toUpperCase();
+  if (upper === "CASH" || upper === "CARD" || upper === "UPI") {
+    return upper;
+  }
+  return "CASH";
+};
+
 const PaymentDialog = ({
   showPaymentDialog,
   setShowPaymentDialog,
@@ -67,6 +75,7 @@ const PaymentDialog = ({
 
     try {
       const resolvedBranchId = branch?.id ?? userProfile?.branchId;
+      const normalizedPaymentType = normalizePaymentType(paymentMethod);
       // Prepare order data according to OrderDTO structure
       const orderData = {
         totalAmount: Number(total.toFixed(2)),
@@ -79,7 +88,7 @@ const PaymentDialog = ({
           price: Number(item.price),
           total: Number((item.price * item.quantity).toFixed(2)),
         })),
-        paymentType: paymentMethod,
+        paymentType: normalizedPaymentType,
         note: note || "",
       };
 
