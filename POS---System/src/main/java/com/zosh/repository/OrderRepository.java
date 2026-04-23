@@ -48,6 +48,21 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Object[]> getTopCashiersByRevenue(@Param("branchId") Long branchId);
 
     @Query("""
+        SELECT u.id, u.fullName, SUM(o.totalAmount) AS totalRevenue
+        FROM Order o
+        JOIN o.cashier u
+        WHERE o.branch.id = :branchId
+        AND o.createdAt BETWEEN :start AND :end
+        GROUP BY u.id, u.fullName
+        ORDER BY totalRevenue DESC
+    """)
+    List<Object[]> getTopCashiersByRevenueBetween(
+            @Param("branchId") Long branchId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("""
         SELECT COUNT(o)
         FROM Order o
         WHERE o.branch.id = :branchId

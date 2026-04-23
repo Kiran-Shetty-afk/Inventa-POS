@@ -12,14 +12,18 @@ const SalesChart = ({ selectedMonth, selectedDate, viewMode }) => {
 
   useEffect(() => {
     if (branchId) {
+      let request;
       if (viewMode === "month") {
         const [year, month] = selectedMonth.split("-").map(Number);
         if (Number.isInteger(year) && Number.isInteger(month)) {
-          dispatch(getDailySalesChart({ branchId, year, month }));
+          request = dispatch(getDailySalesChart({ branchId, year, month }));
         }
       } else if (selectedDate) {
-        dispatch(getDailySalesChart({ branchId, days: 1, date: selectedDate }));
+        request = dispatch(getDailySalesChart({ branchId, days: 1, date: selectedDate }));
       }
+      return () => {
+        request?.abort?.();
+      };
     }
   }, [branchId, dispatch, selectedMonth, selectedDate, viewMode]);
 

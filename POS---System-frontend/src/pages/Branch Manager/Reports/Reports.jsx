@@ -38,19 +38,24 @@ const Reports = () => {
 
   useEffect(() => {
     if (branchId) {
+      const requests = [];
       if (viewMode === "month") {
         const [year, month] = selectedMonth.split("-").map(Number);
         if (Number.isInteger(year) && Number.isInteger(month)) {
-          dispatch(getDailySalesChart({ branchId, year, month }));
-          dispatch(getPaymentBreakdown({ branchId, year, month }));
-          dispatch(getCategoryWiseSalesBreakdown({ branchId, year, month }));
+          requests.push(dispatch(getDailySalesChart({ branchId, year, month })));
+          requests.push(dispatch(getPaymentBreakdown({ branchId, year, month })));
+          requests.push(dispatch(getCategoryWiseSalesBreakdown({ branchId, year, month })));
+          requests.push(dispatch(getTopCashiersByRevenue({ branchId, year, month })));
         }
       } else if (selectedDate) {
-        dispatch(getDailySalesChart({ branchId, days: 1, date: selectedDate }));
-        dispatch(getPaymentBreakdown({ branchId, date: selectedDate }));
-        dispatch(getCategoryWiseSalesBreakdown({ branchId, date: selectedDate }));
+        requests.push(dispatch(getDailySalesChart({ branchId, days: 1, date: selectedDate })));
+        requests.push(dispatch(getPaymentBreakdown({ branchId, date: selectedDate })));
+        requests.push(dispatch(getCategoryWiseSalesBreakdown({ branchId, date: selectedDate })));
+        requests.push(dispatch(getTopCashiersByRevenue({ branchId, date: selectedDate })));
       }
-      dispatch(getTopCashiersByRevenue(branchId));
+      return () => {
+        requests.forEach((request) => request.abort?.());
+      };
     }
   }, [branchId, dispatch, selectedMonth, selectedDate, viewMode]);
 
@@ -145,7 +150,6 @@ const Reports = () => {
       return false;
     }
 
-    const today = new Date().toISOString().slice(0, 10);
     const [selectedYear, selectedMonthNumber] = selectedMonth.split("-").map(Number);
     const isMonthMode = viewMode === "month";
     if (isMonthMode && (!Number.isInteger(selectedYear) || !Number.isInteger(selectedMonthNumber))) {
@@ -220,13 +224,17 @@ const Reports = () => {
           break;
         }
         case "cashier": {
-          const data = await dispatch(getTopCashiersByRevenue(branchId)).unwrap();
+          const data = await dispatch(
+            isMonthMode
+              ? getTopCashiersByRevenue({ branchId, year: selectedYear, month: selectedMonthNumber })
+              : getTopCashiersByRevenue({ branchId, date: selectedDate })
+          ).unwrap();
           headers = ["Cashier Name", "Total Revenue"];
           rows = (data || []).map((r) => [
             r.cashierName ?? "",
             r.totalRevenue ?? "",
           ]);
-          filename = `branch-reports-top-cashiers-${branchId}-${today}.csv`;
+          filename = `branch-reports-top-cashiers-${branchId}-${exportKey}.csv`;
           break;
         }
         default:

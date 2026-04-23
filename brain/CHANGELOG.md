@@ -1,5 +1,12 @@
 # Brain Changelog
 
+## v2026.04.23.21 - Day-wise dashboard/reports stats alignment
+- Fixed branch analytics thunk parameter forwarding so selected `date` reaches the daily sales endpoint in day-wise mode.
+- Added day/month-aware top-cashier filtering across backend and frontend for dashboard/reports charts and exports.
+- Added optional `date` support to branch overview API and wired dashboard KPI cards to selected day in day-wise mode.
+- Added cancellation-aware analytics fetches in dashboard/reports to avoid stale responses overwriting selected day/tab chart data.
+- Added knowledge note `009-day-wise-dashboard-reports-dataflow-fix-apr-23.md` and updated index.
+
 ## v2026.04.23.20 - Export flows wired and data-backed
 - Fixed branch transactions CSV export to include both order and refund records in a single download with normalized transaction rows.
 - Replaced Super Admin exports mock/timer behavior with live store-backed CSV generation for store list, status summary, pending requests, and commission report exports.

@@ -6,16 +6,27 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { User } from "lucide-react";
 import { getTopCashiersByRevenue } from "@/Redux Toolkit/features/branchAnalytics/branchAnalyticsThunks";
 
-const CashierPerformance = () => {
+const CashierPerformance = ({ selectedMonth, selectedDate, viewMode }) => {
   const dispatch = useDispatch();
   const branchId = useSelector((state) => state.branch.branch?.id);
   const { topCashiers, loading } = useSelector((state) => state.branchAnalytics);
 
   useEffect(() => {
     if (branchId) {
-      dispatch(getTopCashiersByRevenue(branchId));
+      let request;
+      if (viewMode === "month") {
+        const [year, month] = selectedMonth.split("-").map(Number);
+        if (Number.isInteger(year) && Number.isInteger(month)) {
+          request = dispatch(getTopCashiersByRevenue({ branchId, year, month }));
+        }
+      } else if (selectedDate) {
+        request = dispatch(getTopCashiersByRevenue({ branchId, date: selectedDate }));
+      }
+      return () => {
+        request?.abort?.();
+      };
     }
-  }, [branchId, dispatch]);
+  }, [branchId, dispatch, selectedMonth, selectedDate, viewMode]);
 
   // Map API data to recharts format
   const data = topCashiers?.map((item) => ({

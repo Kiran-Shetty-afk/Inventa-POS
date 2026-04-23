@@ -95,8 +95,17 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     }
 
     @Override
-    public List<CashierPerformanceDTO> getTopCashierPerformanceByOrders(Long branchId) {
-        List<Object[]> rawData = orderRepository.getTopCashiersByRevenue(branchId);
+    public List<CashierPerformanceDTO> getTopCashierPerformanceByOrders(Long branchId, LocalDate date, Integer year, Integer month) {
+        List<Object[]> rawData;
+        if (year != null && month != null) {
+            LocalDateTime[] range = resolveDateRange(null, year, month);
+            rawData = orderRepository.getTopCashiersByRevenueBetween(branchId, range[0], range[1]);
+        } else if (date != null) {
+            LocalDateTime[] range = resolveDateRange(date, null, null);
+            rawData = orderRepository.getTopCashiersByRevenueBetween(branchId, range[0], range[1]);
+        } else {
+            rawData = orderRepository.getTopCashiersByRevenue(branchId);
+        }
 
         return rawData
                 .stream()
@@ -155,8 +164,8 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
 
 
     @Override
-    public BranchDashboardOverviewDTO getBranchOverview(Long branchId) {
-        LocalDate today = LocalDate.now();
+    public BranchDashboardOverviewDTO getBranchOverview(Long branchId, LocalDate date) {
+        LocalDate today = date != null ? date : LocalDate.now();
         LocalDate yesterday = today.minusDays(1);
 
         // ---- Total Sales ----
@@ -182,7 +191,7 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
 
         // ---- Low Stock ----
         int todayLowStock = inventoryRepository.countLowStockItems(branchId);
-        int yesterdayLowStock = 12; // You may store yesterday's value in DB or Redis if needed.
+        int yesterdayLowStock = todayLowStock; // No historical stock snapshot available currently.
         double lowStockGrowth = calculateGrowth(todayLowStock, yesterdayLowStock);
 
         return BranchDashboardOverviewDTO.builder()

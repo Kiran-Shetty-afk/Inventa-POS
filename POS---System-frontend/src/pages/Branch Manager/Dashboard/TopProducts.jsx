@@ -20,14 +20,18 @@ const TopProducts = ({ selectedMonth, selectedDate, viewMode }) => {
 
   useEffect(() => {
     if (branchId) {
+      let request;
       if (viewMode === "month") {
         const [year, month] = selectedMonth.split("-").map(Number);
         if (Number.isInteger(year) && Number.isInteger(month)) {
-          dispatch(getTopProductsByQuantity({ branchId, year, month }));
+          request = dispatch(getTopProductsByQuantity({ branchId, year, month }));
         }
       } else if (selectedDate) {
-        dispatch(getTopProductsByQuantity({ branchId, date: selectedDate }));
+        request = dispatch(getTopProductsByQuantity({ branchId, date: selectedDate }));
       }
+      return () => {
+        request?.abort?.();
+      };
     }
   }, [branchId, dispatch, selectedMonth, selectedDate, viewMode]);
 

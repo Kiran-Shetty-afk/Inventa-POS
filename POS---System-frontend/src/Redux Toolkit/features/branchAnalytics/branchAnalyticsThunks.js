@@ -39,17 +39,21 @@ const buildMonthAwareQuery = ({ branchId, days, date, year, month }) => {
   return params.toString();
 };
 
+const isRequestCanceled = (error) =>
+  error?.name === "CanceledError" || error?.code === "ERR_CANCELED";
+
 // Get daily sales chart data (last n days)
 export const getDailySalesChart = createAsyncThunk(
   'branchAnalytics/getDailySalesChart',
-  async ({ branchId, days = 7, year, month }, { rejectWithValue }) => {
+  async ({ branchId, days = 7, date, year, month }, { rejectWithValue, signal }) => {
     try {
       const headers = getAuthHeaders();
-      const query = buildMonthAwareQuery({ branchId, days, year, month });
-      const res = await api.get(`/api/branch-analytics/daily-sales?${query}`, { headers });
+      const query = buildMonthAwareQuery({ branchId, days, date, year, month });
+      const res = await api.get(`/api/branch-analytics/daily-sales?${query}`, { headers, signal });
       console.log('✅ Daily sales chart response:', res.data);
       return res.data;
     } catch (err) {
+      if (isRequestCanceled(err)) throw err;
       console.error('❌ Failed to fetch daily sales chart:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch daily sales chart');
     }
@@ -59,14 +63,15 @@ export const getDailySalesChart = createAsyncThunk(
 // Get top 5 products by quantity (with % contribution)
 export const getTopProductsByQuantity = createAsyncThunk(
   'branchAnalytics/getTopProductsByQuantity',
-  async ({ branchId, date, year, month }, { rejectWithValue }) => {
+  async ({ branchId, date, year, month }, { rejectWithValue, signal }) => {
     try {
       const headers = getAuthHeaders();
       const query = buildMonthAwareQuery({ branchId, date, year, month });
-      const res = await api.get(`/api/branch-analytics/top-products?${query}`, { headers });
+      const res = await api.get(`/api/branch-analytics/top-products?${query}`, { headers, signal });
       console.log('✅ Top products by quantity response:', res.data);
       return res.data;
     } catch (err) {
+      if (isRequestCanceled(err)) throw err;
       console.error('❌ Failed to fetch top products:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch top products');
     }
@@ -76,13 +81,15 @@ export const getTopProductsByQuantity = createAsyncThunk(
 // Get top 5 cashiers by revenue
 export const getTopCashiersByRevenue = createAsyncThunk(
   'branchAnalytics/getTopCashiersByRevenue',
-  async (branchId, { rejectWithValue }) => {
+  async ({ branchId, date, year, month }, { rejectWithValue, signal }) => {
     try {
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/branch-analytics/top-cashiers?branchId=${branchId}`, { headers });
+      const query = buildMonthAwareQuery({ branchId, date, year, month });
+      const res = await api.get(`/api/branch-analytics/top-cashiers?${query}`, { headers, signal });
       console.log('✅ Top cashiers by revenue response:', res.data);
       return res.data;
     } catch (err) {
+      if (isRequestCanceled(err)) throw err;
       console.error('❌ Failed to fetch top cashiers:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch top cashiers');
     }
@@ -92,14 +99,15 @@ export const getTopCashiersByRevenue = createAsyncThunk(
 // Get category-wise sales breakdown
 export const getCategoryWiseSalesBreakdown = createAsyncThunk(
   'branchAnalytics/getCategoryWiseSalesBreakdown',
-  async ({ branchId, date, year, month }, { rejectWithValue }) => {
+  async ({ branchId, date, year, month }, { rejectWithValue, signal }) => {
     try {
       const headers = getAuthHeaders();
       const query = buildMonthAwareQuery({ branchId, date, year, month });
-      const res = await api.get(`/api/branch-analytics/category-sales?${query}`, { headers });
+      const res = await api.get(`/api/branch-analytics/category-sales?${query}`, { headers, signal });
       console.log('✅ Category-wise sales breakdown response:', res.data);
       return res.data;
     } catch (err) {
+      if (isRequestCanceled(err)) throw err;
       console.error('❌ Failed to fetch category-wise sales breakdown:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch category-wise sales breakdown');
     }
@@ -109,13 +117,15 @@ export const getCategoryWiseSalesBreakdown = createAsyncThunk(
 // Get today's branch overview
 export const getTodayOverview = createAsyncThunk(
   'branchAnalytics/getTodayOverview',
-  async (branchId, { rejectWithValue }) => {
+  async ({ branchId, date }, { rejectWithValue, signal }) => {
     try {
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/branch-analytics/today-overview?branchId=${branchId}`, { headers });
+      const query = buildMonthAwareQuery({ branchId, date });
+      const res = await api.get(`/api/branch-analytics/today-overview?${query}`, { headers, signal });
       console.log('✅ Today overview response:', res.data);
       return res.data;
     } catch (err) {
+      if (isRequestCanceled(err)) throw err;
       console.error('❌ Failed to fetch today overview:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch today overview');
     }
@@ -125,14 +135,15 @@ export const getTodayOverview = createAsyncThunk(
 // Get payment breakdown for a date
 export const getPaymentBreakdown = createAsyncThunk(
   'branchAnalytics/getPaymentBreakdown',
-  async ({ branchId, date, year, month }, { rejectWithValue }) => {
+  async ({ branchId, date, year, month }, { rejectWithValue, signal }) => {
     try {
       const headers = getAuthHeaders();
       const query = buildMonthAwareQuery({ branchId, date, year, month });
-      const res = await api.get(`/api/branch-analytics/payment-breakdown?${query}`, { headers });
+      const res = await api.get(`/api/branch-analytics/payment-breakdown?${query}`, { headers, signal });
       console.log('✅ Payment breakdown response:', res.data);
       return res.data;
     } catch (err) {
+      if (isRequestCanceled(err)) throw err;
       console.error('❌ Failed to fetch payment breakdown:', err.response?.data || err.message);
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch payment breakdown');
     }

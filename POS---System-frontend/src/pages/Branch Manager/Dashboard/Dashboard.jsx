@@ -29,15 +29,21 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (branchId) {
-      dispatch(getTodayOverview(branchId));
+      const requests = [];
+      requests.push(
+        dispatch(getTodayOverview({ branchId, date: viewMode === "day" ? selectedDate : undefined }))
+      );
       if (viewMode === "month") {
         const [year, month] = selectedMonth.split("-").map(Number);
         if (Number.isInteger(year) && Number.isInteger(month)) {
-          dispatch(getPaymentBreakdown({ branchId, year, month }));
+          requests.push(dispatch(getPaymentBreakdown({ branchId, year, month })));
         }
       } else if (selectedDate) {
-        dispatch(getPaymentBreakdown({ branchId, date: selectedDate }));
+        requests.push(dispatch(getPaymentBreakdown({ branchId, date: selectedDate })));
       }
+      return () => {
+        requests.forEach((request) => request.abort?.());
+      };
     }
   }, [branchId, dispatch, selectedMonth, selectedDate, viewMode]);
 
@@ -106,7 +112,7 @@ export default function Dashboard() {
       </div>
       {/* Additional Data */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <CashierPerformance />
+        <CashierPerformance selectedMonth={selectedMonth} selectedDate={selectedDate} viewMode={viewMode} />
         <RecentOrders />
       </div>
     </div>

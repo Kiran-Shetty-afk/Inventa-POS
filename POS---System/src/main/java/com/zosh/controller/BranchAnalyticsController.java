@@ -57,9 +57,12 @@ public class BranchAnalyticsController {
     @GetMapping("/top-cashiers")
     @PreAuthorize(ALLOWED_ROLES)
     public ResponseEntity<List<CashierPerformanceDTO>> getTopCashiersByRevenue(
-            @RequestParam Long branchId
+            @RequestParam Long branchId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getTopCashierPerformanceByOrders(branchId));
+        return ResponseEntity.ok(branchAnalyticsService.getTopCashierPerformanceByOrders(branchId, date, year, month));
     }
 
     /**
@@ -79,9 +82,10 @@ public class BranchAnalyticsController {
     @GetMapping("/today-overview")
     @PreAuthorize("hasRole('BRANCH_MANAGER') or hasRole('BRANCH_ADMIN')")
     public ResponseEntity<BranchDashboardOverviewDTO> getTodayOverview(
-            @RequestParam Long branchId
+            @RequestParam Long branchId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getBranchOverview(branchId));
+        return ResponseEntity.ok(branchAnalyticsService.getBranchOverview(branchId, date));
     }
 
 
