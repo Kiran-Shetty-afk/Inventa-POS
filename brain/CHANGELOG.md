@@ -1,5 +1,13 @@
 # Brain Changelog
 
+## v2026.04.23.22 - Demand forecast and smart reorder V1
+- Added branch analytics endpoint `GET /api/branch-analytics/demand-forecast` with optional `horizons`, `lookbackDays`, and `anchorDate` parameters.
+- Implemented seasonality-aware product demand forecast (7/14/30 day horizons) using recency-weighted historical branch order-item demand and weekday weighting.
+- Added branch stock merge + reorder suggestion output using basic policy `max(ceil(forecast_horizon) - current_stock, 0)`.
+- Added frontend demand forecast integration in Branch Manager Reports (new tab, table rendering, CSV export, Export All inclusion) via new thunk and slice state.
+- Added backend tests for forecast service/controller and frontend unit tests for branch analytics forecast slice state transitions.
+- Added knowledge note `010-demand-forecast-smart-reorder-v1-apr-23.md` and updated index.
+
 ## v2026.04.23.21 - Day-wise dashboard/reports stats alignment
 - Fixed branch analytics thunk parameter forwarding so selected `date` reaches the daily sales endpoint in day-wise mode.
 - Added day/month-aware top-cashier filtering across backend and frontend for dashboard/reports charts and exports.

@@ -5,7 +5,8 @@ import {
   getTopCashiersByRevenue,
   getCategoryWiseSalesBreakdown,
   getTodayOverview,
-  getPaymentBreakdown
+  getPaymentBreakdown,
+  getDemandForecast
 } from './branchAnalyticsThunks';
 
 const initialState = {
@@ -15,6 +16,9 @@ const initialState = {
   categorySales: [],
   todayOverview: null,
   paymentBreakdown: [],
+  demandForecast: [],
+  demandForecastLoading: false,
+  demandForecastError: null,
   loading: false,
   error: null,
 };
@@ -30,6 +34,9 @@ const branchAnalyticsSlice = createSlice({
       state.categorySales = [];
       state.todayOverview = null;
       state.paymentBreakdown = [];
+      state.demandForecast = [];
+      state.demandForecastLoading = false;
+      state.demandForecastError = null;
       state.error = null;
     },
   },
@@ -106,6 +113,19 @@ const branchAnalyticsSlice = createSlice({
       .addCase(getPaymentBreakdown.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // Demand Forecast
+      .addCase(getDemandForecast.pending, (state) => {
+        state.demandForecastLoading = true;
+        state.demandForecastError = null;
+      })
+      .addCase(getDemandForecast.fulfilled, (state, action) => {
+        state.demandForecastLoading = false;
+        state.demandForecast = action.payload ?? [];
+      })
+      .addCase(getDemandForecast.rejected, (state, action) => {
+        state.demandForecastLoading = false;
+        state.demandForecastError = action.payload;
       })
       // Generic error matcher
       .addMatcher(

@@ -102,4 +102,17 @@ public class BranchAnalyticsController {
         );
     }
 
+    @GetMapping("/demand-forecast")
+    @PreAuthorize(ALLOWED_ROLES)
+    public ResponseEntity<List<ProductDemandForecastDTO>> getDemandForecast(
+            @RequestParam Long branchId,
+            @RequestParam(defaultValue = "7,14,30") List<Integer> horizons,
+            @RequestParam(defaultValue = "90") int lookbackDays,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate anchorDate
+    ) {
+        return ResponseEntity.ok(
+                branchAnalyticsService.getDemandForecast(branchId, horizons, lookbackDays, anchorDate)
+        );
+    }
+
 }

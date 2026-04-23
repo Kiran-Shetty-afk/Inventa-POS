@@ -42,6 +42,20 @@ const buildMonthAwareQuery = ({ branchId, days, date, year, month }) => {
 const isRequestCanceled = (error) =>
   error?.name === "CanceledError" || error?.code === "ERR_CANCELED";
 
+const buildDemandForecastQuery = ({ branchId, horizons = [7, 14, 30], lookbackDays = 90, anchorDate }) => {
+  const params = new URLSearchParams();
+  params.set("branchId", branchId);
+  const filteredHorizons = Array.isArray(horizons)
+    ? horizons.filter((horizon) => Number.isInteger(horizon) && horizon > 0)
+    : [];
+  params.set("horizons", (filteredHorizons.length ? filteredHorizons : [7, 14, 30]).join(","));
+  params.set("lookbackDays", String(lookbackDays));
+  if (anchorDate) {
+    params.set("anchorDate", anchorDate);
+  }
+  return params.toString();
+};
+
 // Get daily sales chart data (last n days)
 export const getDailySalesChart = createAsyncThunk(
   'branchAnalytics/getDailySalesChart',
@@ -149,3 +163,18 @@ export const getPaymentBreakdown = createAsyncThunk(
     }
   }
 ); 
+
+export const getDemandForecast = createAsyncThunk(
+  'branchAnalytics/getDemandForecast',
+  async ({ branchId, horizons = [7, 14, 30], lookbackDays = 90, anchorDate }, { rejectWithValue, signal }) => {
+    try {
+      const headers = getAuthHeaders();
+      const query = buildDemandForecastQuery({ branchId, horizons, lookbackDays, anchorDate });
+      const res = await api.get(`/api/branch-analytics/demand-forecast?${query}`, { headers, signal });
+      return res.data;
+    } catch (err) {
+      if (isRequestCanceled(err)) throw err;
+      return rejectWithValue(err.response?.data?.message || 'Failed to fetch demand forecast');
+    }
+  }
+);

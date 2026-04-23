@@ -1,9 +1,9 @@
 package com.zosh.service.impl;
 
 import com.zosh.domain.PaymentType;
+import com.zosh.modal.Inventory;
 import com.zosh.modal.PaymentSummary;
 import com.zosh.payload.dto.*;
-import com.zosh.repository.BranchRepository;
 import com.zosh.repository.InventoryRepository;
 import com.zosh.repository.OrderItemRepository;
 import com.zosh.repository.OrderRepository;
@@ -12,12 +12,20 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.sql.Date;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 
@@ -28,6 +36,13 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final InventoryRepository inventoryRepository;
+
+    private static final int DEFAULT_LOOKBACK_DAYS = 90;
+    private static final int MIN_LOOKBACK_DAYS = 14;
+    private static final List<Integer> DEFAULT_HORIZONS = List.of(7, 14, 30);
+    private static final int BASELINE_WINDOW_DAYS = 28;
+    private static final double MIN_SEASONAL_WEIGHT = 0.5;
+    private static final double MAX_SEASONAL_WEIGHT = 1.5;
 
     @Override
     public List<DailySalesDTO> getDailySalesChart(Long branchId, int days, LocalDate date, Integer year, Integer month) {
@@ -162,6 +177,39 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
         }).collect(Collectors.toList());
     }
 
+    @Override
+    public List<ProductDemandForecastDTO> getDemandForecast(Long branchId, List<Integer> horizons, int lookbackDays, LocalDate anchorDate) {
+        List<Integer> selectedHorizons = sanitizeHorizons(horizons);
+        int safeLookbackDays = Math.max(MIN_LOOKBACK_DAYS, lookbackDays > 0 ? lookbackDays : DEFAULT_LOOKBACK_DAYS);
+        int reorderHorizon = determineReorderHorizon(selectedHorizons);
+
+        LocalDate forecastAnchor = anchorDate != null ? anchorDate : LocalDate.now();
+        LocalDate historyEndDate = forecastAnchor.minusDays(1);
+        LocalDate historyStartDate = historyEndDate.minusDays(safeLookbackDays - 1L);
+
+        LocalDateTime historyStart = historyStartDate.atStartOfDay();
+        LocalDateTime historyEnd = historyEndDate.atTime(LocalTime.MAX);
+
+        List<Object[]> rawDemand = orderItemRepository.getDailyProductDemandBetween(branchId, historyStart, historyEnd);
+        Map<Long, ProductDemandSeries> demandByProduct = mapDemandSeries(rawDemand);
+        Map<Long, ProductDemandSeries> inventoryBackedSeries = mergeInventoryIntoSeries(branchId, demandByProduct);
+
+        return inventoryBackedSeries.values().stream()
+                .map(series -> buildDemandForecastDTO(
+                        series,
+                        safeLookbackDays,
+                        historyStartDate,
+                        historyEndDate,
+                        forecastAnchor,
+                        reorderHorizon
+                ))
+                .sorted((left, right) -> Integer.compare(
+                        right.getRecommendedReorderQty() != null ? right.getRecommendedReorderQty() : 0,
+                        left.getRecommendedReorderQty() != null ? left.getRecommendedReorderQty() : 0
+                ))
+                .collect(Collectors.toList());
+    }
+
 
     @Override
     public BranchDashboardOverviewDTO getBranchOverview(Long branchId, LocalDate date) {
@@ -225,6 +273,233 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
                 targetDate.atStartOfDay(),
                 targetDate.atTime(LocalTime.MAX)
         };
+    }
+
+    private List<Integer> sanitizeHorizons(List<Integer> horizons) {
+        if (horizons == null || horizons.isEmpty()) {
+            return DEFAULT_HORIZONS;
+        }
+
+        Set<Integer> deduped = horizons.stream()
+                .filter(horizon -> horizon != null && horizon > 0)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        return deduped.isEmpty() ? DEFAULT_HORIZONS : new ArrayList<>(deduped);
+    }
+
+    private int determineReorderHorizon(List<Integer> selectedHorizons) {
+        if (selectedHorizons.contains(30)) {
+            return 30;
+        }
+        return selectedHorizons.stream().mapToInt(Integer::intValue).max().orElse(30);
+    }
+
+    private Map<Long, ProductDemandSeries> mapDemandSeries(List<Object[]> rawDemand) {
+        Map<Long, ProductDemandSeries> demandByProduct = new LinkedHashMap<>();
+
+        for (Object[] row : rawDemand) {
+            Long productId = (Long) row[0];
+            String productName = (String) row[1];
+            LocalDate saleDate = toLocalDate(row[2]);
+            long quantity = row[3] instanceof Number ? ((Number) row[3]).longValue() : 0L;
+
+            ProductDemandSeries series = demandByProduct.computeIfAbsent(
+                    productId,
+                    id -> new ProductDemandSeries(productId, productName)
+            );
+            series.productName = productName;
+            if (saleDate != null) {
+                series.dailyDemand.merge(saleDate, (double) quantity, Double::sum);
+            }
+        }
+
+        return demandByProduct;
+    }
+
+    private Map<Long, ProductDemandSeries> mergeInventoryIntoSeries(Long branchId, Map<Long, ProductDemandSeries> demandByProduct) {
+        Map<Long, ProductDemandSeries> merged = new LinkedHashMap<>(demandByProduct);
+        List<Object[]> stockRows = inventoryRepository.getProductStockByBranch(branchId);
+
+        for (Object[] row : stockRows) {
+            Long productId = (Long) row[0];
+            String productName = (String) row[1];
+            int stock = row[2] instanceof Number ? ((Number) row[2]).intValue() : 0;
+
+            ProductDemandSeries series = merged.computeIfAbsent(
+                    productId,
+                    id -> new ProductDemandSeries(productId, productName)
+            );
+            series.productName = productName;
+            series.currentStock = Math.max(stock, 0);
+        }
+
+        return merged;
+    }
+
+    private ProductDemandForecastDTO buildDemandForecastDTO(
+            ProductDemandSeries series,
+            int lookbackDays,
+            LocalDate historyStartDate,
+            LocalDate historyEndDate,
+            LocalDate forecastAnchor,
+            int reorderHorizon
+    ) {
+        double baseline = computeRecencyWeightedBaseline(series.dailyDemand, historyEndDate, lookbackDays);
+        double[] seasonalWeights = computeWeekdaySeasonalityWeights(series.dailyDemand, historyStartDate, historyEndDate, lookbackDays);
+
+        double forecast7 = roundToTwo(projectDemand(series, baseline, seasonalWeights, forecastAnchor, 7));
+        double forecast14 = roundToTwo(projectDemand(series, baseline, seasonalWeights, forecastAnchor, 14));
+        double forecast30 = roundToTwo(projectDemand(series, baseline, seasonalWeights, forecastAnchor, 30));
+
+        double reorderBaselineForecast = switch (reorderHorizon) {
+            case 7 -> forecast7;
+            case 14 -> forecast14;
+            default -> forecast30;
+        };
+
+        int recommendedReorderQty = Math.max((int) Math.ceil(reorderBaselineForecast) - series.currentStock, 0);
+
+        return ProductDemandForecastDTO.builder()
+                .productId(series.productId)
+                .productName(series.productName)
+                .currentStock(series.currentStock)
+                .forecast7(forecast7)
+                .forecast14(forecast14)
+                .forecast30(forecast30)
+                .recommendedReorderQty(recommendedReorderQty)
+                .recommendedHorizonDays(reorderHorizon)
+                .reorderSuggested(recommendedReorderQty > 0)
+                .basis("max(ceil(forecast_horizon) - current_stock, 0)")
+                .build();
+    }
+
+    private double computeRecencyWeightedBaseline(Map<LocalDate, Double> dailyDemand, LocalDate historyEndDate, int lookbackDays) {
+        int window = Math.min(BASELINE_WINDOW_DAYS, lookbackDays);
+        if (window <= 0) {
+            return 0.0;
+        }
+
+        LocalDate baselineStart = historyEndDate.minusDays(window - 1L);
+        double weightedSum = 0.0;
+        int totalWeight = 0;
+        double totalDemand = 0.0;
+
+        for (int i = 0; i < window; i++) {
+            LocalDate currentDate = baselineStart.plusDays(i);
+            double qty = dailyDemand.getOrDefault(currentDate, 0.0);
+            int weight = i + 1;
+            weightedSum += qty * weight;
+            totalWeight += weight;
+            totalDemand += qty;
+        }
+
+        if (totalWeight == 0) {
+            return 0.0;
+        }
+
+        double weightedAverage = weightedSum / totalWeight;
+        if (weightedAverage > 0) {
+            return weightedAverage;
+        }
+
+        return totalDemand / Math.max(window, 1);
+    }
+
+    private double[] computeWeekdaySeasonalityWeights(
+            Map<LocalDate, Double> dailyDemand,
+            LocalDate historyStartDate,
+            LocalDate historyEndDate,
+            int lookbackDays
+    ) {
+        double[] weekdayTotals = new double[7];
+        int[] weekdayCounts = new int[7];
+        double totalDemand = 0.0;
+
+        for (int i = 0; i < lookbackDays; i++) {
+            LocalDate currentDate = historyStartDate.plusDays(i);
+            if (currentDate.isAfter(historyEndDate)) {
+                break;
+            }
+            int idx = dayIndex(currentDate.getDayOfWeek());
+            double qty = dailyDemand.getOrDefault(currentDate, 0.0);
+            weekdayTotals[idx] += qty;
+            weekdayCounts[idx] += 1;
+            totalDemand += qty;
+        }
+
+        double overallAverage = totalDemand / Math.max(lookbackDays, 1);
+        if (overallAverage <= 0) {
+            double[] neutral = new double[7];
+            Arrays.fill(neutral, 1.0);
+            return neutral;
+        }
+
+        double[] weights = new double[7];
+        for (int i = 0; i < 7; i++) {
+            double weekdayAverage = weekdayCounts[i] == 0 ? overallAverage : weekdayTotals[i] / weekdayCounts[i];
+            double weight = weekdayAverage / overallAverage;
+            weights[i] = clamp(weight, MIN_SEASONAL_WEIGHT, MAX_SEASONAL_WEIGHT);
+        }
+        return weights;
+    }
+
+    private double projectDemand(
+            ProductDemandSeries series,
+            double baseline,
+            double[] seasonalWeights,
+            LocalDate forecastAnchor,
+            int horizonDays
+    ) {
+        if (baseline <= 0 || horizonDays <= 0) {
+            return 0.0;
+        }
+
+        double forecast = 0.0;
+        for (int dayOffset = 1; dayOffset <= horizonDays; dayOffset++) {
+            LocalDate projectedDate = forecastAnchor.plusDays(dayOffset);
+            int weekdayIndex = dayIndex(projectedDate.getDayOfWeek());
+            double seasonalFactor = seasonalWeights[weekdayIndex];
+            forecast += baseline * seasonalFactor;
+        }
+        return Math.max(forecast, 0.0);
+    }
+
+    private int dayIndex(DayOfWeek dayOfWeek) {
+        return dayOfWeek.getValue() - 1;
+    }
+
+    private LocalDate toLocalDate(Object value) {
+        if (value instanceof LocalDate localDate) {
+            return localDate;
+        }
+        if (value instanceof Date sqlDate) {
+            return sqlDate.toLocalDate();
+        }
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime.toLocalDate();
+        }
+        return null;
+    }
+
+    private double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private double roundToTwo(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
+
+    private static class ProductDemandSeries {
+        private final Long productId;
+        private String productName;
+        private int currentStock;
+        private final Map<LocalDate, Double> dailyDemand = new HashMap<>();
+
+        private ProductDemandSeries(Long productId, String productName) {
+            this.productId = productId;
+            this.productName = productName;
+            this.currentStock = 0;
+        }
     }
 
 }

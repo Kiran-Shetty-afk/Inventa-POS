@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Download, FileText, BarChart2, TrendingUp, Users } from "lucide-react";
+import { Calendar, Download, FileText, BarChart2, TrendingUp, Users, PackageSearch } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { buildCsv, downloadCsvFile } from "@/utils/csvExport";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, PieChart as RPieChart, Pie, Cell } from "recharts";
@@ -13,6 +13,7 @@ import {
   getPaymentBreakdown,
   getCategoryWiseSalesBreakdown,
   getTopCashiersByRevenue,
+  getDemandForecast,
 } from "@/Redux Toolkit/features/branchAnalytics/branchAnalyticsThunks";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
@@ -34,6 +35,8 @@ const Reports = () => {
     paymentBreakdown,
     categorySales,
     topCashiers,
+    demandForecast,
+    demandForecastLoading,
   } = useSelector((state) => state.branchAnalytics);
 
   useEffect(() => {
@@ -46,12 +49,14 @@ const Reports = () => {
           requests.push(dispatch(getPaymentBreakdown({ branchId, year, month })));
           requests.push(dispatch(getCategoryWiseSalesBreakdown({ branchId, year, month })));
           requests.push(dispatch(getTopCashiersByRevenue({ branchId, year, month })));
+          requests.push(dispatch(getDemandForecast({ branchId, lookbackDays: 90 })));
         }
       } else if (selectedDate) {
         requests.push(dispatch(getDailySalesChart({ branchId, days: 1, date: selectedDate })));
         requests.push(dispatch(getPaymentBreakdown({ branchId, date: selectedDate })));
         requests.push(dispatch(getCategoryWiseSalesBreakdown({ branchId, date: selectedDate })));
         requests.push(dispatch(getTopCashiersByRevenue({ branchId, date: selectedDate })));
+        requests.push(dispatch(getDemandForecast({ branchId, anchorDate: selectedDate, lookbackDays: 90 })));
       }
       return () => {
         requests.forEach((request) => request.abort?.());
@@ -134,9 +139,11 @@ const Reports = () => {
     }).format(amount);
   };
 
+  const demandForecastRows = Array.isArray(demandForecast) ? demandForecast : [];
+
   /**
    * Fetches fresh analytics from the API and downloads a CSV (Excel opens CSV).
-   * @param {'sales'|'payments'|'products'|'cashier'} type
+   * @param {'sales'|'payments'|'products'|'cashier'|'forecast'} type
    * @param {{ quiet?: boolean }} options — quiet: no per-file success toast (for Export All)
    */
   const exportBranchReport = async (type, options = {}) => {
@@ -237,6 +244,37 @@ const Reports = () => {
           filename = `branch-reports-top-cashiers-${branchId}-${exportKey}.csv`;
           break;
         }
+        case "forecast": {
+          const data = await dispatch(
+            getDemandForecast({
+              branchId,
+              lookbackDays: 90,
+              ...(isMonthMode ? {} : { anchorDate: selectedDate }),
+            })
+          ).unwrap();
+          headers = [
+            "Product",
+            "Current Stock",
+            "Forecast 7 Days",
+            "Forecast 14 Days",
+            "Forecast 30 Days",
+            "Recommended Reorder Qty",
+            "Recommended Horizon Days",
+            "Reorder Suggested",
+          ];
+          rows = (data || []).map((r) => [
+            r.productName ?? "",
+            r.currentStock ?? 0,
+            r.forecast7 ?? 0,
+            r.forecast14 ?? 0,
+            r.forecast30 ?? 0,
+            r.recommendedReorderQty ?? 0,
+            r.recommendedHorizonDays ?? 30,
+            r.reorderSuggested ? "Yes" : "No",
+          ]);
+          filename = `branch-reports-demand-forecast-${branchId}-${exportKey}.csv`;
+          break;
+        }
         default:
           return false;
       }
@@ -285,7 +323,7 @@ const Reports = () => {
       });
       return;
     }
-    const types = ["sales", "payments", "products", "cashier"];
+    const types = ["sales", "payments", "products", "cashier", "forecast"];
     let count = 0;
     for (const t of types) {
       const ok = await exportBranchReport(t, { quiet: true });
@@ -373,6 +411,10 @@ const Reports = () => {
           <TabsTrigger value="cashier" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Cashier Performance
+          </TabsTrigger>
+          <TabsTrigger value="forecast" className="flex items-center gap-2">
+            <PackageSearch className="h-4 w-4" />
+            Demand Forecast
           </TabsTrigger>
         </TabsList>
 
@@ -658,6 +700,57 @@ const Reports = () => {
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Demand Forecast Tab */}
+        <TabsContent value="forecast">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Demand Forecast & Reorder Suggestions</CardTitle>
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => handleExport("forecast", "excel")}>
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {demandForecastLoading ? (
+                <div className="text-sm text-muted-foreground">Loading demand forecast...</div>
+              ) : demandForecastRows.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No forecast data available for this branch.</div>
+              ) : (
+                <div className="overflow-x-auto rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium">Product</th>
+                        <th className="px-3 py-2 text-right font-medium">Current Stock</th>
+                        <th className="px-3 py-2 text-right font-medium">Next 7 Days</th>
+                        <th className="px-3 py-2 text-right font-medium">Next 14 Days</th>
+                        <th className="px-3 py-2 text-right font-medium">Next 30 Days</th>
+                        <th className="px-3 py-2 text-right font-medium">Suggested Reorder</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {demandForecastRows.map((row) => (
+                        <tr key={row.productId} className="border-t">
+                          <td className="px-3 py-2">{row.productName}</td>
+                          <td className="px-3 py-2 text-right">{row.currentStock ?? 0}</td>
+                          <td className="px-3 py-2 text-right">{Number(row.forecast7 ?? 0).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right">{Number(row.forecast14 ?? 0).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right">{Number(row.forecast30 ?? 0).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right font-semibold">
+                            {row.recommendedReorderQty ?? 0}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

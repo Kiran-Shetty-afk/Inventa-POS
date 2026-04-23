@@ -35,4 +35,12 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     """)
     int countLowStockItems(@Param("branchId") Long branchId);
 
+    @Query("""
+        SELECT i.product.id, i.product.name, SUM(i.quantity)
+        FROM Inventory i
+        WHERE i.branch.id = :branchId
+        GROUP BY i.product.id, i.product.name
+    """)
+    List<Object[]> getProductStockByBranch(@Param("branchId") Long branchId);
+
 }
