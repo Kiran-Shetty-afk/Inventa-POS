@@ -236,31 +236,28 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
                 .size();
 
         List<Object[]> topCashiers = orderRepository.getTopCashiersByRevenueBetween(request.getBranchId(), window.start, window.end);
-        String topCashierName = topCashiers.isEmpty() ? "No cashier sales" : (String) topCashiers.get(0)[1];
-        double topCashierRevenue = topCashiers.isEmpty() ? 0.0 : ((Number) topCashiers.get(0)[2]).doubleValue();
+        String topCashierName = topCashiers.isEmpty() ? "No cashier sales" : getString(topCashiers.get(0), 1, "No cashier sales");
+        double topCashierRevenue = topCashiers.isEmpty() ? 0.0 : getDouble(topCashiers.get(0), 2, 0.0);
         int activeCashiers = topCashiers.size();
 
         List<Object[]> categorySales = orderItemRepository.getCategoryWiseSales(request.getBranchId(), window.start, window.end);
-        String topCategoryName = categorySales.isEmpty() ? "No category sales" : (String) categorySales.get(0)[0];
-        double topCategorySales = categorySales.isEmpty() ? 0.0 : ((Number) categorySales.get(0)[1]).doubleValue();
+        String topCategoryName = categorySales.isEmpty() ? "No category sales" : getString(categorySales.get(0), 0, "No category sales");
+        double topCategorySales = categorySales.isEmpty() ? 0.0 : getDouble(categorySales.get(0), 1, 0.0);
 
         int lowStockItems = inventoryRepository.countLowStockItems(request.getBranchId());
 
         Object[] refundSummary = refundRepository.getBranchRefundSummary(request.getBranchId(), window.start, window.end);
-        int refundCount = refundSummary != null && refundSummary[0] instanceof Number
-                ? ((Number) refundSummary[0]).intValue()
-                : 0;
-        double refundAmount = refundSummary != null && refundSummary[1] instanceof Number
-                ? ((Number) refundSummary[1]).doubleValue()
-                : 0.0;
+        int refundCount = getInt(refundSummary, 0, 0);
+        double refundAmount = getDouble(refundSummary, 1, 0.0);
 
         List<Object[]> refundHourly = refundRepository.getBranchRefundHourlySummary(request.getBranchId(), window.start, window.end);
         Integer refundSpikeHour = null;
         int refundSpikeCount = 0;
         if (!refundHourly.isEmpty()) {
             Object[] spike = refundHourly.get(0);
-            refundSpikeHour = spike[0] instanceof Number ? ((Number) spike[0]).intValue() : null;
-            refundSpikeCount = spike[1] instanceof Number ? ((Number) spike[1]).intValue() : 0;
+            int detectedHour = getInt(spike, 0, -1);
+            refundSpikeHour = detectedHour >= 0 ? detectedHour : null;
+            refundSpikeCount = getInt(spike, 1, 0);
         }
 
         BranchHealthCopilotResponseDTO.BranchHealthSupportingMetricsDTO metrics =
@@ -648,6 +645,27 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
                 .supportingMetrics(metrics)
                 .generatedAt(LocalDateTime.now())
                 .build();
+    }
+
+    private String getString(Object[] row, int index, String defaultValue) {
+        if (row == null || index < 0 || row.length <= index || row[index] == null) {
+            return defaultValue;
+        }
+        return String.valueOf(row[index]);
+    }
+
+    private int getInt(Object[] row, int index, int defaultValue) {
+        if (row == null || index < 0 || row.length <= index || !(row[index] instanceof Number numberValue)) {
+            return defaultValue;
+        }
+        return numberValue.intValue();
+    }
+
+    private double getDouble(Object[] row, int index, double defaultValue) {
+        if (row == null || index < 0 || row.length <= index || !(row[index] instanceof Number numberValue)) {
+            return defaultValue;
+        }
+        return numberValue.doubleValue();
     }
 
     private static class ProductDemandSeries {
