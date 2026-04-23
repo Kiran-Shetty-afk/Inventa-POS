@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Download,
-  DollarSign,
+  IndianRupee,
   ArrowUpRight,
   ArrowDownLeft,
 } from "lucide-react";
@@ -178,7 +178,7 @@ export default function Transactions() {
                   Total Income
                 </p>
                 <h3 className="text-2xl font-bold mt-1">
-                  ${totalIncome.toFixed(2)}
+                  ₹{totalIncome.toFixed(2)}
                 </h3>
               </div>
               <div className="p-3 bg-green-100 rounded-full">
@@ -196,7 +196,7 @@ export default function Transactions() {
                   Total Expenses
                 </p>
                 <h3 className="text-2xl font-bold mt-1">
-                  ${totalExpenses.toFixed(2)}
+                  ₹{totalExpenses.toFixed(2)}
                 </h3>
               </div>
               <div className="p-3 bg-red-100 rounded-full">
@@ -212,11 +212,11 @@ export default function Transactions() {
               <div>
                 <p className="text-sm font-medium text-gray-500">Net Amount</p>
                 <h3 className="text-2xl font-bold mt-1">
-                  ${netAmount.toFixed(2)}
+                  ₹{netAmount.toFixed(2)}
                 </h3>
               </div>
               <div className="p-3 bg-blue-100 rounded-full">
-                <DollarSign className="h-6 w-6 text-blue-600" />
+                <IndianRupee className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
@@ -293,8 +293,8 @@ export default function Transactions() {
                     }`}
                   >
                     {selectedTransaction.totalAmount > 0
-                      ? `+$${selectedTransaction.totalAmount.toFixed(2)}`
-                      : `-$${Math.abs(selectedTransaction.totalAmount).toFixed(2)}`}
+                      ? `+₹${selectedTransaction.totalAmount.toFixed(2)}`
+                      : `-₹${Math.abs(selectedTransaction.totalAmount).toFixed(2)}`}
                   </p>
                 </div>
               </div>

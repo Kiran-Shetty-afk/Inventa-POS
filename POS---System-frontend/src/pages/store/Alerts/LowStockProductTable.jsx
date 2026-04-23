@@ -1,7 +1,7 @@
 import React from 'react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Tag, DollarSign, Package, Eye } from "lucide-react";
+import { Edit, Trash2, Tag, IndianRupee, Package, Eye } from "lucide-react";
 
 import { useSelector } from 'react-redux';
 
@@ -76,7 +76,7 @@ const LowStockProductTable = () => {
             </TableCell>
             <TableCell>
               <div className="flex items-center gap-1">
-                <DollarSign className="h-4 w-4 text-gray-400" />
+                <IndianRupee className="h-4 w-4 text-gray-400" />
                 {product.price?.toFixed ? product.price.toFixed(2) : product.sellingPrice}
               </div>
             </TableCell>

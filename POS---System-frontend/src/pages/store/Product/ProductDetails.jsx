@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tag, DollarSign, Package, Calendar, Barcode, Palette, Image as ImageIcon } from "lucide-react";
+import { Tag, IndianRupee, Package, Calendar, Barcode, Palette, Image as ImageIcon } from "lucide-react";
 
 const ProductDetails = ({ product }) => {
   if (!product) return null;
@@ -64,16 +64,16 @@ const ProductDetails = ({ product }) => {
 
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-gray-500" />
+              <IndianRupee className="h-5 w-5 text-gray-500" />
               <div>
                 <div className="text-sm text-gray-500">Price</div>
                 <div className="font-medium">
                   <span className="text-lg font-bold text-emerald-700">
-                    ${product.sellingPrice?.toFixed(2) || product.price?.toFixed(2) || '0.00'}
+                    ₹{product.sellingPrice?.toFixed(2) || product.price?.toFixed(2) || '0.00'}
                   </span>
                   {product.mrp && product.mrp > (product.sellingPrice || product.price) && (
                     <span className="ml-2 text-sm line-through text-gray-500">
-                      ${product.mrp.toFixed(2)}
+                      ₹{product.mrp.toFixed(2)}
                     </span>
                   )}
                 </div>

@@ -34,12 +34,11 @@ export const StoreSettingsValidationSchema = Yup.object().shape({
 
 // Currency options
 export const CURRENCY_OPTIONS = [
-  { value: "USD", label: "USD - US Dollar" },
+  { value: "INR", label: "INR - Indian Rupee" },
   { value: "EUR", label: "EUR - Euro" },
   { value: "GBP", label: "GBP - British Pound" },
-  { value: "CAD", label: "CAD - Canadian Dollar" },
-  { value: "AUD", label: "AUD - Australian Dollar" },
-  { value: "INR", label: "INR - Indian Rupee" },
+  { value: "CAD", label: "CAD - Canadian Currency" },
+  { value: "AUD", label: "AUD - Australian Currency" },
 ];
 
 // Timezone options

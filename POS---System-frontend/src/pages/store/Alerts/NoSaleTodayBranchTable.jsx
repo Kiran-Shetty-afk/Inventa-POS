@@ -2,7 +2,6 @@
 import { useSelector } from 'react-redux';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 
-import { Tag, DollarSign, Package} from "lucide-react";
 import { LocationEdit } from 'lucide-react';
 
 const NoSaleTodayBranchTable = () => {

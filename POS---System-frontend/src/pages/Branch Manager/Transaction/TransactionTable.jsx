@@ -32,7 +32,7 @@ const TransactionTable = ({filteredTransactions,handleViewTransaction}) => {
                       </TableCell>
                       <TableCell>{transaction.customer?.fullName}</TableCell>
                       <TableCell className={transaction.totalAmount > 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                        {transaction.totalAmount > 0 ? `+$${transaction.totalAmount.toFixed(2)}` : `-$${Math.abs(transaction.totalAmount).toFixed(2)}`}
+                        {transaction.totalAmount > 0 ? `+₹${transaction.totalAmount.toFixed(2)}` : `-₹${Math.abs(transaction.totalAmount).toFixed(2)}`}
                       </TableCell>
                       <TableCell>{transaction.paymentType}</TableCell>
                       <TableCell>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ShoppingBagIcon, CalendarIcon, DollarSignIcon } from 'lucide-react';
+import { Loader2, ShoppingBagIcon, CalendarIcon, IndianRupeeIcon } from 'lucide-react';
 import { formatDate, getStatusColor } from '../../order/data';
 
 const PurchaseHistory = ({ orders, loading = false }) => {
@@ -52,7 +52,7 @@ const PurchaseHistory = ({ orders, loading = false }) => {
                   </div>
                   <div className="text-right">
                     <div className="flex items-center gap-2 mb-1">
-                      <DollarSignIcon className="h-4 w-4" />
+                      <IndianRupeeIcon className="h-4 w-4" />
                       <span className="font-bold">₹{order.totalAmount?.toFixed(2) || '0.00'}</span>
                     </div>
                     {order.status && (

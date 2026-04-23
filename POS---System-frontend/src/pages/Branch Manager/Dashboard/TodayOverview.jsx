@@ -2,7 +2,7 @@ import React from 'react'
 import { useSelector } from 'react-redux';
 import { getChangeType } from '../data';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, ShoppingBag, Users, Package, CreditCard } from "lucide-react";
+import { IndianRupee, ShoppingBag, Users, Package, CreditCard } from "lucide-react";
 
 const TodayOverview = () => {
       const { todayOverview, loading } = useSelector((state) => state.branchAnalytics);
@@ -11,7 +11,7 @@ const TodayOverview = () => {
         {
           title: "Today's Sales",
           value: `₹${todayOverview.totalSales?.toLocaleString() ?? "-"}`,
-          icon: <DollarSign className="w-8 h-8 text-primary" />,
+          icon: <IndianRupee className="w-8 h-8 text-primary" />,
           change: todayOverview.salesGrowth !== undefined ? `${todayOverview.salesGrowth > 0 ? "+" : ""}${todayOverview.salesGrowth.toFixed(2)}%` : "-",
           changeType: getChangeType(todayOverview.salesGrowth)
         },

@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { Label } from "../../components/ui/label";
-import { DollarSign, Edit, TrendingUp, TrendingDown } from "lucide-react";
+import { IndianRupee, Edit, TrendingUp, TrendingDown } from "lucide-react";
 import { useToast } from "../../components/ui/use-toast";
 // import { useToast } from "../../hooks/use-toast";
 
@@ -122,7 +122,7 @@ export default function CommissionsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₹37,000</div>
@@ -146,7 +146,7 @@ export default function CommissionsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Stores</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{commissions.length}</div>

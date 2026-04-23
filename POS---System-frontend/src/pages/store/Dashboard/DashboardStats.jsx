@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Card, CardContent } from "@/components/ui/card";
-import { DollarSign, Store, ShoppingCart, Users } from "lucide-react";
+import { IndianRupee, Store, ShoppingCart, Users } from "lucide-react";
 import { getStoreOverview } from "@/Redux Toolkit/features/storeAnalytics/storeAnalyticsThunks";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -52,7 +52,7 @@ const DashboardStats = () => {
     { 
       title: "Total Sales", 
       value: formatCurrency(storeOverview?.totalSales || 0), 
-      icon: <DollarSign className="w-8 h-8 text-emerald-500" />, 
+      icon: <IndianRupee className="w-8 h-8 text-emerald-500" />, 
       change: formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales),
       loading: loading
     },

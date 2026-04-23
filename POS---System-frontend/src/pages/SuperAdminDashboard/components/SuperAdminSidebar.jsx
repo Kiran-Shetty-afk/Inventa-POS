@@ -8,7 +8,6 @@ import {
   Download,
   Settings,
   FileText,
-  DollarSign,
   Clock,
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";

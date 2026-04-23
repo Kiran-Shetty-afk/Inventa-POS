@@ -15,7 +15,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
-import { BadgeDollarSign } from "lucide-react";
+import { BadgeIndianRupee } from "lucide-react";
 
 const navLinks = [
   {
@@ -67,7 +67,7 @@ const navLinks = [
   {
     name: "Upgrade Plan",
     path: "/store/upgrade",
-    icon: <BadgeDollarSign className="w-5 h-5" />,
+    icon: <BadgeIndianRupee className="w-5 h-5" />,
   },
   {
     name: "Settings",

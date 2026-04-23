@@ -1,5 +1,14 @@
 # Brain Changelog
 
+## v2026.04.23.39 - Store sales KPI card overflow fix
+- Fixed `/store/sales` KPI card layout so icons no longer spill outside cards when currency values are long.
+- Added overflow-safe card content, non-shrinking icon wrappers, and responsive text constraints for all sales summary cards in `store-admin/Sales.jsx`.
+
+## v2026.04.23.38 - Rupee symbol standardization across frontend
+- Replaced dollar-related Lucide icons (`DollarSign`, `DollarSignIcon`, `BadgeDollarSign`) with rupee equivalents in store, branch manager, cashier, and super-admin dashboard screens.
+- Updated branch transaction amount rendering from `$` prefixes to `₹` for totals and signed transaction rows/details.
+- Switched store settings default currency fallback from `USD` to `INR` in settings state and form utilities, and updated currency option labels to remove dollar wording.
+
 ## v2026.04.23.37 - Order history duplicate rendering hardening
 - Added defensive order de-duplication by `id` in `orderSlice` for `createOrder`, `getOrdersByCashier`, and `getOrdersByBranch` updates.
 - This ensures `/cashier/orders` does not show duplicate rows even if repeated payload entries are returned during refreshes.

@@ -6,7 +6,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Download, Plus, CreditCard, DollarSign, User, Store, Building2 } from "lucide-react";
+import { Download, Plus, CreditCard, IndianRupee, User, Store, Building2 } from "lucide-react";
 import { 
   getStoreOverview, 
   getDailySales, 
@@ -202,11 +202,11 @@ export default function Sales() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
+          <CardContent className="p-6 overflow-hidden">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-500">Total Sales</p>
-                <h3 className="text-2xl font-bold mt-1">
+                <h3 className="text-xl font-bold mt-1 leading-tight break-all">
                   {loading ? (
                     <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
@@ -221,19 +221,19 @@ export default function Sales() {
                   )} from last week
                 </p>
               </div>
-              <div className="p-3 bg-emerald-100 rounded-full">
-                <DollarSign className="w-8 h-8 text-emerald-600" />
+              <div className="p-3 bg-emerald-100 rounded-full shrink-0">
+                <IndianRupee className="w-8 h-8 text-emerald-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
+          <CardContent className="p-6 overflow-hidden">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-500">Orders Today</p>
-                <h3 className="text-2xl font-bold mt-1">
+                <h3 className="text-xl font-bold mt-1 leading-tight break-all">
                   {loading ? (
                     <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
@@ -251,7 +251,7 @@ export default function Sales() {
                   )} from yesterday
                 </p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-full">
+              <div className="p-3 bg-blue-100 rounded-full shrink-0">
                 <Store className="w-8 h-8 text-blue-600" />
               </div>
             </div>
@@ -259,11 +259,11 @@ export default function Sales() {
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
+          <CardContent className="p-6 overflow-hidden">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-500">Active Cashiers</p>
-                <h3 className="text-2xl font-bold mt-1">
+                <h3 className="text-xl font-bold mt-1 leading-tight break-all">
                   {loading ? (
                     <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
@@ -278,7 +278,7 @@ export default function Sales() {
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-purple-100 rounded-full">
+              <div className="p-3 bg-purple-100 rounded-full shrink-0">
                 <User className="w-8 h-8 text-purple-600" />
               </div>
             </div>
@@ -286,11 +286,11 @@ export default function Sales() {
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
+          <CardContent className="p-6 overflow-hidden">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-500">Avg. Order Value</p>
-                <h3 className="text-2xl font-bold mt-1">
+                <h3 className="text-xl font-bold mt-1 leading-tight break-all">
                   {loading ? (
                     <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
@@ -305,7 +305,7 @@ export default function Sales() {
                   )} from last week
                 </p>
               </div>
-              <div className="p-3 bg-orange-100 rounded-full">
+              <div className="p-3 bg-orange-100 rounded-full shrink-0">
                 <CreditCard className="w-8 h-8 text-orange-600" />
               </div>
             </div>
@@ -313,11 +313,11 @@ export default function Sales() {
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
+          <CardContent className="p-6 overflow-hidden">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-500">Selected Branch Sales</p>
-                <h3 className="text-2xl font-bold mt-1">
+                <h3 className="text-xl font-bold mt-1 leading-tight break-all">
                   {loading ? (
                     <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
@@ -328,7 +328,7 @@ export default function Sales() {
                   {selectedBranchId === "all" ? "All branches combined" : "Current branch total"}
                 </p>
               </div>
-              <div className="p-3 bg-indigo-100 rounded-full">
+              <div className="p-3 bg-indigo-100 rounded-full shrink-0">
                 <Building2 className="w-8 h-8 text-indigo-600" />
               </div>
             </div>
