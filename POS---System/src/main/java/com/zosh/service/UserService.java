@@ -20,6 +20,7 @@ public interface UserService {
 
 
 
+
 //	User updateUser(UpdateUserDto updateData, User user);
 //	String sendForgotPasswordOtp(String email) throws UserException, MessagingException;
 //	User verifyForgotPasswordOtp(String otp, String updatedPassword) throws Exception;

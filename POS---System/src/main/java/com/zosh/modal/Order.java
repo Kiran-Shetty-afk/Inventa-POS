@@ -24,6 +24,18 @@ public class Order {
 
     private Double totalAmount;
 
+    private Double discountAmount = 0.0;
+
+    private Double discountPercent = 0.0;
+
+    private Integer itemsCount = 0;
+
+    private String shift;
+
+    private Double riskScore = 0.0;
+
+    private Boolean isFraud = false;
+
     private LocalDateTime createdAt;
 
     @ManyToOne
@@ -50,5 +62,14 @@ public class Order {
             createdAt = LocalDateTime.now();
         }
     }
+
+    private String dayOfWeek;
+    private Integer orderHour;
+    private Integer totalQuantity=0;
+    private Double averageItemPrice;
+    private int score = 0;
+
+
+
 }
 

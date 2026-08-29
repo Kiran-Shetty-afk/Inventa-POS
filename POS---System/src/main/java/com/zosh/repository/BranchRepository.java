@@ -57,5 +57,6 @@ public interface BranchRepository extends JpaRepository<Branch, Long> {
         )
     """)
     List<BranchDTO> findBranchesWithNoSalesToday(@Param("storeAdminId") Long storeAdminId);
-
+    long count();
+    long countByStoreId(Long storeId);
 }

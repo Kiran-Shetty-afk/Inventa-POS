@@ -13,6 +13,9 @@ import {
   Tag,
   Truck,
   CreditCard,
+  ShieldAlert,
+  Brain,
+  Sparkles 
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { BadgeIndianRupee } from "lucide-react";
@@ -53,6 +56,16 @@ const navLinks = [
     path: "/store/alerts",
     icon: <Truck className="w-5 h-5" />,
   },
+  {
+  name: "Fraud Analytics",
+  path: "/store/fraud-analytics",
+  icon: <ShieldAlert className="w-5 h-5" />,
+},
+{
+    name: "Smart Pricing",
+    path: "/store/dynamic-pricing",
+    icon: <Brain size={20} />,
+},
   {
     name: "Sales",
     path: "/store/sales",

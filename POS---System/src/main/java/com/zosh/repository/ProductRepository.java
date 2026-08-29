@@ -4,16 +4,21 @@ package com.zosh.repository;
 import com.zosh.modal.Product;
 import com.zosh.payload.StoreAnalysis.CategorySalesDTO;
 import com.zosh.payload.dto.ProductDTO;
+import com.zosh.pricing.service.PriceHistoryService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
+import com.zosh.modal.Product;
+import com.zosh.repository.ProductRepository;
 import java.util.List;
 
+
 public interface ProductRepository extends JpaRepository<Product, Long> {
+
     List<Product> findByStoreId(Long storeId);
+
 
     @Query("SELECT p FROM Product p " +
             "WHERE p.store.id = :storeId AND (" +
@@ -69,4 +74,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         )
     """)
     List<ProductDTO> findLowStockProducts(@Param("storeAdminId") Long storeAdminId);
+
 }

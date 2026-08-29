@@ -68,5 +68,15 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
     );
+    @Query("""
+    SELECT COALESCE(SUM(oi.quantity),0)
+    FROM OrderItem oi
+    WHERE oi.product.id = :productId
+    AND oi.order.createdAt >= :lastWeek
+""")
+    Integer getWeeklySales(
+            @Param("productId") Long productId,
+            @Param("lastWeek") LocalDateTime lastWeek
+    );
 
 }

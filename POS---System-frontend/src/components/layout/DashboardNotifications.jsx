@@ -15,6 +15,11 @@ import { getStoreAlerts } from "@/Redux Toolkit/features/storeAnalytics/storeAna
 import { getInventoryByBranch } from "@/Redux Toolkit/features/inventory/inventoryThunks";
 import { getProductsByStore } from "@/Redux Toolkit/features/product/productThunks";
 import { formatDateTime } from "@/utils/formateDate";
+import {
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from "@/Redux Toolkit/features/notification/notificationThunks";
 
 /** When the API does not send a per-product minimum, treat quantity at or below this as low stock. */
 const BRANCH_LOW_STOCK_FALLBACK = 5;
@@ -178,10 +183,35 @@ export function DashboardNotifications({
   const isBranchInventory = variant === "branch";
 
   const { userProfile } = useSelector((state) => state.user);
-  const storeAlerts = useSelector((state) => state.storeAnalytics.storeAlerts);
+
+  const storeAlerts = useSelector(
+    (state) => state.storeAnalytics.storeAlerts
+  );
+
   const branch = useSelector((state) => state.branch.branch);
-  const inventories = useSelector((state) => state.inventory.inventories);
-  const products = useSelector((state) => state.product.products);
+
+  const inventories = useSelector(
+    (state) => state.inventory.inventories
+  );
+
+  const products = useSelector(
+    (state) => state.product.products
+  );
+
+  // 🔔 Real database notifications
+  const notifications = useSelector(
+    (state) => state.notification.notifications
+  );
+
+  const notificationLoading = useSelector(
+    (state) => state.notification.loading
+  );
+
+  useEffect(() => {
+    if (userProfile?.id == null) return;
+
+    dispatch(getNotifications());
+  }, [dispatch, userProfile?.id]);
 
   const [readIds, setReadIds] = useState(() => new Set());
   const [pendingStores, setPendingStores] = useState([]);
@@ -277,16 +307,87 @@ export function DashboardNotifications({
   }, [isBranchInventory, branch?.id, loadBranchInventory]);
 
   const displayItems = useMemo(() => {
+
+    // =========================
+    // SUPER ADMIN
+    // =========================
+
     if (isSuperAdmin) {
-      return pendingStores.map((s) => mapPendingStoreToItem(s, readIds));
+      return pendingStores.map((s) =>
+        mapPendingStoreToItem(s, readIds)
+      );
     }
+
+    // =========================
+    // STORE ADMIN
+    // =========================
+
     if (isStoreAlerts) {
-      return flattenStoreAlerts(storeAlerts, readIds);
+
+      const existingAlerts =
+        flattenStoreAlerts(storeAlerts, readIds);
+
+      const fraudNotifications = notifications
+        .filter((n) => n.type === "FRAUD")
+        .map((n) => ({
+          id: `notification-${n.id}`,
+          notificationId: n.id,
+
+          title: n.title,
+
+          body: n.message,
+
+          time: formatRelativeTime(n.createdAt),
+
+          read: n.isRead,
+
+          type: n.type,
+        }));
+
+      return [
+        ...fraudNotifications,
+        ...existingAlerts,
+      ];
     }
+
+    // =========================
+    // BRANCH MANAGER
+    // =========================
+
     if (isBranchInventory) {
-      return flattenBranchLowStock(inventories, products, readIds);
+
+      const existingAlerts =
+        flattenBranchLowStock(
+          inventories,
+          products,
+          readIds
+        );
+
+      const fraudNotifications = notifications
+        .filter((n) => n.type === "FRAUD")
+        .map((n) => ({
+          id: `notification-${n.id}`,
+          notificationId: n.id,
+
+          title: n.title,
+
+          body: n.message,
+
+          time: formatRelativeTime(n.createdAt),
+
+          read: n.isRead,
+
+          type: n.type,
+        }));
+
+      return [
+        ...fraudNotifications,
+        ...existingAlerts,
+      ];
     }
+
     return [];
+
   }, [
     isSuperAdmin,
     isStoreAlerts,
@@ -296,62 +397,152 @@ export function DashboardNotifications({
     storeAlerts,
     inventories,
     products,
+    notifications,
   ]);
 
   const unreadCount = useMemo(() => {
+
+    // Super admin uses existing local notifications
     if (isSuperAdmin) {
-      return pendingStores.filter((s) => !readIds.has(String(s.id))).length;
-    }
-    if (isStoreAlerts) {
-      return flattenStoreAlerts(storeAlerts, readIds).filter((r) => !r.read)
-        .length;
-    }
-    if (isBranchInventory) {
-      return flattenBranchLowStock(inventories, products, readIds).filter(
-        (r) => !r.read
+      return pendingStores.filter(
+        (s) => !readIds.has(String(s.id))
       ).length;
     }
-    return 0;
+
+    // Store admin / Branch manager
+    const databaseUnreadCount = notifications.filter(
+      (n) => !n.isRead
+    ).length;
+
+    let existingUnreadCount = 0;
+
+    if (isStoreAlerts) {
+
+      existingUnreadCount =
+        flattenStoreAlerts(
+          storeAlerts,
+          readIds
+        ).filter((r) => !r.read).length;
+    }
+
+    if (isBranchInventory) {
+
+      existingUnreadCount =
+        flattenBranchLowStock(
+          inventories,
+          products,
+          readIds
+        ).filter((r) => !r.read).length;
+    }
+
+    return databaseUnreadCount + existingUnreadCount;
+
   }, [
     isSuperAdmin,
     isStoreAlerts,
     isBranchInventory,
     pendingStores,
     readIds,
+    notifications,
     storeAlerts,
     inventories,
     products,
   ]);
 
   const markRead = (id) => {
-    if (isSuperAdmin || isStoreAlerts || isBranchInventory) {
-      setReadIds((prev) => new Set([...prev, id]));
+
+    // Database notification
+    if (id.toString().startsWith("notification-")) {
+
+      const notificationId =
+        Number(id.replace("notification-", ""));
+
+      dispatch(
+        markNotificationRead(notificationId)
+      );
+
+      return;
+    }
+
+    // Existing local notifications
+    if (
+      isSuperAdmin ||
+      isStoreAlerts ||
+      isBranchInventory
+    ) {
+      setReadIds(
+        (prev) => new Set([...prev, id])
+      );
     }
   };
 
   const markAllRead = () => {
+
+    // Mark database notifications as read
+    dispatch(markAllNotificationsRead());
+
+    // =========================
+    // SUPER ADMIN
+    // =========================
+
     if (isSuperAdmin) {
+
       setReadIds(
         (prev) =>
           new Set([
             ...prev,
-            ...pendingStores.map((s) => String(s.id)),
+            ...pendingStores.map(
+              (s) => String(s.id)
+            ),
           ])
       );
+
       return;
     }
+
+    // =========================
+    // STORE ALERTS
+    // =========================
+
     if (isStoreAlerts && storeAlerts) {
-      const ids = flattenStoreAlerts(storeAlerts, new Set()).map((r) => r.id);
-      setReadIds((prev) => new Set([...prev, ...ids]));
+
+      const ids =
+        flattenStoreAlerts(
+          storeAlerts,
+          new Set()
+        ).map((r) => r.id);
+
+      setReadIds(
+        (prev) =>
+          new Set([
+            ...prev,
+            ...ids,
+          ])
+      );
+
       return;
     }
+
+    // =========================
+    // BRANCH INVENTORY
+    // =========================
+
     if (isBranchInventory) {
-      const ids = flattenBranchLowStock(
-        inventories,
-        products,
-        new Set()
-      ).map((r) => r.id);
-      setReadIds((prev) => new Set([...prev, ...ids]));
+
+      const ids =
+        flattenBranchLowStock(
+          inventories,
+          products,
+          new Set()
+        ).map((r) => r.id);
+
+      setReadIds(
+        (prev) =>
+          new Set([
+            ...prev,
+            ...ids,
+          ])
+      );
     }
   };
 
@@ -473,9 +664,23 @@ export function DashboardNotifications({
                     onClick={() => markRead(n.id)}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className="font-medium leading-tight">{n.title}</span>
+                      <span
+                        className={cn(
+                          "font-medium leading-tight",
+                          n.type === "FRAUD" && "text-red-600"
+                        )}
+                      >
+                        {n.title}
+                      </span>
                       {!n.read && (
-                        <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                        <span
+                          className={cn(
+                            "mt-0.5 h-2 w-2 shrink-0 rounded-full",
+                            n.type === "FRAUD"
+                              ? "bg-red-500"
+                              : "bg-primary"
+                          )}
+                        />
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground line-clamp-2">

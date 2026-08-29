@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByCustomerId(Long customerId);
@@ -247,6 +248,11 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         GROUP BY o.branch.id
     """)
         List<BranchSalesDTO> getSalesByBranch(@Param("storeAdminId") Long storeAdminId);
+    long countByCashierIdAndCreatedAtBetween(
+            Long cashierId,
+            LocalDateTime start,
+            LocalDateTime end
+    );
 
 
 

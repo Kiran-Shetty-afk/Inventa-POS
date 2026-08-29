@@ -21,6 +21,11 @@ import adminDashboardReducer from "./features/adminDashboard/adminDashboardSlice
 import subscriptionPlanReducer from "./features/subscriptionPlan/subscriptionPlanSlice.js";
 import subscriptionReducer from "./features/subscription/subscriptionSlice.js";
 import paymentReducer from "./features/payment/paymentSlice.js";
+import fraudReducer from "./features/fraud/fraudSlice.js";
+import branchAdminReducer from "./features/branchAdmin/adminSlice";
+import pricingReducer from "../customer/Redux/Admin/pricing/pricingSlice";
+import notificationReducer
+  from "./features/notification/notificationSlice";
 
 const globleState = configureStore({
   reducer: {
@@ -35,6 +40,7 @@ const globleState = configureStore({
     inventory: inventoryReducer,
     order: orderReducer,
     customer: customerReducer,
+     notification: notificationReducer,
     // supplier: supplierReducer,
     sale: saleReducer,
     transaction: transactionReducer,
@@ -47,6 +53,9 @@ const globleState = configureStore({
     subscriptionPlan: subscriptionPlanReducer,
     subscription: subscriptionReducer,
     payment: paymentReducer,
+    fraud: fraudReducer,
+    branchAdmin: branchAdminReducer,
+    pricing: pricingReducer,
   },
 });
 

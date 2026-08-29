@@ -5,6 +5,7 @@ import com.zosh.domain.OrderStatus;
 import com.zosh.domain.PaymentType;
 import com.zosh.exception.UserException;
 import com.zosh.payload.dto.OrderDTO;
+import com.zosh.fraud.service.FraudDetectionService;
 
 import java.util.List;
 
@@ -22,4 +23,5 @@ public interface OrderService {
     List<OrderDTO> getTodayOrdersByBranch(Long branchId);
     List<OrderDTO> getOrdersByCustomerId(Long customerId);
     List<OrderDTO> getTop5RecentOrdersByBranchId(Long branchId);
+
 }

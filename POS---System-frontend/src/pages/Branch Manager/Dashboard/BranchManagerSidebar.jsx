@@ -11,7 +11,8 @@ import {
   UserCircle,
   FileText,
   Settings,
-  LogOut
+  LogOut,
+  ShieldAlert
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
@@ -52,6 +53,11 @@ const navLinks = [
     path: "/branch/customers",
     icon: <UserCircle className="w-5 h-5" />,
   },
+  {
+  name: "Fraud Alerts",
+  path: "/branch/fraud-alerts",
+  icon: <ShieldAlert className="w-5 h-5" />,
+},
   {
     name: "Reports",
     path: "/branch/reports",

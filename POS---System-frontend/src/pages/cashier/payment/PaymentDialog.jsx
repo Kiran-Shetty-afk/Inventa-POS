@@ -14,6 +14,7 @@ import {
   selectPaymentMethod,
   selectSelectedCustomer,
   selectTotal,
+  selectDiscount,
   setCurrentOrder,
   setPaymentMethod,
 } from "../../../Redux Toolkit/features/cart/cartSlice";
@@ -52,6 +53,7 @@ const PaymentDialog = ({
   const total = useSelector(selectTotal);
 
   const note = useSelector(selectNote);
+  const discount = useSelector(selectDiscount);
 
   
 
@@ -83,20 +85,33 @@ const PaymentDialog = ({
       const resolvedBranchId = branch?.id ?? userProfile?.branchId;
       const normalizedPaymentType = normalizePaymentType(paymentMethod);
       // Prepare order data according to OrderDTO structure
-      const orderData = {
-        totalAmount: Number(total.toFixed(2)),
-        branchId: resolvedBranchId,
-        cashierId: userProfile.id,
-        customer: selectedCustomer || null,
-        items: cart.map((item) => ({
-          productId: item.id,
-          quantity: item.quantity,
-          price: Number(item.price),
-          total: Number((item.price * item.quantity).toFixed(2)),
-        })),
-        paymentType: normalizedPaymentType,
-        note: note || "",
-      };
+     const orderData = {
+    totalAmount: Number(total.toFixed(2)),
+    branchId: resolvedBranchId,
+    cashierId: userProfile.id,
+    customer: selectedCustomer || null,
+
+    items: cart.map((item) => ({
+        productId: item.id,
+        quantity: item.quantity,
+        price: Number(item.price),
+        total: Number((item.price * item.quantity).toFixed(2)),
+    })),
+
+    paymentType: normalizedPaymentType,
+    note: note || "",
+
+    // Discount
+    discountPercent:
+        discount?.type === "percentage"
+            ? Number(discount.value || 0)
+            : 0,
+
+    discountAmount:
+        discount?.type === "fixed"
+            ? Number(discount.value || 0)
+            : 0,
+};
 
       console.log("Creating order:", orderData);
 

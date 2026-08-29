@@ -15,14 +15,18 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import com.zosh.fraud.service.FraudDetectionService;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class HistoricalOrderGenerator {
 
     private final OrderRepository orderRepository;
     private final InventoryRepository inventoryRepository;
     private final ShiftReportRepository shiftReportRepository;
+    private final FraudDetectionService fraudDetectionService;
 
     public List<Order> generate(SeedScenarioConfig config,
                                 HistoricalSeedContext context,
@@ -76,12 +80,96 @@ public class HistoricalOrderGenerator {
                 order.setPaymentType(paymentType);
                 order.setStatus(OrderStatus.COMPLETED);
 
-                double totalAmount = items.stream().mapToDouble(OrderItem::getPrice).sum();
-                order.setTotalAmount(round2(totalAmount));
+                double totalAmount = items.stream()
+                        .mapToDouble(OrderItem::getPrice)
+                        .sum();
+
+                totalAmount = round2(totalAmount);
+
+                order.setTotalAmount(totalAmount);
+
                 items.forEach(orderItem -> orderItem.setOrder(order));
                 order.setItems(items);
 
+// ===========================
+// ML / FRAUD DATA
+// ===========================
+
+                int totalQuantity = items.stream()
+                        .mapToInt(OrderItem::getQuantity)
+                        .sum();
+
+                order.setItemsCount(items.size());
+                order.setTotalQuantity(totalQuantity);
+
+                order.setDiscountAmount(0.0);
+                order.setDiscountPercent(0.0);
+
+                order.setShift(getShift(createdAt));
+
+                order.setRiskScore(0.0);
+                order.setIsFraud(false);
+
+                order.setDayOfWeek(
+                        createdAt.getDayOfWeek().toString()
+                );
+
+                order.setOrderHour(
+                        createdAt.getHour()
+                );
+
+                order.setAverageItemPrice(
+                        totalQuantity > 0
+                                ? totalAmount / totalQuantity
+                                : 0.0
+                );
+
+// ===========================
+// SAVE ORDER
+// ===========================
+
                 Order saved = orderRepository.save(order);
+
+// ===========================
+// GENERATE SOME FRAUD CASES
+// ===========================
+
+                boolean suspiciousOrder = random.nextDouble() < 0.03;
+
+                if (suspiciousOrder) {
+
+                    // Make this order look suspicious to the fraud model
+                    double suspiciousDiscount = 30 + random.nextDouble() * 40;
+
+                    saved.setDiscountPercent(
+                            round2(suspiciousDiscount)
+                    );
+
+                    saved.setDiscountAmount(
+                            round2(
+                                    saved.getTotalAmount()
+                                            * suspiciousDiscount
+                                            / 100.0
+                            )
+                    );
+
+                    // Re-save modified fraud features
+                    saved = orderRepository.save(saved);
+
+                    try {
+
+                        fraudDetectionService.detectFraud(saved);
+
+                    } catch (Exception e) {
+
+                        log.warn(
+                                "Fraud detection failed for seeded order {}",
+                                saved.getId(),
+                                e
+                        );
+                    }
+                }
+
                 allOrders.add(saved);
                 createdOrders++;
                 metrics.getOrdersByBranch().merge(branch.getName(), 1, Integer::sum);
@@ -238,6 +326,24 @@ public class HistoricalOrderGenerator {
             }
         }
         metrics.setShiftReportsCreated(created);
+    }
+    private String getShift(LocalDateTime time) {
+
+        int hour = time.getHour();
+
+        if (hour >= 6 && hour < 12) {
+            return "Morning";
+        }
+
+        if (hour >= 12 && hour < 17) {
+            return "Afternoon";
+        }
+
+        if (hour >= 17 && hour < 22) {
+            return "Evening";
+        }
+
+        return "Night";
     }
 
     private double round2(double value) {

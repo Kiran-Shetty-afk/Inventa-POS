@@ -23,4 +23,6 @@ public class OrderDTO {
     private LocalDateTime createdAt;
     private PaymentType paymentType;
     private OrderStatus status;
+    private Double discountAmount;
+    private Double discountPercent;
 }

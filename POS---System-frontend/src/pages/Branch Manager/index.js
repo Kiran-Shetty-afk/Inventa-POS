@@ -7,3 +7,4 @@ export { default as Inventory } from './Inventory/Inventory';
 export { default as Customers } from './Customers/Customers';
 export { default as Reports } from './Reports/Reports';
 export { default as Settings } from './Settings/Settings';
+export { default as FraudAlerts } from "./Fraud/FraudAlerts";

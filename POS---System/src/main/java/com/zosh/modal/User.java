@@ -30,6 +30,7 @@ public class User {
     @NotBlank(message = "fullName is mandatory")
     private String fullName;
 
+    @JsonIgnore
     private String password;
 
     @Column(nullable = false, unique = true)

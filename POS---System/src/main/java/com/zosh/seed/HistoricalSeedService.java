@@ -1,6 +1,7 @@
 package com.zosh.seed;
 
 import com.zosh.modal.*;
+import com.zosh.notification.repository.NotificationRepository;
 import com.zosh.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
+import com.zosh.fraud.repository.FraudAlertRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +36,8 @@ public class HistoricalSeedService {
     private final OrderRepository orderRepository;
     private final RefundRepository refundRepository;
     private final ShiftReportRepository shiftReportRepository;
+    private final FraudAlertRepository fraudAlertRepository;
+    private final NotificationRepository notificationRepository;
 
     @Transactional
     public void seedHistoricalData(SeedScenarioConfig config) {
@@ -76,9 +80,25 @@ public class HistoricalSeedService {
         }
 
         Set<Long> storeIds = demoStores.stream().map(Store::getId).collect(Collectors.toSet());
+        // Delete notifications belonging to seeded users first.
+// This must happen before deleting branches, stores, or users.
+        List<User> seededUsers = userRepository.findAll().stream()
+                .filter(user -> user.getEmail() != null
+                        && user.getEmail().endsWith("@seed.local"))
+                .toList();
+
+        if (!seededUsers.isEmpty()) {
+
+            List<Long> seededUserIds = seededUsers.stream()
+                    .map(User::getId)
+                    .toList();
+
+            notificationRepository.deleteByUserIds(seededUserIds);
+        }
         List<Branch> branches = branchRepository.findAll().stream()
                 .filter(branch -> branch.getStore() != null && storeIds.contains(branch.getStore().getId()))
                 .toList();
+
         List<Long> branchIds = branches.stream().map(Branch::getId).toList();
 
         // Clear references before deleting branches/stores to avoid transient association flush errors.
@@ -107,7 +127,17 @@ public class HistoricalSeedService {
                 shiftReportRepository.deleteAll(reports);
             }
             List<Order> orders = orderRepository.findByBranchId(branch.getId());
+
             if (!orders.isEmpty()) {
+
+                List<Long> orderIds = orders.stream()
+                        .map(Order::getId)
+                        .toList();
+
+                // Fraud alerts reference orders, so delete them first
+                fraudAlertRepository.deleteByOrderIds(orderIds);
+
+                // Now delete the orders
                 orderRepository.deleteAll(orders);
             }
             List<Inventory> inventories = inventoryRepository.findByBranchIdOrderByIdAsc(branch.getId());
@@ -144,16 +174,23 @@ public class HistoricalSeedService {
         }
 
         List<User> users = userRepository.findAll();
+
         List<User> demoUsers = users.stream()
-                .filter(user -> user.getEmail() != null && user.getEmail().endsWith("@seed.local"))
+                .filter(user -> user.getEmail() != null
+                        && user.getEmail().endsWith("@seed.local"))
                 .collect(Collectors.toList());
+
         for (User user : demoUsers) {
             user.setBranch(null);
             user.setStore(null);
         }
+
         if (!demoUsers.isEmpty()) {
+
+            // First clear branch/store references
             userRepository.saveAll(demoUsers);
             userRepository.deleteAll(demoUsers);
+
         }
 
         List<Customer> demoCustomers = customerRepository.findAll().stream()

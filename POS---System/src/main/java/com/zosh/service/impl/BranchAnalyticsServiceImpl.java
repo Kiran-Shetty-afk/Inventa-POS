@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
+import com.zosh.service.DemandForecastMLService;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +39,7 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     private final OrderItemRepository orderItemRepository;
     private final InventoryRepository inventoryRepository;
     private final RefundRepository refundRepository;
+    private final DemandForecastMLService demandForecastMLService;
     private final BranchHealthNarrativeGenerator branchHealthNarrativeGenerator;
 
     private static final int DEFAULT_LOOKBACK_DAYS = 90;
@@ -182,35 +183,266 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService{
     }
 
     @Override
-    public List<ProductDemandForecastDTO> getDemandForecast(Long branchId, List<Integer> horizons, int lookbackDays, LocalDate anchorDate) {
+    public List<ProductDemandForecastDTO> getDemandForecast(
+            Long branchId,
+            List<Integer> horizons,
+            int lookbackDays,
+            LocalDate anchorDate) {
+
         List<Integer> selectedHorizons = sanitizeHorizons(horizons);
-        int safeLookbackDays = Math.max(MIN_LOOKBACK_DAYS, lookbackDays > 0 ? lookbackDays : DEFAULT_LOOKBACK_DAYS);
-        int reorderHorizon = determineReorderHorizon(selectedHorizons);
 
-        LocalDate forecastAnchor = anchorDate != null ? anchorDate : LocalDate.now();
-        LocalDate historyEndDate = forecastAnchor.minusDays(1);
-        LocalDate historyStartDate = historyEndDate.minusDays(safeLookbackDays - 1L);
+        int safeLookbackDays = Math.max(
+                MIN_LOOKBACK_DAYS,
+                lookbackDays > 0
+                        ? lookbackDays
+                        : DEFAULT_LOOKBACK_DAYS
+        );
 
-        LocalDateTime historyStart = historyStartDate.atStartOfDay();
-        LocalDateTime historyEnd = historyEndDate.atTime(LocalTime.MAX);
+        int reorderHorizon =
+                determineReorderHorizon(selectedHorizons);
 
-        List<Object[]> rawDemand = orderItemRepository.getDailyProductDemandBetween(branchId, historyStart, historyEnd);
-        Map<Long, ProductDemandSeries> demandByProduct = mapDemandSeries(rawDemand);
-        Map<Long, ProductDemandSeries> inventoryBackedSeries = mergeInventoryIntoSeries(branchId, demandByProduct);
+        LocalDate forecastAnchor =
+                anchorDate != null
+                        ? anchorDate
+                        : LocalDate.now();
 
-        return inventoryBackedSeries.values().stream()
-                .map(series -> buildDemandForecastDTO(
-                        series,
-                        safeLookbackDays,
-                        historyStartDate,
-                        historyEndDate,
-                        forecastAnchor,
-                        reorderHorizon
-                ))
-                .sorted((left, right) -> Integer.compare(
-                        right.getRecommendedReorderQty() != null ? right.getRecommendedReorderQty() : 0,
-                        left.getRecommendedReorderQty() != null ? left.getRecommendedReorderQty() : 0
-                ))
+        LocalDate historyEndDate =
+                forecastAnchor.minusDays(1);
+
+        LocalDate historyStartDate =
+                historyEndDate.minusDays(
+                        safeLookbackDays - 1L
+                );
+
+        LocalDateTime historyStart =
+                historyStartDate.atStartOfDay();
+
+        LocalDateTime historyEnd =
+                historyEndDate.atTime(LocalTime.MAX);
+
+        // ==========================================
+        // 1. Get historical daily demand
+        // ==========================================
+
+        List<Object[]> rawDemand =
+                orderItemRepository.getDailyProductDemandBetween(
+                        branchId,
+                        historyStart,
+                        historyEnd
+                );
+
+        // ==========================================
+        // 2. Convert DB data into product series
+        // ==========================================
+
+        Map<Long, ProductDemandSeries> demandByProduct =
+                mapDemandSeries(rawDemand);
+
+        // ==========================================
+        // 3. Add products from current inventory
+        // ==========================================
+
+        Map<Long, ProductDemandSeries> inventoryBackedSeries =
+                mergeInventoryIntoSeries(
+                        branchId,
+                        demandByProduct
+                );
+
+        // ==========================================
+        // 4. Generate ML forecast
+        // ==========================================
+
+        return inventoryBackedSeries.values()
+                .stream()
+                .map(series -> {
+
+                    // ------------------------------------------
+                    // Build continuous daily demand list.
+                    //
+                    // Missing sales days = 0 demand.
+                    // This is important for ML.
+                    // ------------------------------------------
+
+                    List<Double> dailyDemand = new ArrayList<>();
+
+                    for (int i = 0; i < safeLookbackDays; i++) {
+
+                        LocalDate date =
+                                historyStartDate.plusDays(i);
+
+                        double demand =
+                                series.dailyDemand
+                                        .getOrDefault(date, 0.0);
+
+                        dailyDemand.add(demand);
+                    }
+                    System.out.println(
+                            "ML INPUT - Product: "
+                                    + series.productId
+                                    + " | Name: "
+                                    + series.productName
+                                    + " | Demand: "
+                                    + dailyDemand
+                    );
+
+                    // ------------------------------------------
+                    // Ask Python Random Forest for forecast
+                    // ------------------------------------------
+
+                    int mlHorizon =
+                            Math.max(30, reorderHorizon);
+
+                    System.out.println(
+                            "CALLING ML - Product: " + series.productId
+                    );
+
+                    List<Double> mlForecast =
+                            demandForecastMLService.predictDemand(
+                                    series.productId,
+                                    dailyDemand,
+                                    mlHorizon
+                            );
+
+                    // ------------------------------------------
+                    // 7-day forecast
+                    // ------------------------------------------
+
+                    double forecast7 = 0.0;
+
+                    for (int i = 0;
+                         i < Math.min(7, mlForecast.size());
+                         i++) {
+
+                        forecast7 += mlForecast.get(i);
+                    }
+
+                    // ------------------------------------------
+                    // 14-day forecast
+                    // ------------------------------------------
+
+                    double forecast14 = 0.0;
+
+                    for (int i = 0;
+                         i < Math.min(14, mlForecast.size());
+                         i++) {
+
+                        forecast14 += mlForecast.get(i);
+                    }
+
+                    // ------------------------------------------
+                    // 30-day forecast
+                    // ------------------------------------------
+
+                    double forecast30 = 0.0;
+
+                    for (int i = 0;
+                         i < Math.min(30, mlForecast.size());
+                         i++) {
+
+                        forecast30 += mlForecast.get(i);
+                    }
+
+                    // ------------------------------------------
+                    // Determine reorder forecast
+                    // ------------------------------------------
+
+                    double reorderForecast;
+
+                    if (reorderHorizon <= 7) {
+
+                        reorderForecast = forecast7;
+
+                    } else if (reorderHorizon <= 14) {
+
+                        reorderForecast = forecast14;
+
+                    } else {
+
+                        reorderForecast = forecast30;
+                    }
+
+                    // ------------------------------------------
+                    // Recommended reorder quantity
+                    // ------------------------------------------
+
+                    int recommendedReorderQty =
+                            Math.max(
+                                    0,
+                                    (int) Math.ceil(
+                                            reorderForecast
+                                                    - series.currentStock
+                                    )
+                            );
+                    System.out.println(
+                            "REORDER CHECK - Product: "
+                                    + series.productId
+                                    + " | Stock: "
+                                    + series.currentStock
+                                    + " | Forecast7: "
+                                    + forecast7
+                                    + " | Forecast14: "
+                                    + forecast14
+                                    + " | Forecast30: "
+                                    + forecast30
+                                    + " | ReorderHorizon: "
+                                    + reorderHorizon
+                    );
+
+                    boolean reorderSuggested =
+                            recommendedReorderQty > 0;
+
+                    // ------------------------------------------
+                    // Build DTO
+                    // ------------------------------------------
+
+                    return ProductDemandForecastDTO.builder()
+                            .productId(series.productId)
+                            .productName(series.productName)
+                            .currentStock(series.currentStock)
+
+                            .forecast7(
+                                    roundToTwo(forecast7)
+                            )
+
+                            .forecast14(
+                                    roundToTwo(forecast14)
+                            )
+
+                            .forecast30(
+                                    roundToTwo(forecast30)
+                            )
+
+                            .recommendedReorderQty(
+                                    recommendedReorderQty
+                            )
+
+                            .recommendedHorizonDays(
+                                    reorderHorizon
+                            )
+
+                            .reorderSuggested(
+                                    reorderSuggested
+                            )
+
+                            .basis(
+                                    "Random Forest ML forecast"
+                            )
+
+                            .build();
+                })
+
+                .sorted((left, right) ->
+                        Integer.compare(
+                                right.getRecommendedReorderQty() != null
+                                        ? right.getRecommendedReorderQty()
+                                        : 0,
+
+                                left.getRecommendedReorderQty() != null
+                                        ? left.getRecommendedReorderQty()
+                                        : 0
+                        )
+                )
+
                 .collect(Collectors.toList());
     }
 

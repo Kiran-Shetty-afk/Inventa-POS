@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.zosh.fraud.service.FraudDetectionService;
 
 @Service
 @RequiredArgsConstructor
@@ -30,19 +31,23 @@ public class OrderServiceImpl implements OrderService {
     private final CustomerRepository customerRepository;
     private final InventoryConsistencyService inventoryConsistencyService;
     private final UserService userService;
+    private final FraudDetectionService fraudDetectionService;
+
 
     @Override
     @Transactional
     public OrderDTO createOrder(OrderDTO dto) throws UserException {
+
         User cashier = userService.getCurrentUser();
 
-        Branch branch=cashier.getBranch();
+        Branch branch = cashier.getBranch();
 
-        if(branch==null){
+        if (branch == null) {
             throw new UserException("cashier's branch is null");
         }
 
         Customer customer = resolveCustomer(dto.getCustomer());
+
         Order order = Order.builder()
                 .branch(branch)
                 .cashier(cashier)
@@ -51,15 +56,22 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         List<OrderItem> orderItems = dto.getItems().stream().map(itemDto -> {
+
             Product product = productRepository.findById(itemDto.getProductId())
                     .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
             int requestedQty = itemDto.getQuantity();
+
             if (requestedQty <= 0) {
-                throw new IllegalArgumentException("Quantity must be greater than zero for product: " + product.getName());
+                throw new IllegalArgumentException(
+                        "Quantity must be greater than zero for product: " + product.getName());
             }
 
-            inventoryConsistencyService.decrementStock(branch.getId(), product.getId(), requestedQty);
+            inventoryConsistencyService.decrementStock(
+                    branch.getId(),
+                    product.getId(),
+                    requestedQty
+            );
 
             return OrderItem.builder()
                     .product(product)
@@ -67,17 +79,77 @@ public class OrderServiceImpl implements OrderService {
                     .price(product.getSellingPrice() * requestedQty)
                     .order(order)
                     .build();
-        }).toList();
 
-        double total = orderItems.stream().mapToDouble(OrderItem::getPrice).sum();
+        }).collect(Collectors.toList());
+
+        double total = orderItems.stream()
+                .mapToDouble(OrderItem::getPrice)
+                .sum();
+
         order.setTotalAmount(total);
+
         order.setItems(orderItems);
 
+        // ===========================
+        // ML DATA COLLECTION
+        // ===========================
+
+        // Number of different products in this order
+        order.setItemsCount(orderItems.size());
+
+        int totalQuantity = orderItems.stream()
+                .mapToInt(OrderItem::getQuantity)
+                .sum();
+
+        order.setTotalQuantity(totalQuantity);
+
+
+        // Discount from POS
+        order.setDiscountAmount(
+                dto.getDiscountAmount() != null
+                        ? dto.getDiscountAmount()
+                        : 0.0
+        );
+
+        order.setDiscountPercent(
+                dto.getDiscountPercent() != null
+                        ? dto.getDiscountPercent()
+                        : 0.0
+        );
+
+        // Automatically determine shift
+        order.setShift(getShift(LocalDateTime.now()));
+
+        // ML fields
+        order.setRiskScore(0.0);
+        order.setIsFraud(false);
+        order.setDayOfWeek(LocalDate.now().getDayOfWeek().toString());
+        order.setOrderHour(LocalDateTime.now().getHour());
+
+        order.setAverageItemPrice(
+                total / totalQuantity
+        );
+
+        // ===========================
+
         if (customer != null) {
-            customer.setLoyaltyPoints(currentLoyaltyPoints(customer) + calculatePointsEarned(total));
+            customer.setLoyaltyPoints(
+                    currentLoyaltyPoints(customer)
+                            + calculatePointsEarned(total)
+            );
         }
 
-        return OrderMapper.toDto(orderRepository.save(order));
+        Order savedOrder = orderRepository.save(order);
+
+        // Run Fraud Detection
+        try {
+            fraudDetectionService.detectFraud(savedOrder);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+        savedOrder = orderRepository.save(savedOrder);
+        return OrderMapper.toDto(savedOrder);
     }
 
     @Override
@@ -197,5 +269,24 @@ public class OrderServiceImpl implements OrderService {
     private int currentLoyaltyPoints(Customer customer) {
         return customer.getLoyaltyPoints() == null ? 0 : customer.getLoyaltyPoints();
     }
+    private String getShift(LocalDateTime time) {
+
+        int hour = time.getHour();
+
+        if (hour >= 6 && hour < 12) {
+            return "Morning";
+        }
+
+        if (hour >= 12 && hour < 17) {
+            return "Afternoon";
+        }
+
+        if (hour >= 17 && hour < 22) {
+            return "Evening";
+        }
+
+        return "Night";
+    }
+
 
 }

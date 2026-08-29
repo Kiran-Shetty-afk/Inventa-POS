@@ -41,12 +41,12 @@ class BranchAnalyticsControllerDemandForecastTest {
         when(branchAnalyticsService.getDemandForecast(8L, List.of(7, 14, 30), 90, LocalDate.of(2026, 4, 23)))
                 .thenReturn(expected);
 
-        ResponseEntity<List<ProductDemandForecastDTO>> response = branchAnalyticsController.getDemandForecast(
-                8L,
-                List.of(7, 14, 30),
-                90,
-                LocalDate.of(2026, 4, 23)
-        );
+            ResponseEntity<List<ProductDemandForecastDTO>> response = branchAnalyticsController.getDemandForecast(
+                    8L,
+                    List.of(7, 14, 30),
+                    90,
+                    LocalDate.of(2026, 4, 23)
+            );
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(expected, response.getBody());
