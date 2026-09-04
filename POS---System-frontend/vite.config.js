@@ -40,6 +40,9 @@ export default defineConfig({
       "/auth": devAuthApiProxy,
       "/onboarding": devApiProxy,
       "/users": devApiProxy,
+      "/predict-fraud": devApiProxy,
+      "/predict-price": devApiProxy,
+      "/predict-demand": devApiProxy,
     },
   },
   resolve: {
