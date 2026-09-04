@@ -386,7 +386,7 @@ export default function FraudAnalytics() {
 
                             <TableHeader>
 
-                                <TableRow className="h-14" className="hover:bg-slate-50 transition-colors">
+                                <TableRow className="h-14 hover:bg-slate-50 transition-colors">
 
                                     <TableHead>Order</TableHead>
 

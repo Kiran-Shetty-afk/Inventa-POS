@@ -8,8 +8,10 @@ The platform is built around role-based workflows for super admins, store admins
 
 | Path | Purpose |
 |---|---|
-| `POS---System` | Spring Boot backend API, business logic, persistence, auth, analytics, subscriptions, and payments |
+| `POS---System` | Original monolithic Spring Boot backend (preserved for reference/migration) |
+| `POS---Microservices` | Microservices backend architecture (Gateway, Eureka, and Domain Services) |
 | `POS---System-frontend` | React 19 + Vite single-page application with role-based dashboards |
+| `POS---ML` | Python FastAPI ML service: Fraud detection, Dynamic pricing, Demand forecasting (Port `8000`) |
 | `brain` | Shared project notes, architecture audits, change history, and runbooks |
 
 ## Core Capabilities
@@ -19,117 +21,79 @@ The platform is built around role-based workflows for super admins, store admins
 - Inventory-aware retail operations and cashier checkout flows
 - Returns, refunds, and shift-summary workflows
 - Store-level and branch-level analytics dashboards
-- CSV export flows for reporting and operations
+- Machine learning intelligence: Fraud prediction, dynamic pricing, and demand forecasting
 - Subscription plans and upgrade flows
 - Payment link integration with Razorpay and Stripe support
-- Historical data seeding and project-specific operational runbooks
-
-## Role Coverage
-
-### Super Admin
-
-- Platform-level oversight
-- Store review and moderation workflows
-- Subscription plan management
-- Export surfaces for store and platform reporting
-
-### Store Admin / Store Manager
-
-- Store-level management across branches
-- Branch, product, category, and employee administration
-- Store sales dashboards and reports
-- Branch-filtered analytics and CSV exports
-- Subscription upgrade flow
-
-### Branch Manager / Branch Admin
-
-- Branch operations, inventory, orders, and employees
-- Day-wise and month-wise reporting
-- Demand forecasting and reorder insights
-- AI-assisted branch health summaries
-
-### Cashier
-
-- POS checkout and customer-linked order creation
-- Returns and refund execution
-- Shift lifecycle and shift summary workflows
-- Order history and receipt-related operations
 
 ## Technology Stack
 
 ### Frontend
+- React 19, Vite 7, React Router, Redux Toolkit, Tailwind CSS 4, Radix UI primitives, Recharts, Axios
 
-- React 19
-- Vite 7
-- React Router
-- Redux Toolkit
-- Tailwind CSS 4
-- Radix UI primitives
-- Recharts
-- Axios
+### Backend Microservices
+- Java 17, Spring Boot 3.4 / 3.5
+- Spring Cloud 2024.0.0 (Eureka Server & Client, Spring Cloud Gateway)
+- Spring Security with JWT & Gateway header forwarding
+- Spring Data JPA, MySQL (dedicated database per microservice)
+- Razorpay Java SDK, Stripe Java SDK
+- Maven Multi-Module Reactor
 
-### Backend
+### ML Intelligence Service
+- Python 3.10+, FastAPI, Scikit-learn, Pandas, Joblib, Uvicorn
 
-- Spring Boot 3.5
-- Spring Web
-- Spring Security with JWT
-- Spring Data JPA
-- MySQL
-- Jakarta Validation
-- Spring Mail
-- Razorpay Java SDK
-- Stripe Java SDK
-- Maven
-
-## System Architecture
+## Microservices System Architecture
 
 ```mermaid
-flowchart LR
-    User["Platform Users<br/>Super Admin / Store Admin / Branch Manager / Cashier"]
-    SPA["React + Vite SPA<br/>POS---System-frontend"]
-    Router["Role-based Routing<br/>App.jsx + route modules"]
-    Store["Redux Toolkit Store<br/>auth, user, store, branch, order, analytics, subscription"]
-    API["REST API Layer<br/>Axios + Vite dev proxy"]
-    Backend["Spring Boot API<br/>POS---System"]
-    Security["Security Layer<br/>JWT validation + role checks"]
-    Services["Service Layer<br/>orders, inventory, analytics, refunds, subscriptions, payments"]
-    Repos["Repository Layer<br/>Spring Data JPA"]
-    DB["MySQL Database"]
-    External["External Services<br/>Razorpay / Stripe / Email"]
-    Brain["Project Knowledge Base<br/>brain/"]
+flowchart TD
+    Client["React + Vite Frontend<br/>(Port 5173)"]
+    Gateway["API Gateway<br/>(Port 5000)<br/>JWT Filter + Dynamic Routing"]
+    Eureka["Eureka Server<br/>(Port 8761)<br/>Service Registry"]
+    
+    UserOrg["User & Org Service<br/>(Port 8081)<br/>Database: userdb"]
+    Inventory["Inventory Catalog Service<br/>(Port 8082)<br/>Database: inventorydb"]
+    OrderSales["Order & Sales Service<br/>(Port 8083)<br/>Database: orderdb"]
+    BillingAnalytics["Billing & Analytics Service<br/>(Port 8084)<br/>Database: billingdb"]
+    MLService["ML Intelligence Service<br/>(FastAPI, Port 8000)"]
 
-    User --> SPA
-    SPA --> Router
-    Router --> Store
-    Store --> API
-    API --> Backend
-    Backend --> Security
-    Security --> Services
-    Services --> Repos
-    Repos --> DB
-    Services --> External
-    Brain -. informs implementation and operations .-> SPA
-    Brain -. informs implementation and operations .-> Backend
+    Client --> Gateway
+    Gateway -. Service Discovery .-> Eureka
+    
+    Gateway -->|/auth/**, /users/**, /api/stores/**| UserOrg
+    Gateway -->|/api/products/**, /api/inventories/**| Inventory
+    Gateway -->|/api/orders/**, /api/customers/**| OrderSales
+    Gateway -->|/api/payments/**, /api/subscriptions/**, /api/branch-analytics/**| BillingAnalytics
+    Gateway -->|/predict-fraud, /predict-price| MLService
+    
+    UserOrg -. Register .-> Eureka
+    Inventory -. Register .-> Eureka
+    OrderSales -. Register .-> Eureka
+    BillingAnalytics -. Register .-> Eureka
 ```
 
-## Backend Architecture
+## Running the Microservices Locally
 
-The backend follows a layered Spring Boot structure:
+### 1. Create MySQL Databases
+```sql
+CREATE DATABASE IF NOT EXISTS userdb;
+CREATE DATABASE IF NOT EXISTS inventorydb;
+CREATE DATABASE IF NOT EXISTS orderdb;
+CREATE DATABASE IF NOT EXISTS billingdb;
+```
 
-- `controller`: HTTP entry points for auth, stores, branches, orders, analytics, subscriptions, payments, and refunds
-- `service` and `service/impl`: business workflows and orchestration
-- `repository`: persistence access through Spring Data JPA
-- `modal`: JPA entities for platform, retail, and billing domains
-- `payload`: DTOs, request models, and response wrappers
-- `configrations`: JWT, security, and supporting infrastructure
-- `exception`: centralized exception and security error handling
+### 2. Service Startup Order
 
-### Core backend domains
+Open separate terminals and start services in order from the `POS---Microservices` directory:
 
-- Organization: `Store`, `Branch`, `User`
-- Catalog and stock: `Category`, `Product`, `Inventory`
-- Transactions: `Order`, `OrderItem`, `Refund`, `ShiftReport`
-- Billing: `SubscriptionPlan`, `Subscription`, `PaymentOrder`
+| Step | Service | Command | Port |
+|---|---|---|---|
+| 1 | Eureka Server | `.\mvnw.cmd spring-boot:run -pl eureka-server` | 8761 |
+| 2 | API Gateway | `.\mvnw.cmd spring-boot:run -pl api-gateway` | 5000 |
+| 3 | User & Org Service | `.\mvnw.cmd spring-boot:run -pl user-org-service` | 8081 |
+| 4 | Inventory Service | `.\mvnw.cmd spring-boot:run -pl inventory-catalog-service` | 8082 |
+| 5 | Order & Sales Service | `.\mvnw.cmd spring-boot:run -pl order-sales-service` | 8083 |
+| 6 | Billing & Analytics | `.\mvnw.cmd spring-boot:run -pl billing-analytics-service` | 8084 |
+| 7 | ML Service *(optional)* | `uvicorn app:app --port 8000` (in `POS---ML`) | 8000 |
+| 8 | Frontend | `npm run dev` (in `POS---System-frontend`) | 5173 |
 
 ## Frontend Architecture
 
@@ -149,7 +113,7 @@ The frontend is a role-driven single-page application.
 5. Pages dispatch async thunks to call backend APIs
 6. Redux slices store UI state for dashboards and workflows
 
-## Local Development
+## Running the Monolithic System Locally
 
 ### Prerequisites
 
