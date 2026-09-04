@@ -1,6 +1,6 @@
 # Inventa POS
 
-Inventa POS is a full-stack retail point-of-sale platform for multi-store operations. This repository contains a Spring Boot backend, a React + Vite frontend, and a shared project knowledge base used to capture architecture decisions, role flows, analytics work, and operational fixes.
+Inventa POS is a full-stack retail point-of-sale platform for multi-store operations. This repository contains a microservices-based Spring Boot backend, a React + Vite frontend, and a shared project knowledge base used to capture architecture decisions, role flows, analytics work, and operational fixes.
 
 The platform is built around role-based workflows for super admins, store admins, branch managers, and cashiers. It covers onboarding, branch and employee management, catalog and inventory operations, checkout flows, refunds, shift reporting, analytics dashboards, exports, subscription plans, and payment-link based billing.
 
@@ -70,6 +70,16 @@ flowchart TD
     BillingAnalytics -. Register .-> Eureka
 ```
 
+## Microservices Endpoints Overview
+
+| Service | Endpoints | Purpose |
+|---------|-----------|---------|
+| **User & Org Service** | `/auth/**`, `/users/**`, `/api/stores/**` | Authentication, user management, and store/branch hierarchy |
+| **Inventory Catalog Service** | `/api/products/**`, `/api/inventories/**` | Product catalog, categories, and inventory tracking |
+| **Order & Sales Service** | `/api/orders/**`, `/api/customers/**` | Checkout, order processing, and customer management |
+| **Billing & Analytics Service**| `/api/payments/**`, `/api/subscriptions/**`, `/api/branch-analytics/**` | Payment links, SaaS subscriptions, and store reporting |
+| **ML Intelligence Service** | `/predict-fraud`, `/predict-price` | Machine learning for fraud detection and dynamic pricing |
+
 ## Running the Microservices Locally
 
 ### 1. Create MySQL Databases
@@ -113,7 +123,7 @@ The frontend is a role-driven single-page application.
 5. Pages dispatch async thunks to call backend APIs
 6. Redux slices store UI state for dashboards and workflows
 
-## Running the Monolithic System Locally
+## Running the Frontend and Legacy System Locally
 
 ### Prerequisites
 
@@ -201,14 +211,6 @@ Useful starting documents:
 - [`brain/002-fullstack-architecture-roles-audit.md`](D:/Projects/Inventa-POS/brain/002-fullstack-architecture-roles-audit.md)
 - [`brain/015-role-features-superadmin-storeadmin-branchmanager-cashier-apr-23.md`](D:/Projects/Inventa-POS/brain/015-role-features-superadmin-storeadmin-branchmanager-cashier-apr-23.md)
 - [`brain/CHANGELOG.md`](D:/Projects/Inventa-POS/brain/CHANGELOG.md)
-
-## Roadmap Opportunities
-
-- Add a stricter frontend-to-backend contract matrix for all role flows
-- Expand integration and role-based automated tests
-- Standardize DTO use across all entity-backed endpoints
-- Improve secret and environment management for production readiness
-- Add deployment documentation and environment-specific setup guides
 
 ## License
 

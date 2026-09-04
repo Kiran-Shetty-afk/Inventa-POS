@@ -4,8 +4,8 @@
 
 | Field | Value |
 |------|-------|
-| Last Assigned ID | 001 |
-| Next ID | 002 |
+| Last Assigned ID | 002 |
+| Next ID | 003 |
 
 ## Ledger Rules
 
@@ -20,14 +20,15 @@
 | Category | Count |
 |----------|-------|
 | Active plans | 0 |
-| Completed | 1 |
-| **Total** | **1** |
+| Completed | 2 |
+| **Total** | **2** |
 
 ## Completed Plans
 
 | ID | Title | Tier | Completed |
 |----|-------|------|-----------|
 | 001 | Microservices Structure and README Update | full-feature | 2026-09-04 |
+| 002 | README Improvements (Microservices context) | quick | 2026-09-04 |
 
 ## Active Plans by Status
 
