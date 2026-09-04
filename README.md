@@ -8,15 +8,10 @@ The platform is built around role-based workflows for super admins, store admins
 
 | Path | Purpose |
 |---|---|
-| `eureka-server` | Spring Cloud Netflix Eureka Service Registry (Port `8761`) |
-| `api-gateway` | Spring Cloud Gateway with JWT authentication, routing, and CORS (Port `5000`) |
-| `user-org-service` | Microservice: Users, Stores, Branches, Employees, Auth (`userdb`, Port `8081`) |
-| `inventory-catalog-service` | Microservice: Categories, Products, Inventories (`inventorydb`, Port `8082`) |
-| `order-sales-service` | Microservice: Orders, Customers, Refunds, Shift Reports (`orderdb`, Port `8083`) |
-| `billing-analytics-service` | Microservice: Subscriptions, Payments, Analytics, Super Admin (`billingdb`, Port `8084`) |
-| `POS---ML` | Python FastAPI ML service: Fraud detection, Dynamic pricing, Demand forecasting (Port `8000`) |
+| `POS---System` | Original monolithic Spring Boot backend (preserved for reference/migration) |
+| `POS---Microservices` | Microservices backend architecture (Gateway, Eureka, and Domain Services) |
 | `POS---System-frontend` | React 19 + Vite single-page application with role-based dashboards |
-| `POS---System` | Original monolithic codebase (preserved for reference/migration) |
+| `POS---ML` | Python FastAPI ML service: Fraud detection, Dynamic pricing, Demand forecasting (Port `8000`) |
 | `brain` | Shared project notes, architecture audits, change history, and runbooks |
 
 ## Core Capabilities
@@ -87,7 +82,7 @@ CREATE DATABASE IF NOT EXISTS billingdb;
 
 ### 2. Service Startup Order
 
-Open separate terminals and start services in order:
+Open separate terminals and start services in order from the `POS---Microservices` directory:
 
 | Step | Service | Command | Port |
 |---|---|---|---|
@@ -118,7 +113,7 @@ The frontend is a role-driven single-page application.
 5. Pages dispatch async thunks to call backend APIs
 6. Redux slices store UI state for dashboards and workflows
 
-## Local Development
+## Running the Monolithic System Locally
 
 ### Prerequisites
 
