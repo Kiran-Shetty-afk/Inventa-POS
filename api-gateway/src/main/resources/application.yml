@@ -1,0 +1,84 @@
+server:
+  port: 5000
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:5173"
+              - "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+              - PATCH
+            allowedHeaders: "*"
+            allowCredentials: true
+
+      routes:
+        # 1. User & Organization Service
+        - id: user-org-service
+          uri: lb://USER-ORG-SERVICE
+          predicates:
+            - Path=/auth/**, /users/**, /api/users/**, /api/stores/**, /api/branches/**, /api/employees/**
+          filters:
+            - name: AuthenticationFilter
+
+        # 2. Inventory & Catalog Service
+        - id: inventory-catalog-service
+          uri: lb://INVENTORY-CATALOG-SERVICE
+          predicates:
+            - Path=/api/products/**, /api/categories/**, /api/inventories/**
+          filters:
+            - name: AuthenticationFilter
+
+        # 3. Sales & Order Management Service
+        - id: order-sales-service
+          uri: lb://ORDER-SALES-SERVICE
+          predicates:
+            - Path=/api/orders/**, /api/customers/**, /api/refunds/**, /api/shift-reports/**
+          filters:
+            - name: AuthenticationFilter
+
+        # 4. Billing, Payment & Analytics Service
+        - id: billing-analytics-service
+          uri: lb://BILLING-ANALYTICS-SERVICE
+          predicates:
+            - Path=/api/payments/**, /api/subscriptions/**, /api/store/analytics/**, /api/store-analytics/**, /api/branch-analytics/**, /api/super-admin/**
+          filters:
+            - name: AuthenticationFilter
+
+        # 5. ML Intelligence Service (FastAPI)
+        - id: ml-intelligence-service
+          uri: http://localhost:8000
+          predicates:
+            - Path=/predict-fraud, /predict-price, /predict-demand
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+jwt:
+  secret: asdfghjklpoiuytrewqzxcvbnmlkjhglpouhggfdsawqwertyyuiioplmnbvcxzasdfgh
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    com.zosh.gateway: DEBUG

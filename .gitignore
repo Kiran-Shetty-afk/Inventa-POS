@@ -1,41 +1,151 @@
-**/node_modules/
-**/dist/
-**/target/
-**/.idea/
-**/.DS_Store
-HELP.md
+# ==============================================================================
+#                      Inventa-POS Root .gitignore
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Environment & Secret Configuration Files
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+*.p12
+*.jks
+
+# Local / Secret Spring Profiles (exclude secrets, keep example templates)
+**/src/main/resources/application-local.yml
+**/src/main/resources/application-local.yaml
+**/src/main/resources/application-local.properties
+**/src/main/resources/application-prod.yml
+**/src/main/resources/application-prod.yaml
+**/src/main/resources/application-prod.properties
+**/src/main/resources/application-secret*.yml
+**/src/main/resources/application-secret*.yaml
+**/src/main/resources/application-secret*.properties
+
+!**/src/main/resources/application-*.example.yml
+!**/src/main/resources/application-*.example.yaml
+!**/src/main/resources/application-*.example.properties
+
+# ------------------------------------------------------------------------------
+# 2. Java & Spring Boot Microservices (Maven)
+# ------------------------------------------------------------------------------
 target/
-.mvn/wrapper/maven-wrapper.jar
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+
+# Maven Wrapper & build exclusions
+!.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# Spring & Server Logs
+logs/
+**/logs/
+*.log
+*.log.*
+temp/
+**/temp/
 
-### IntelliJ IDEA ###
-.idea
+# ------------------------------------------------------------------------------
+# 3. Node.js & React Frontend (POS---System-frontend)
+# ------------------------------------------------------------------------------
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+dist-ssr/
+**/dist-ssr/
+build/
+**/build/
+.next/
+out/
+
+# Frontend caches & package logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.vite/
+**/.vite/
+.eslintcache
+.stylelintcache
+
+# ------------------------------------------------------------------------------
+# 4. Python & Machine Learning (POS---ML)
+# ------------------------------------------------------------------------------
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Python Virtual Environments
+.venv/
+**/.venv/
+venv/
+**/venv/
+env/
+**/env/
+
+# ML Testing & Notebook Caches
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ------------------------------------------------------------------------------
+# 5. IDEs & Code Editors
+# ------------------------------------------------------------------------------
+# VS Code
+.vscode/
+**/.vscode/
+!.vscode/extensions.json
+
+# IntelliJ IDEA
+.idea/
+**/.idea/
 *.iws
 *.iml
 *.ipr
+out/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
+# Eclipse / Spring Tool Suite (STS)
+.apt_generated
+.apt_generated_tests
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
 
-### VS Code ###
-.vscode/
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
 
-# Local backend secrets/config
-POS---System/src/main/resources/application.yml
+# ------------------------------------------------------------------------------
+# 6. Operating System Files
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+scratch/
+**/scratch/
