@@ -80,6 +80,19 @@ flowchart TD
 | **Billing & Analytics Service**| `/api/payments/**`, `/api/subscriptions/**`, `/api/branch-analytics/**` | Payment links, SaaS subscriptions, and store reporting |
 | **ML Intelligence Service** | `/predict-fraud`, `/predict-price` | Machine learning for fraud detection and dynamic pricing |
 
+## API Gateway
+
+All frontend API requests are routed through the API Gateway on port `5000`.
+The gateway is responsible for:
+
+- Centralized request routing
+- JWT validation
+- Forwarding authenticated user information to downstream services
+- Service discovery through Eureka
+- Hiding individual microservice ports from the frontend
+
+The frontend therefore communicates primarily with the Gateway rather than directly with individual microservices.
+
 ## Running the Microservices Locally
 
 ### 1. Create MySQL Databases
