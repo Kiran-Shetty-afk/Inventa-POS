@@ -1,0 +1,52 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "prometheus"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "eureka-server"
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["host.docker.internal:8761"]
+
+  - job_name: "api-gateway"
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["host.docker.internal:5000"]
+
+  - job_name: "user-org-service"
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["host.docker.internal:8081"]
+
+  - job_name: "inventory-catalog-service"
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["host.docker.internal:8082"]
+
+  - job_name: "order-sales-service"
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["host.docker.internal:8083"]
+
+  - job_name: "billing-analytics-service"
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["host.docker.internal:8084"]
+
+  - job_name: "ML service"
+    metrics_path: "/metrics"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+

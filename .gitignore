@@ -39,3 +39,24 @@ build/
 
 # Local backend secrets/config
 POS---System/src/main/resources/application.yml
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!.env.example
+
+# Python generated files
+__pycache__/
+*.py[cod]
+.venv/
+
+# Local logs
+*.log
+vite-log.txt
+edge_out.txt
+
+# Local browser profile data
+edge-profile/

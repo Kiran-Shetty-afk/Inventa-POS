@@ -1,15 +1,48 @@
+import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from pydantic import BaseModel
 import pandas as pd
 import joblib
+import py_eureka_client.eureka_client as eureka_client
 
 from demand_forecast import predict_demand
 
-app = FastAPI()
-
-import os
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+EUREKA_SERVER = os.getenv("EUREKA_SERVER", "http://localhost:8761/eureka")
+APP_NAME = os.getenv("APP_NAME", "ml-intelligence-service")
+PORT = int(os.getenv("PORT", "8000"))
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Register with Eureka on startup
+    try:
+        await eureka_client.init_async(
+            eureka_server=EUREKA_SERVER,
+            app_name=APP_NAME,
+            instance_port=PORT,
+            instance_host="localhost"
+        )
+        print(f"[Eureka] Successfully registered {APP_NAME} on {EUREKA_SERVER}")
+    except Exception as e:
+        print(f"[Eureka] Notice: Eureka server not reachable ({e}). Continuing standalone.")
+    yield
+    # Deregister from Eureka on shutdown
+    try:
+        await eureka_client.stop_async()
+        print(f"[Eureka] Successfully deregistered {APP_NAME}")
+    except Exception as e:
+        print(f"[Eureka] Error during deregistration: {e}")
+
+app = FastAPI(
+    title="ML Intelligence Service",
+    description="Machine Learning service for Inventa POS registered on Eureka",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+from prometheus_fastapi_instrumentator import Instrumentator
+Instrumentator().instrument(app).expose(app)
 
 # Load trained models safely
 try:
@@ -41,7 +74,6 @@ class FraudRequest(BaseModel):
     orderHour: int
 
 class PricingRequest(BaseModel):
-
     category: str
     current_price: float
     stock_remaining: int
@@ -55,12 +87,22 @@ class DemandRequest(BaseModel):
     dailyDemand: list[float]
     horizon: int
 
+@app.get("/")
+@app.get("/health")
+@app.get("/actuator/health")
+def health_check():
+    return {
+        "status": "UP",
+        "service": APP_NAME,
+        "fraud_model_loaded": model is not None,
+        "pricing_model_loaded": pricing_model is not None
+    }
+
 @app.post("/predict-fraud")
 def predict(request: FraudRequest):
-
     df = pd.DataFrame([{
         "totalAmount": request.totalAmount,
-        "paymentType": payment_map[request.paymentType],
+        "paymentType": payment_map.get(request.paymentType, 0),
         "itemsCount": request.itemsCount,
         "totalQuantity": request.totalQuantity,
         "averageItemPrice": request.averageItemPrice,
@@ -80,9 +122,9 @@ def predict(request: FraudRequest):
         "prediction": int(prediction),
         "fraudProbability": round(float(probability), 4)
     }
+
 @app.post("/predict-price")
 def predict_price(request: PricingRequest):
-
     df = pd.DataFrame([{
         "category": request.category,
         "current_price": request.current_price,
@@ -103,14 +145,14 @@ def predict_price(request: PricingRequest):
     return {
         "recommendedPrice": round(float(prediction), 2)
     }
+
 @app.post("/predict-demand")
 def predict_demand_endpoint(request: DemandRequest):
-
     forecast = predict_demand(
-    request.dailyDemand,
-    request.horizon,
-    request.productId
-)
+        request.dailyDemand,
+        request.horizon,
+        request.productId
+    )
 
     return {
         "productId": request.productId,

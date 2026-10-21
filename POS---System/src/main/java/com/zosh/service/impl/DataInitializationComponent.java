@@ -6,6 +6,7 @@ import com.zosh.modal.User;
 import com.zosh.repository.BranchRepository;
 import com.zosh.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,7 +21,11 @@ public class DataInitializationComponent implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
 
     private static final String SEED_CASHIER_EMAIL = "cashier@gmail.com";
-    private static final String SEED_CASHIER_PASSWORD = "12345678";
+    @Value("${seed.admin.password:your_admin_password}")
+    private String seedAdminPassword;
+
+    @Value("${seed.cashier.password:your_cashier_password}")
+    private String seedCashierPassword;
 
     @Override
     public void run(String... args) {
@@ -34,7 +39,7 @@ public class DataInitializationComponent implements CommandLineRunner {
         if (userRepository.findByEmail(adminUsername)==null) {
             User adminUser = new User();
 
-            adminUser.setPassword(passwordEncoder.encode("12345678"));
+            adminUser.setPassword(passwordEncoder.encode(seedAdminPassword));
             adminUser.setFullName("Kiran Shetty");
             adminUser.setEmail(adminUsername);
             adminUser.setRole(UserRole.ROLE_ADMIN);
@@ -58,7 +63,7 @@ public class DataInitializationComponent implements CommandLineRunner {
         Branch branch = branches.get(0);
 
         User cashier = new User();
-        cashier.setPassword(passwordEncoder.encode(SEED_CASHIER_PASSWORD));
+        cashier.setPassword(passwordEncoder.encode(seedCashierPassword));
         cashier.setFullName("Demo Cashier");
         cashier.setEmail(SEED_CASHIER_EMAIL);
         cashier.setPhone("0000000000");

@@ -33,7 +33,7 @@ public class SecurityConfig {
                         .anyRequest().permitAll())
                 .addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .exceptionHandling(
                         exceptionHandler -> exceptionHandler
                                 .authenticationEntryPoint(customAuthenticationEntryPoint))
