@@ -1,13 +1,15 @@
 # Workspace Overview
 
 ## Purpose
-Root workspace containing multiple POS-related projects.
+Root workspace for the Inventa POS microservices submission.
 
 ## Current Structure
 - `README.md`: Root repository readme.
-- `POS---System`: Backend/system project.
-- `POS---System-frontend`: Frontend project.
+- `POS---Microservices`: Spring Boot microservices backend (Eureka, API Gateway, and domain services).
+- `POS---System-frontend`: React + Vite frontend.
+- `POS---ML`: FastAPI machine-learning service.
+- `prometheus`, `grafana`, `docker-compose.yml`: Monitoring configuration.
 - `brain`: Shared root knowledge base.
 
 ## Notes
-- This root repository currently tracks only root-level files unless subproject contents are added explicitly.
+- The former monolithic backend was removed; older notes that discuss it are historical records.

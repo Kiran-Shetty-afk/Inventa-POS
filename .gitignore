@@ -37,9 +37,6 @@ build/
 ### VS Code ###
 .vscode/
 
-# Local backend secrets/config
-POS---System/src/main/resources/application.yml
-
 # Environment files and secrets
 .env
 .env.*

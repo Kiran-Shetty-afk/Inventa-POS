@@ -8,7 +8,6 @@ The platform is built around role-based workflows for super admins, store admins
 
 | Path | Purpose |
 |---|---|
-| `POS---System` | Original monolithic Spring Boot backend (preserved for reference/migration) |
 | `POS---Microservices` | Microservices backend architecture (Gateway, Eureka, and Domain Services) |
 | `POS---System-frontend` | React 19 + Vite single-page application with role-based dashboards |
 | `POS---ML` | Python FastAPI ML service: Fraud detection, Dynamic pricing, Demand forecasting (Port `8000`) |
@@ -51,7 +50,7 @@ flowchart TD
     
     UserOrg["User & Org Service<br/>(Port 8081)<br/>Database: userdb"]
     Inventory["Inventory Catalog Service<br/>(Port 8082)<br/>Database: inventorydb"]
-    OrderSales["Order & Sales Service<br/>(Port 8083)<br/>Database: orderdb"]
+    OrderSales["Order & Sales Service<br/>(Port 8083)<br/>Database: salesdb"]
     BillingAnalytics["Billing & Analytics Service<br/>(Port 8084)<br/>Database: billingdb"]
     MLService["ML Intelligence Service<br/>(FastAPI, Port 8000)"]
 
@@ -78,7 +77,7 @@ flowchart TD
 | **Inventory Catalog Service** | `/api/products/**`, `/api/inventories/**` | Product catalog, categories, and inventory tracking |
 | **Order & Sales Service** | `/api/orders/**`, `/api/customers/**` | Checkout, order processing, and customer management |
 | **Billing & Analytics Service**| `/api/payments/**`, `/api/subscriptions/**`, `/api/branch-analytics/**` | Payment links, SaaS subscriptions, and store reporting |
-| **ML Intelligence Service** | `/predict-fraud`, `/predict-price` | Machine learning for fraud detection and dynamic pricing |
+| **ML Intelligence Service** | `/predict-fraud`, `/predict-price`, `/predict-demand` | Fraud detection, dynamic pricing, and demand forecasting |
 
 ## API Gateway
 
@@ -99,7 +98,7 @@ The frontend therefore communicates primarily with the Gateway rather than direc
 ```sql
 CREATE DATABASE IF NOT EXISTS userdb;
 CREATE DATABASE IF NOT EXISTS inventorydb;
-CREATE DATABASE IF NOT EXISTS orderdb;
+CREATE DATABASE IF NOT EXISTS salesdb;
 CREATE DATABASE IF NOT EXISTS billingdb;
 ```
 
@@ -136,44 +135,28 @@ The frontend is a role-driven single-page application.
 5. Pages dispatch async thunks to call backend APIs
 6. Redux slices store UI state for dashboards and workflows
 
-## Running the Frontend and Legacy System Locally
+## Running the Frontend Locally
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js (version supported by Vite 7)
 - npm
+- Python 3.10+ (for the ML service)
 - Java 17
-- Maven Wrapper support
+- Maven Wrapper (included in `POS---Microservices`)
 - MySQL 8+
 
-### Backend Setup
+### Backend setup
 
-From [`POS---System`](D:/Projects/Inventa-POS/POS---System):
+Create the four databases listed above, set `JWT_SECRET`, `DB_USERNAME`, and `DB_PASSWORD` in the environment, then start the services from `POS---Microservices` in the order shown in the startup table. Service-specific payment and AI integrations also require their corresponding credentials; see the service `application.yml` files and the root `.env.example` for variable names.
 
-```powershell
-./mvnw.cmd spring-boot:run
-```
+On Windows, `POS---Microservices/start-services.ps1` can launch the backend services in separate PowerShell windows after `JWT_SECRET` is set. The script expects the MySQL server and databases to be available first.
 
-The backend runs on `http://localhost:5000`.
-
-#### Backend Configuration
-
-The application reads configuration from [`POS---System/src/main/resources/application.yml`](D:/Projects/Inventa-POS/POS---System/src/main/resources/application.yml). Key settings include:
-
-- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`
-- `RAZORPAY_KEY`, `RAZORPAY_SECRET`
-- `STRIPE_SECRET`
-- `MAIL_USERNAME`, `MAIL_PASSWORD`
-
-Default local database target:
-
-```text
-jdbc:mysql://localhost:3306/pos2
-```
+The microservices API gateway listens on `http://localhost:5000`.
 
 ### Frontend Setup
 
-From [`POS---System-frontend`](D:/Projects/Inventa-POS/POS---System-frontend):
+From `POS---System-frontend`:
 
 ```powershell
 npm install
@@ -184,7 +167,7 @@ The frontend runs on `http://localhost:5173`.
 
 During local development, Vite proxies API traffic to `http://localhost:5000` through [`POS---System-frontend/vite.config.js`](D:/Projects/Inventa-POS/POS---System-frontend/vite.config.js).
 
-### Build Commands
+### Build commands
 
 #### Frontend
 
@@ -194,17 +177,16 @@ npm run build
 npm run test
 ```
 
-#### Backend
+#### Backend microservices
 
 ```powershell
-cd POS---System
-./mvnw.cmd compile
-./mvnw.cmd test
+cd POS---Microservices
+./mvnw.cmd -DskipTests package
 ```
 
 ## Important Project Notes
 
-- The frontend and backend are developed as separate apps inside one repository root
+- The frontend, microservices backend, and ML service are separate apps inside this repository
 - JWT-based authentication is used across protected app routes and API endpoints
 - Some project notes call out contract-drift risks between frontend thunks and backend endpoints, so integration validation remains important when extending flows
 - Payment and subscription flows rely on external providers and should be tested with environment-specific credentials
@@ -218,10 +200,9 @@ The shared [`brain`](D:/Projects/Inventa-POS/brain) directory is the repository'
 - historical seed runbooks
 - bug-fix sweeps and change tracking
 
-Useful starting documents:
+Useful starting documents (some older notes describe the former monolith and are retained as project history):
 
 - [`brain/001-workspace-overview.md`](D:/Projects/Inventa-POS/brain/001-workspace-overview.md)
-- [`brain/002-fullstack-architecture-roles-audit.md`](D:/Projects/Inventa-POS/brain/002-fullstack-architecture-roles-audit.md)
 - [`brain/015-role-features-superadmin-storeadmin-branchmanager-cashier-apr-23.md`](D:/Projects/Inventa-POS/brain/015-role-features-superadmin-storeadmin-branchmanager-cashier-apr-23.md)
 - [`brain/CHANGELOG.md`](D:/Projects/Inventa-POS/brain/CHANGELOG.md)
 

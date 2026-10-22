@@ -1,4 +1,6 @@
-# Fullstack Architecture and Roles Audit
+# Historical Monolith Architecture and Roles Audit
+
+> Historical reference: this audit describes the former `POS---System` monolith, which has been removed. It is not the current architecture or setup guide. The current backend is in `POS---Microservices`.
 
 ## Scope
 In-depth understanding of:

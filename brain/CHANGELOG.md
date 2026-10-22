@@ -1,5 +1,10 @@
 # Brain Changelog
 
+## 2026-10-22 - Remove legacy monolith for microservices submission
+- Removed the former `POS---System` monolithic backend from the repository.
+- Updated the root README and workspace overview to document the microservices architecture only, corrected the sales database name, and removed the obsolete monolith config ignore rule.
+- Marked the monolith architecture audit and migration plan as historical references.
+
 ## v2026.04.23.40 - Consolidated role feature reference
 - Added `brain/015-role-features-superadmin-storeadmin-branchmanager-cashier-apr-23.md` with detailed, role-wise feature coverage for Super Admin, Store Admin, Branch Manager, and Cashier.
 - Consolidated capabilities from architecture and all Apr-23 role-related fix/feature notes so role behavior is documented in one place.

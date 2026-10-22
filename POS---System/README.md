@@ -1,1 +1,0 @@
-# Inventa-POS

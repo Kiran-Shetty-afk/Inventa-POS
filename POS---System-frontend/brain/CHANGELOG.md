@@ -178,9 +178,9 @@ All entries are dated and versioned for uniqueness.
 
 **Date:** 2026-04-10
 
-**Summary:** Seeded demo cashier login **`cashier@gmail.com`** / **`12345678`** in the Spring API (`POS---System`): `DataInitializationComponent` creates the user on startup when no user with that email exists **and** at least one `Branch` row exists (assigns lowest `id` branch, links store when present). Login page demo copy updated to document credentials and the branch prerequisite.
+**Historical summary:** Seeded demo cashier login **`cashier@gmail.com`** / **`12345678`** in the former Spring monolith: `DataInitializationComponent` created the user on startup when no user with that email existed **and** at least one `Branch` row existed (assigned lowest `id` branch, linked store when present). Login page demo copy documented the credentials and branch prerequisite. The monolith has since been removed.
 
-**Changed (backend repo):** `../POS---System/src/main/java/com/zosh/service/impl/DataInitializationComponent.java`
+**Former backend file (removed):** `../POS---System/src/main/java/com/zosh/service/impl/DataInitializationComponent.java`
 
 **Changed (this repo):** `src/pages/common/Auth/Login.jsx`, `brain/CHANGELOG.md`
 

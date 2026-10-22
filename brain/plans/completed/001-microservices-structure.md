@@ -16,6 +16,8 @@ files:
 
 # Plan — Microservices Structure and README Update
 
+> Historical completed plan. The monolith referenced below has since been removed; `POS---Microservices` is the submitted backend.
+
 ## Summary
 The current branch (`Kiran-microservices-update`) has the microservices implementation scattered in the root directory alongside the monolithic `POS---System` application and other folders. We will organize the microservices into a dedicated `POS---Microservices` directory and update the root `README.md` to reflect both the monolithic and microservices architectures.
 
