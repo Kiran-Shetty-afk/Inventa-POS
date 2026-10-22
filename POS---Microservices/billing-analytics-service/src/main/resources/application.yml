@@ -35,7 +35,8 @@ razorpay:
 
 stripe:
   api:
-    key: ${STRIPE_API_KEY}
+    # Stripe is optional; the service still starts and supports Razorpay without it.
+    key: ${STRIPE_API_KEY:}
 
 gemini:
   api:

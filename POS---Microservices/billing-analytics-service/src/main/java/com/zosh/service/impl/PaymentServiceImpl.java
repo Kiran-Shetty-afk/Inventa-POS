@@ -27,7 +27,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
-    @Value("${stripe.api.key:sk_test_placeholder}")
+    @Value("${stripe.api.key:}")
     private String stripeSecretKey;
 
     @Value("${razorpay.api.key:rzp_test_placeholder}")
@@ -46,6 +46,10 @@ public class PaymentServiceImpl implements PaymentService {
                                            Long storeId,
                                            Long planId,
                                            PaymentMethod paymentMethod) throws RazorpayException, StripeException, Exception {
+
+        if (paymentMethod == PaymentMethod.STRIPE && !isStripeConfigured()) {
+            throw new IllegalStateException("Stripe payments are disabled because STRIPE_API_KEY is not configured");
+        }
 
         SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(planId)
                 .orElseThrow(() -> new Exception("Subscription plan not found with id: " + planId));
@@ -150,6 +154,9 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public String createStripePaymentLink(Double amount, Long planId) throws StripeException {
+        if (!isStripeConfigured()) {
+            throw new IllegalStateException("Stripe payments are disabled because STRIPE_API_KEY is not configured");
+        }
         Stripe.apiKey = stripeSecretKey;
 
         SessionCreateParams params = SessionCreateParams.builder()
@@ -171,5 +178,9 @@ public class PaymentServiceImpl implements PaymentService {
 
         Session session = Session.create(params);
         return session.getUrl();
+    }
+
+    private boolean isStripeConfigured() {
+        return stripeSecretKey != null && !stripeSecretKey.isBlank();
     }
 }
