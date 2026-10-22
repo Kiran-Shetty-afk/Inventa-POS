@@ -12,6 +12,7 @@ Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host ""
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent $root
 
 # 1. Eureka Server
 Write-Host "[1/7] Launching Eureka Server (Port 8761)..." -ForegroundColor Green
@@ -45,8 +46,8 @@ Start-Sleep -Seconds 4
 
 # 7. ML Intelligence Service (FastAPI)
 Write-Host "[7/7] Launching ML Intelligence Service (Port 8000)..." -ForegroundColor Green
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\POS---ML'; Write-Host 'ML Intelligence Service (Port 8000)' -ForegroundColor Yellow; uvicorn app:app --host 0.0.0.0 --port 8000"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$repoRoot\POS---ML'; Write-Host 'ML Intelligence Service (Port 8000)' -ForegroundColor Yellow; uvicorn app:app --host 0.0.0.0 --port 8000"
 
 Write-Host ""
 Write-Host "All 7 backend microservices have been launched in separate terminal windows!" -ForegroundColor Cyan
-Write-Host "To start the frontend, run: cd POS---System-frontend && npm run dev" -ForegroundColor Cyan
+Write-Host "To start the frontend, run: cd POS---System-frontend && npm run dev (from repo root)" -ForegroundColor Cyan
