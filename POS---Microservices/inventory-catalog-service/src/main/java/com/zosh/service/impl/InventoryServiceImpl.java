@@ -2,6 +2,7 @@ package com.zosh.service.impl;
 
 import com.zosh.mapper.InventoryMapper;
 import com.zosh.exception.AccessDeniedException;
+import com.zosh.exception.UserException;
 import com.zosh.modal.Inventory;
 import com.zosh.modal.Product;
 import com.zosh.payload.dto.InventoryDTO;
@@ -37,11 +38,27 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public InventoryDTO createInventory(InventoryDTO dto) throws Exception {
+        if (dto == null || dto.getBranchId() == null || dto.getProductId() == null) {
+            throw new UserException("Branch and product are required to add stock");
+        }
+        if (dto.getQuantity() == null || dto.getQuantity() <= 0) {
+            throw new UserException("Quantity must be a positive integer");
+        }
+
         requireBranchAccess(dto.getBranchId());
         Product product = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
-        Inventory inventory = InventoryMapper.toEntity(dto, product);
+        List<Inventory> existingRows = inventoryRepository.findAllByBranchIdAndProductIdForUpdate(
+                dto.getBranchId(), product.getId());
+        Inventory inventory;
+        if (existingRows.isEmpty()) {
+            inventory = InventoryMapper.toEntity(dto, product);
+        } else {
+            inventory = existingRows.get(0);
+            int currentQuantity = inventory.getQuantity() == null ? 0 : inventory.getQuantity();
+            inventory.setQuantity(Math.addExact(currentQuantity, dto.getQuantity()));
+        }
         return InventoryMapper.toDto(inventoryRepository.saveAndFlush(inventory));
     }
 

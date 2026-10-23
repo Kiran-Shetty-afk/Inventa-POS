@@ -3,8 +3,16 @@ import { useDispatch, useSelector } from "react-redux";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Download, FileText, BarChart2, TrendingUp, Users, PackageSearch } from "lucide-react";
+import { Calendar, Download, FileText, BarChart2, TrendingUp, Users, PackageSearch, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { buildCsv, downloadCsvFile } from "@/utils/csvExport";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, PieChart as RPieChart, Pie, Cell } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
@@ -16,9 +24,18 @@ import {
   getDemandForecast,
   getBranchHealthCopilotSummary,
 } from "@/Redux Toolkit/features/branchAnalytics/branchAnalyticsThunks";
+import { createInventory } from "@/Redux Toolkit/features/inventory/inventoryThunks";
 import BranchHealthCopilotCard from "@/components/branch/BranchHealthCopilotCard";
+import AnalyticsState from "../Dashboard/AnalyticsState";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+const formatLocalDateInput = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const Reports = () => {
   const dispatch = useDispatch();
@@ -28,51 +45,63 @@ const Reports = () => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   }, []);
-  const currentDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const currentDate = useMemo(() => formatLocalDateInput(new Date()), []);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedDate, setSelectedDate] = useState(currentDate);
   const [viewMode, setViewMode] = useState("month");
+  const [selectedReorder, setSelectedReorder] = useState(null);
+  const [orderingProductId, setOrderingProductId] = useState(null);
   const {
     dailySales,
+    dailySalesLoading,
+    dailySalesError,
     paymentBreakdown,
+    paymentBreakdownLoading,
+    paymentBreakdownError,
     categorySales,
+    categorySalesLoading,
+    categorySalesError,
     topCashiers,
+    topCashiersLoading,
+    topCashiersError,
     demandForecast,
     demandForecastLoading,
+    demandForecastError,
     copilotSummary,
     copilotSummaryLoading,
     copilotSummaryError,
   } = useSelector((state) => state.branchAnalytics);
 
-  useEffect(() => {
-    if (branchId) {
-      const requests = [];
-      if (viewMode === "month") {
-        const [year, month] = selectedMonth.split("-").map(Number);
-        if (Number.isInteger(year) && Number.isInteger(month)) {
-          requests.push(dispatch(getDailySalesChart({ branchId, year, month })));
-          requests.push(dispatch(getPaymentBreakdown({ branchId, year, month })));
-          requests.push(dispatch(getCategoryWiseSalesBreakdown({ branchId, year, month })));
-          requests.push(dispatch(getTopCashiersByRevenue({ branchId, year, month })));
-          requests.push(dispatch(getDemandForecast({ branchId, lookbackDays: 90 })));
-        }
-      } else if (selectedDate) {
-        requests.push(dispatch(getDailySalesChart({ branchId, days: 1, date: selectedDate })));
-        requests.push(dispatch(getPaymentBreakdown({ branchId, date: selectedDate })));
-        requests.push(dispatch(getCategoryWiseSalesBreakdown({ branchId, date: selectedDate })));
-        requests.push(dispatch(getTopCashiersByRevenue({ branchId, date: selectedDate })));
-        requests.push(dispatch(getDemandForecast({ branchId, anchorDate: selectedDate, lookbackDays: 90 })));
-      }
-      return () => {
-        requests.forEach((request) => request.abort?.());
-      };
+  const periodQuery = useMemo(() => {
+    if (!branchId) return null;
+    if (viewMode === "month") {
+      const [year, month] = selectedMonth.split("-").map(Number);
+      return Number.isInteger(year) && Number.isInteger(month) ? { branchId, year, month } : null;
     }
-  }, [branchId, dispatch, selectedMonth, selectedDate, viewMode]);
+    return selectedDate ? { branchId, date: selectedDate } : null;
+  }, [branchId, selectedDate, selectedMonth, viewMode]);
+
+  useEffect(() => {
+    if (!periodQuery) return undefined;
+    const forecastQuery = {
+      branchId,
+      lookbackDays: 90,
+      ...(viewMode === "day" ? { anchorDate: selectedDate } : {}),
+    };
+    const requests = [
+      dispatch(getDailySalesChart(viewMode === "day" ? { ...periodQuery, days: 1 } : periodQuery)),
+      dispatch(getPaymentBreakdown(periodQuery)),
+      dispatch(getCategoryWiseSalesBreakdown(periodQuery)),
+      dispatch(getTopCashiersByRevenue(periodQuery)),
+      dispatch(getDemandForecast(forecastQuery)),
+    ];
+    return () => requests.forEach((request) => request.abort?.());
+  }, [branchId, dispatch, periodQuery, selectedDate, viewMode]);
 
   // Map API data to recharts format
   const salesData = dailySales?.map((item) => ({
     date: item.date,
-    sales: item.totalSales,
+    sales: Number(item.totalSales ?? 0),
   })) || [];
 
   const toNumber = (value) => {
@@ -117,8 +146,8 @@ const Reports = () => {
   }, {});
 
   const cashierData = topCashiers?.map((item) => ({
-    name: item.cashierName,
-    sales: item.totalRevenue,
+    name: item.cashierName || `Cashier ${item.cashierId ?? ""}`,
+    sales: Number(item.totalRevenue ?? 0),
   })) || [];
 
   const cashierConfig = {
@@ -145,6 +174,41 @@ const Reports = () => {
   };
 
   const demandForecastRows = Array.isArray(demandForecast) ? demandForecast : [];
+
+  const handleReceiveSuggestedStock = async () => {
+    if (!branchId || !selectedReorder || orderingProductId !== null) return;
+
+    const quantity = Number(selectedReorder.recommendedReorderQty);
+    if (!Number.isInteger(quantity) || quantity <= 0) return;
+
+    setOrderingProductId(selectedReorder.productId);
+    try {
+      await dispatch(createInventory({
+        branchId,
+        productId: selectedReorder.productId,
+        quantity,
+      })).unwrap();
+
+      setSelectedReorder(null);
+      toast({
+        title: "Suggested stock added",
+        description: `Added ${quantity} units of ${selectedReorder.productName} to this branch's inventory.`,
+      });
+      dispatch(getDemandForecast({
+        branchId,
+        lookbackDays: 90,
+        ...(viewMode === "day" ? { anchorDate: selectedDate } : {}),
+      }));
+    } catch (error) {
+      toast({
+        title: "Could not update inventory",
+        description: error?.message || "Please try again. The inventory was not confirmed as updated.",
+        variant: "destructive",
+      });
+    } finally {
+      setOrderingProductId(null);
+    }
+  };
 
   /**
    * Fetches fresh analytics from the API and downloads a CSV (Excel opens CSV).
@@ -462,41 +526,26 @@ const Reports = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <ChartContainer config={salesConfig}>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={salesData}>
-                      <XAxis
-                        dataKey="date"
-                        stroke="#888888"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        stroke="#888888"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(value) => `₹${value}`}
-                      />
-                      <ChartTooltip
-                        content={({ active, payload }) => (
-                          <ChartTooltipContent
-                            active={active}
-                            payload={payload}
-                            formatter={(value) => [`₹${value}`, "Sales"]}
-                          />
-                        )}
-                      />
-                      <Bar
-                        dataKey="sales"
-                        fill="currentColor"
-                        radius={[4, 4, 0, 0]}
-                        className="fill-primary"
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+                {dailySalesLoading || dailySalesError || salesData.length === 0 ? (
+                  <AnalyticsState
+                    loading={dailySalesLoading}
+                    error={dailySalesError}
+                    emptyMessage="No sales were recorded for this period."
+                    onRetry={() => periodQuery && dispatch(getDailySalesChart(viewMode === "day" ? { ...periodQuery, days: 1 } : periodQuery))}
+                    height="h-96"
+                  />
+                ) : (
+                  <ChartContainer config={salesConfig}>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart data={salesData}>
+                        <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value}`} />
+                        <ChartTooltip content={({ active, payload }) => <ChartTooltipContent active={active} payload={payload} formatter={(value) => [formatCurrency(Number(value || 0)), "Sales"]} />} />
+                        <Bar dataKey="sales" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                )}
               </CardContent>
             </Card>
 
@@ -511,10 +560,14 @@ const Reports = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                {paymentData.length === 0 ? (
-                  <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-                    No payment data available
-                  </div>
+                {paymentBreakdownLoading || paymentBreakdownError || paymentData.length === 0 ? (
+                  <AnalyticsState
+                    loading={paymentBreakdownLoading}
+                    error={paymentBreakdownError}
+                    emptyMessage="No payment activity was recorded for this period."
+                    onRetry={() => periodQuery && dispatch(getPaymentBreakdown(periodQuery))}
+                    height="h-96"
+                  />
                 ) : (
                   <ChartContainer config={paymentConfig}>
                     <RPieChart>
@@ -567,41 +620,26 @@ const Reports = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={salesConfig}>
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={salesData}>
-                    <XAxis
-                      dataKey="date"
-                      stroke="#888888"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      stroke="#888888"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => `₹${value}`}
-                    />
-                    <ChartTooltip
-                      content={({ active, payload }) => (
-                        <ChartTooltipContent
-                          active={active}
-                          payload={payload}
-                          formatter={(value) => [`₹${value}`, "Sales"]}
-                        />
-                      )}
-                    />
-                    <Bar
-                      dataKey="sales"
-                      fill="currentColor"
-                      radius={[4, 4, 0, 0]}
-                      className="fill-primary"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+              {dailySalesLoading || dailySalesError || salesData.length === 0 ? (
+                <AnalyticsState
+                  loading={dailySalesLoading}
+                  error={dailySalesError}
+                  emptyMessage="No sales were recorded for this period."
+                  onRetry={() => periodQuery && dispatch(getDailySalesChart(viewMode === "day" ? { ...periodQuery, days: 1 } : periodQuery))}
+                  height="h-96"
+                />
+              ) : (
+                <ChartContainer config={salesConfig}>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart data={salesData}>
+                      <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value}`} />
+                      <ChartTooltip content={({ active, payload }) => <ChartTooltipContent active={active} payload={payload} formatter={(value) => [formatCurrency(Number(value || 0)), "Sales"]} />} />
+                      <Bar dataKey="sales" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -619,12 +657,16 @@ const Reports = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {categoryData.length === 0 ? (
-                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                    No category sales data available
-                  </div>
-                ) : (
+              {categorySalesLoading || categorySalesError || categoryData.length === 0 ? (
+                <AnalyticsState
+                  loading={categorySalesLoading}
+                  error={categorySalesError}
+                  emptyMessage="No category sales were recorded for this period."
+                  onRetry={() => periodQuery && dispatch(getCategoryWiseSalesBreakdown(periodQuery))}
+                  height="h-80"
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <ChartContainer config={categoryConfig}>
                     <RPieChart>
                       <Pie
@@ -657,7 +699,6 @@ const Reports = () => {
                       />
                     </RPieChart>
                   </ChartContainer>
-                )}
 
                 <div className="space-y-4">
                   {categoryData.map((category, index) => (
@@ -675,7 +716,8 @@ const Reports = () => {
                     </div>
                   ))}
                 </div>
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -693,6 +735,15 @@ const Reports = () => {
               </div>
             </CardHeader>
             <CardContent>
+              {topCashiersLoading || topCashiersError || cashierData.length === 0 ? (
+                <AnalyticsState
+                  loading={topCashiersLoading}
+                  error={topCashiersError}
+                  emptyMessage="No cashier sales were recorded for this period."
+                  onRetry={() => periodQuery && dispatch(getTopCashiersByRevenue(periodQuery))}
+                  height="h-96"
+                />
+              ) : (
               <ChartContainer config={cashierConfig}>
                 <ResponsiveContainer width="100%" height={400}>
                   <BarChart data={cashierData} layout="vertical" margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -730,6 +781,7 @@ const Reports = () => {
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -747,10 +799,14 @@ const Reports = () => {
               </div>
             </CardHeader>
             <CardContent>
-              {demandForecastLoading ? (
-                <div className="text-sm text-muted-foreground">Loading demand forecast...</div>
-              ) : demandForecastRows.length === 0 ? (
-                <div className="text-sm text-muted-foreground">No forecast data available for this branch.</div>
+              {demandForecastLoading || demandForecastError || demandForecastRows.length === 0 ? (
+                <AnalyticsState
+                  loading={demandForecastLoading}
+                  error={demandForecastError}
+                  emptyMessage="No demand forecast is available for this branch yet."
+                  onRetry={() => branchId && dispatch(getDemandForecast({ branchId, lookbackDays: 90, ...(viewMode === "day" ? { anchorDate: selectedDate } : {}) }))}
+                  height="h-48"
+                />
               ) : (
                 <div className="overflow-x-auto rounded-md border">
                   <table className="w-full text-sm">
@@ -762,6 +818,7 @@ const Reports = () => {
                         <th className="px-3 py-2 text-right font-medium">Next 14 Days</th>
                         <th className="px-3 py-2 text-right font-medium">Next 30 Days</th>
                         <th className="px-3 py-2 text-right font-medium">Suggested Reorder</th>
+                        <th className="px-3 py-2 text-right font-medium">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -775,6 +832,17 @@ const Reports = () => {
                           <td className="px-3 py-2 text-right font-semibold">
                             {row.recommendedReorderQty ?? 0}
                           </td>
+                          <td className="px-3 py-2 text-right">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={!Number.isInteger(Number(row.recommendedReorderQty)) || Number(row.recommendedReorderQty) <= 0 || orderingProductId !== null}
+                              onClick={() => setSelectedReorder(row)}
+                            >
+                              Receive stock
+                            </Button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -785,6 +853,54 @@ const Reports = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={Boolean(selectedReorder)}
+        onOpenChange={(open) => {
+          if (!open && orderingProductId === null) setSelectedReorder(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Receive suggested stock?</DialogTitle>
+            <DialogDescription>
+              This immediately adds the suggested units to this branch's on-hand inventory. It does not submit a supplier purchase order.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedReorder && (
+            <div className="rounded-md border bg-muted/30 p-4 text-sm">
+              <p className="font-medium">{selectedReorder.productName}</p>
+              <p className="mt-2 text-muted-foreground">
+                Current stock: {selectedReorder.currentStock ?? 0}
+              </p>
+              <p className="text-muted-foreground">
+                Add: {selectedReorder.recommendedReorderQty}
+              </p>
+              <p className="mt-1 font-semibold">
+                New stock: {Number(selectedReorder.currentStock ?? 0) + Number(selectedReorder.recommendedReorderQty ?? 0)}
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={orderingProductId !== null}
+              onClick={() => setSelectedReorder(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={orderingProductId !== null || !selectedReorder}
+              onClick={handleReceiveSuggestedStock}
+            >
+              {orderingProductId !== null && <Loader2 className="h-4 w-4 animate-spin" />}
+              {orderingProductId !== null ? "Updating inventory…" : "Confirm and add stock"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

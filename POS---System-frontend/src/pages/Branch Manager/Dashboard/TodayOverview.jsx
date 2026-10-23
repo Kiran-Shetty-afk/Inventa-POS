@@ -1,69 +1,79 @@
-import React from 'react'
-import { useSelector } from 'react-redux';
-import { getChangeType } from '../data';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { IndianRupee, ShoppingBag, Users, Package, CreditCard } from "lucide-react";
+import { useSelector } from "react-redux";
+import { IndianRupee, Package, ShoppingBag, Users } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import AnalyticsState from "./AnalyticsState";
 
-const TodayOverview = () => {
-      const { todayOverview, loading } = useSelector((state) => state.branchAnalytics);
+const formatCurrency = (value) => new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+}).format(Number(value ?? 0));
 
-      const kpis = todayOverview ? [
-        {
-          title: "Today's Sales",
-          value: `₹${todayOverview.totalSales?.toLocaleString() ?? "-"}`,
-          icon: <IndianRupee className="w-8 h-8 text-primary" />,
-          change: todayOverview.salesGrowth !== undefined ? `${todayOverview.salesGrowth > 0 ? "+" : ""}${todayOverview.salesGrowth.toFixed(2)}%` : "-",
-          changeType: getChangeType(todayOverview.salesGrowth)
-        },
-        {
-          title: "Orders Today",
-          value: todayOverview.ordersToday ?? "-",
-          icon: <ShoppingBag className="w-8 h-8 text-primary" />,
-          change: todayOverview.orderGrowth !== undefined ? `${todayOverview.orderGrowth > 0 ? "+" : ""}${todayOverview.orderGrowth.toFixed(2)}%` : "-",
-          changeType: getChangeType(todayOverview.orderGrowth)
-        },
-        {
-          title: "Active Cashiers",
-          value: todayOverview.activeCashiers ?? "-",
-          icon: <Users className="w-8 h-8 text-primary" />,
-          change: todayOverview.cashierGrowth !== undefined ? `${todayOverview.cashierGrowth > 0 ? "+" : ""}${todayOverview.cashierGrowth.toFixed(2)}%` : "-",
-          changeType: getChangeType(todayOverview.cashierGrowth)
-        },
-        {
-          title: "Low Stock Items",
-          value: todayOverview.lowStockItems ?? "-",
-          icon: <Package className="w-8 h-8 text-primary" />,
-          change: todayOverview.lowStockGrowth !== undefined ? `${todayOverview.lowStockGrowth > 0 ? "+" : ""}${todayOverview.lowStockGrowth.toFixed(2)}%` : "-",
-          changeType: getChangeType(todayOverview.lowStockGrowth)
-        },
-      ] : [];
+const growthLabel = (value) => `${Number(value ?? 0) > 0 ? "+" : ""}${Number(value ?? 0).toFixed(1)}% vs previous period`;
+
+const TodayOverview = ({ periodLabel = "today", onRetry }) => {
+  const { todayOverview, todayOverviewLoading, todayOverviewError } = useSelector((state) => state.branchAnalytics);
+  const shouldShowState = todayOverviewLoading || todayOverviewError || !todayOverview;
+
+  const kpis = todayOverview ? [
+    {
+      title: `Sales · ${periodLabel}`,
+      value: formatCurrency(todayOverview.totalSales),
+      icon: <IndianRupee className="h-6 w-6 text-primary" />,
+      change: growthLabel(todayOverview.salesGrowth),
+      growth: Number(todayOverview.salesGrowth ?? 0),
+    },
+    {
+      title: `Completed orders · ${periodLabel}`,
+      value: Number(todayOverview.ordersToday ?? 0).toLocaleString("en-IN"),
+      icon: <ShoppingBag className="h-6 w-6 text-primary" />,
+      change: growthLabel(todayOverview.orderGrowth),
+      growth: Number(todayOverview.orderGrowth ?? 0),
+    },
+    {
+      title: `Cashiers with sales · ${periodLabel}`,
+      value: Number(todayOverview.activeCashiers ?? 0).toLocaleString("en-IN"),
+      icon: <Users className="h-6 w-6 text-primary" />,
+      change: growthLabel(todayOverview.cashierGrowth),
+      growth: Number(todayOverview.cashierGrowth ?? 0),
+    },
+    {
+      title: "Low stock items",
+      value: Number(todayOverview.lowStockItems ?? 0).toLocaleString("en-IN"),
+      icon: <Package className="h-6 w-6 text-primary" />,
+      change: "At or below 5 units",
+      growth: null,
+    },
+  ] : [];
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {kpis.length > 0 ? kpis.map((kpi, index) => (
-          <Card key={index}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">{kpi.title}</p>
-                  <h3 className="text-2xl font-bold mt-1">{kpi.value}</h3>
-                  <p className={`text-xs font-medium mt-1 ${
-                    kpi.changeType === 'positive' ? 'text-emerald-500' : 
-                    kpi.changeType === 'negative' ? 'text-red-500' : 'text-gray-500'
-                  }`}>
-                    {kpi.change}
-                  </p>
-                </div>
-                <div className="p-3 bg-primary/10 rounded-full">
-                  {kpi.icon}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )) : (
-          <div className="col-span-4 text-center text-gray-400">{loading ? "Loading KPIs..." : "No data available"}</div>
-        )}
-      </div>
-  )
-}
+      {shouldShowState ? (
+        <div className="col-span-full rounded-lg border bg-card px-4">
+          <AnalyticsState
+            loading={todayOverviewLoading}
+            error={todayOverviewError}
+            emptyMessage={!todayOverview ? "Branch summary is not available yet." : null}
+            onRetry={onRetry}
+            height="h-36"
+          />
+        </div>
+      ) : kpis.map((kpi) => (
+        <Card key={kpi.title}>
+          <CardContent className="flex items-center justify-between gap-4 p-5">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-muted-foreground">{kpi.title}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{kpi.value}</p>
+              <p className={`mt-1 text-xs ${kpi.growth > 0 ? "text-emerald-700 dark:text-emerald-400" : kpi.growth < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                {kpi.change}
+              </p>
+            </div>
+            <div className="shrink-0 rounded-full bg-primary/10 p-3">{kpi.icon}</div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+};
 
-export default TodayOverview
+export default TodayOverview;

@@ -143,6 +143,7 @@ services:
       ORDER_SALES_SERVICE_URL: http://order-sales-service:8083
       INVENTORY_SERVICE_URL: http://inventory-catalog-service:8082
       USER_ORG_SERVICE_URL: http://user-org-service:8081
+      ML_SERVICE_URL: http://ml-intelligence-service:8000
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
       RAZORPAY_API_KEY: ${RAZORPAY_API_KEY:?Set RAZORPAY_API_KEY in the private .env file}
       RAZORPAY_API_SECRET: ${RAZORPAY_API_SECRET:?Set RAZORPAY_API_SECRET in the private .env file}

@@ -1,231 +1,219 @@
-import React from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../../../components/ui/card";
-import { useState } from "react";
-import { useEffect } from "react";
-import { useSelector } from "react-redux";
-import { updateBranch } from "../../../Redux Toolkit/features/branch/branchThunks";
-import { useDispatch } from "react-redux";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { Clock3, LoaderCircle, Mail, MapPin, Phone, Save } from "lucide-react";
+import { updateBranch } from "@/Redux Toolkit/features/branch/branchThunks";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Phone } from "lucide-react";
-import { Mail } from "lucide-react";
-import { Clock } from "lucide-react";
-import { Save } from "lucide-react";
-import { Button } from "../../../components/ui/button";
-import { Separator } from "../../../components/ui/separator";
-import { Checkbox } from "../../../components/ui/checkbox";
+
+const emptyBranchInfo = {
+  name: "",
+  address: "",
+  phone: "",
+  email: "",
+  openTime: "",
+  closeTime: "",
+  workingDays: [],
+};
 
 const BranchInfo = () => {
   const dispatch = useDispatch();
   const { branch } = useSelector((state) => state.branch);
-  const [branchInfo, setBranchInfo] = useState({
-    name: "",
-    address: "",
-    phone: "",
-    email: "",
-    openingTime: "",
-    closingTime: "",
-    workingDays: [],
-  });
+  const [branchInfo, setBranchInfo] = useState(emptyBranchInfo);
+  const [isSaving, setIsSaving] = useState(false);
+  const [feedback, setFeedback] = useState(null);
 
   useEffect(() => {
-    if (branch) {
-      setBranchInfo({
-        name: branch.name || "",
-        address: branch.address || "",
-        phone: branch.phone || "",
-        email: branch.email || "",
-        openingTime: branch.openingTime || "",
-        closingTime: branch.closingTime || "",
-        workingDays: branch.workingDays || [],
-      });
-    }
-  }, [branch]);
-  const handleBranchInfoChange = (field, value) => {
+    if (!branch) return;
     setBranchInfo({
-      ...branchInfo,
-      [field]: value,
+      name: branch.name ?? "",
+      address: branch.address ?? "",
+      phone: branch.phone ?? "",
+      email: branch.email ?? "",
+      openTime: (branch.openTime ?? branch.openingTime ?? "").slice(0, 5),
+      closeTime: (branch.closeTime ?? branch.closingTime ?? "").slice(0, 5),
+      workingDays: Array.isArray(branch.workingDays) ? branch.workingDays : [],
     });
+  }, [branch]);
+
+  const updateField = (field, value) => {
+    setFeedback(null);
+    setBranchInfo((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSaveSettings = (settingType) => {
-    // In a real app, this would make an API call to save the settings
-    console.log(`Saving ${settingType} settings`);
-    if (settingType === "branch-info") {
-      dispatch(
-        updateBranch({
-          id: branch.id,
-          dto: branchInfo,
-          jwt: localStorage.getItem("jwt"),
-        })
-      );
-      console.log("Saving branch info:", branchInfo);
+  const handleSave = async (event) => {
+    event.preventDefault();
+    if (!branch?.id || isSaving) return;
+
+    setIsSaving(true);
+    setFeedback(null);
+    try {
+      await dispatch(updateBranch({
+        id: branch.id,
+        dto: branchInfo,
+        jwt: localStorage.getItem("jwt"),
+      })).unwrap();
+      setFeedback({ type: "success", message: "Branch details saved." });
+    } catch (error) {
+      setFeedback({
+        type: "error",
+        message: typeof error === "string" ? error : "Could not save branch details. Check the fields and try again.",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
+
+  if (!branch) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground" role="status">
+          Loading branch details…
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Branch Information</CardTitle>
+        <CardTitle>Branch information</CardTitle>
         <CardDescription>
-          Update your branch details and business hours.
+          Edit the saved branch profile and business hours.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <CardContent>
+        <form className="space-y-6" onSubmit={handleSave}>
+          <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-2">
-              <label htmlFor="branch-name" className="text-sm font-medium">
-                Branch Name
-              </label>
+              <label htmlFor="branch-name" className="text-sm font-medium">Branch name</label>
               <Input
                 id="branch-name"
                 value={branchInfo.name}
-                onChange={(e) => handleBranchInfoChange("name", e.target.value)}
+                onChange={(event) => updateField("name", event.target.value)}
+                autoComplete="organization"
+                maxLength={100}
+                required
+                disabled={isSaving}
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="branch-address" className="text-sm font-medium">
-                Address
+              <label htmlFor="branch-address" className="flex items-center gap-2 text-sm font-medium">
+                <MapPin className="h-4 w-4 text-muted-foreground" /> Address
               </label>
               <Input
                 id="branch-address"
                 value={branchInfo.address}
-                onChange={(e) =>
-                  handleBranchInfoChange("address", e.target.value)
-                }
+                onChange={(event) => updateField("address", event.target.value)}
+                autoComplete="street-address"
+                maxLength={240}
+                disabled={isSaving}
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="branch-phone" className="flex items-center gap-2 text-sm font-medium">
+                <Phone className="h-4 w-4 text-muted-foreground" /> Phone number
+              </label>
+              <Input
+                id="branch-phone"
+                type="tel"
+                value={branchInfo.phone}
+                onChange={(event) => updateField("phone", event.target.value)}
+                autoComplete="tel"
+                maxLength={30}
+                disabled={isSaving}
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="branch-email" className="flex items-center gap-2 text-sm font-medium">
+                <Mail className="h-4 w-4 text-muted-foreground" /> Email address
+              </label>
+              <Input
+                id="branch-email"
+                type="email"
+                value={branchInfo.email}
+                onChange={(event) => updateField("email", event.target.value)}
+                autoComplete="email"
+                maxLength={120}
+                disabled={isSaving}
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label htmlFor="branch-phone" className="text-sm font-medium">
-                Phone Number
-              </label>
-              <div className="flex items-center">
-                <Phone className="mr-2 h-4 w-4 text-gray-500" />
-                <Input
-                  id="branch-phone"
-                  value={branchInfo.phone}
-                  onChange={(e) =>
-                    handleBranchInfoChange("phone", e.target.value)
-                  }
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="branch-email" className="text-sm font-medium">
-                Email Address
-              </label>
-              <div className="flex items-center">
-                <Mail className="mr-2 h-4 w-4 text-gray-500" />
-                <Input
-                  id="branch-email"
-                  type="email"
-                  value={branchInfo.email}
-                  onChange={(e) =>
-                    handleBranchInfoChange("email", e.target.value)
-                  }
-                />
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <Separator />
-
-        <div>
-          <h3 className="text-lg font-medium mb-4">Business Hours</h3>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <label htmlFor="opening-time" className="text-sm font-medium">
-                Opening Time
-              </label>
-              <div className="flex items-center">
-                <Clock className="mr-2 h-4 w-4 text-gray-500" />
+          <section className="space-y-4 border-t pt-5" aria-labelledby="branch-hours-title">
+            <div>
+              <h3 id="branch-hours-title" className="font-semibold">Business hours</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Set the usual opening and closing time for this location.</p>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2">
+              <div className="space-y-2">
+                <label htmlFor="branch-open-time" className="flex items-center gap-2 text-sm font-medium">
+                  <Clock3 className="h-4 w-4 text-muted-foreground" /> Opens at
+                </label>
                 <Input
-                  id="opening-time"
+                  id="branch-open-time"
                   type="time"
-                  value={branchInfo.openingTime}
-                  onChange={(e) =>
-                    handleBranchInfoChange("openingTime", e.target.value)
-                  }
+                  value={branchInfo.openTime}
+                  onChange={(event) => updateField("openTime", event.target.value)}
+                  disabled={isSaving}
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="closing-time" className="text-sm font-medium">
-                Closing Time
-              </label>
-              <div className="flex items-center">
-                <Clock className="mr-2 h-4 w-4 text-gray-500" />
+              <div className="space-y-2">
+                <label htmlFor="branch-close-time" className="flex items-center gap-2 text-sm font-medium">
+                  <Clock3 className="h-4 w-4 text-muted-foreground" /> Closes at
+                </label>
                 <Input
-                  id="closing-time"
+                  id="branch-close-time"
                   type="time"
-                  value={branchInfo.closingTime}
-                  onChange={(e) =>
-                    handleBranchInfoChange("closingTime", e.target.value)
-                  }
+                  value={branchInfo.closeTime}
+                  onChange={(event) => updateField("closeTime", event.target.value)}
+                  disabled={isSaving}
                 />
               </div>
             </div>
-          </div>
+            <fieldset>
+              <legend className="text-sm font-medium">Working days</legend>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {days.map((day) => {
+                  const id = `working-day-${day.toLowerCase()}`;
+                  return (
+                    <div key={day} className="flex items-center gap-2">
+                      <Checkbox
+                        id={id}
+                        checked={branchInfo.workingDays.includes(day)}
+                        disabled={isSaving}
+                        onCheckedChange={(checked) => {
+                          const nextDays = checked
+                            ? [...new Set([...branchInfo.workingDays, day])]
+                            : branchInfo.workingDays.filter((value) => value !== day);
+                          updateField("workingDays", nextDays);
+                        }}
+                      />
+                      <label htmlFor={id} className="cursor-pointer text-sm">{day}</label>
+                    </div>
+                  );
+                })}
+              </div>
+            </fieldset>
+          </section>
 
-          <div className="mt-4">
-            <label className="text-sm font-medium">Working Days</label>
-            <div className="grid grid-cols-2 gap-2 mt-2 md:grid-cols-4">
-              {[
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-                "Sunday",
-              ].map((day) => (
-                <div key={day} className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={branchInfo.workingDays.includes(day)}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        handleBranchInfoChange("workingDays", [
-                          ...branchInfo.workingDays,
-                          day,
-                        ]);
-                      } else {
-                        handleBranchInfoChange(
-                          "workingDays",
-                          branchInfo.workingDays.filter((d) => d !== day)
-                        );
-                      }
-                    }}
-                  />
-               
-                  <label
-                    htmlFor={`day-${day}`}
-                    className="text-sm text-gray-700"
-                  >
-                    {day}
-                  </label>
-                </div>
-              ))}
+          <div className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <div aria-live="polite" className="min-h-5 text-sm">
+              {feedback && (
+                <p className={feedback.type === "error" ? "text-destructive" : "text-emerald-700 dark:text-emerald-400"}>
+                  {feedback.message}
+                </p>
+              )}
             </div>
+            <Button type="submit" disabled={isSaving} className="gap-2">
+              {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {isSaving ? "Saving…" : "Save branch details"}
+            </Button>
           </div>
-        </div>
-
-        <div className="flex justify-end">
-          <Button
-            className="gap-2"
-            onClick={() => handleSaveSettings("branch-info")}
-          >
-            <Save className="h-4 w-4" />
-            Save Changes
-          </Button>
-        </div>
+        </form>
       </CardContent>
     </Card>
   );

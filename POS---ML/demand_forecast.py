@@ -2,7 +2,7 @@ import os
 import joblib
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "demand_model.pkl")
 
@@ -14,7 +14,12 @@ except Exception as e:
     demand_model = None
 
 
-def predict_demand(daily_demand: list[float], horizon: int = 7, product_id: int = 1) -> list[dict]:
+def predict_demand(
+    daily_demand: list[float],
+    horizon: int = 7,
+    product_id: int = 1,
+    anchor_date: date | None = None,
+) -> list[dict]:
     """
     Predict demand for the next `horizon` days given recent historical `daily_demand`.
     Returns a list of daily predictions with date and predicted quantity.
@@ -29,7 +34,7 @@ def predict_demand(daily_demand: list[float], horizon: int = 7, product_id: int 
         history = padding + history
 
     predictions = []
-    current_date = datetime.now()
+    current_date = datetime.combine(anchor_date, datetime.min.time()) if anchor_date else datetime.now()
 
     for step in range(1, horizon + 1):
         target_date = current_date + timedelta(days=step)

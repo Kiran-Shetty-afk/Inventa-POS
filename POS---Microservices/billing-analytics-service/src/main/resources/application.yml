@@ -35,6 +35,8 @@ services:
     url: ${INVENTORY_SERVICE_URL:http://localhost:8082}
   user-org:
     url: ${USER_ORG_SERVICE_URL:http://localhost:8081}
+  ml:
+    url: ${ML_SERVICE_URL:http://localhost:8000}
 
 app:
   frontend:

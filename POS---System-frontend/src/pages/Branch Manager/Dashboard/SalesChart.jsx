@@ -1,89 +1,68 @@
-import React, { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { getDailySalesChart } from "@/Redux Toolkit/features/branchAnalytics/branchAnalyticsThunks";
+import AnalyticsState from "./AnalyticsState";
+
+const chartConfig = { sales: { label: "Sales", color: "#6D214F" } };
 
 const SalesChart = ({ selectedMonth, selectedDate, viewMode }) => {
   const dispatch = useDispatch();
   const branchId = useSelector((state) => state.branch.branch?.id);
-  const analytics = useSelector((state) => state.branchAnalytics);
+  const { dailySales, dailySalesLoading, dailySalesError } = useSelector((state) => state.branchAnalytics);
+  const params = useMemo(() => {
+    if (!branchId) return null;
+    if (viewMode === "month") {
+      const [year, month] = selectedMonth.split("-").map(Number);
+      return Number.isInteger(year) && Number.isInteger(month) ? { branchId, year, month } : null;
+    }
+    return selectedDate ? { branchId, days: 1, date: selectedDate } : null;
+  }, [branchId, selectedDate, selectedMonth, viewMode]);
 
   useEffect(() => {
-    if (branchId) {
-      let request;
-      if (viewMode === "month") {
-        const [year, month] = selectedMonth.split("-").map(Number);
-        if (Number.isInteger(year) && Number.isInteger(month)) {
-          request = dispatch(getDailySalesChart({ branchId, year, month }));
-        }
-      } else if (selectedDate) {
-        request = dispatch(getDailySalesChart({ branchId, days: 1, date: selectedDate }));
-      }
-      return () => {
-        request?.abort?.();
-      };
-    }
-  }, [branchId, dispatch, selectedMonth, selectedDate, viewMode]);
+    if (!params) return undefined;
+    const request = dispatch(getDailySalesChart(params));
+    return () => request.abort?.();
+  }, [dispatch, params]);
 
-
-
-  // Map API data to recharts format
-  const data = analytics?.dailySales?.map((item) => ({
-    name: item.date,
-    sales: item.totalSales,
-  })) || [];
-
-  const config = {
-    sales: {
-      label: "Sales",
-      color: "#6D214F",
-    },
-  };
+  const data = (dailySales || []).map((item) => ({
+    date: item.date,
+    sales: Number(item.totalSales ?? 0),
+  }));
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-xl font-semibold">Daily Sales</CardTitle>
-      </CardHeader>
+      <CardHeader><CardTitle className="text-xl font-semibold">Daily sales</CardTitle></CardHeader>
       <CardContent>
-        <ChartContainer config={config}>
-          <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={data}>
-              <XAxis
-                dataKey="name"
-                stroke="#888888"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="#888888"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `₹${value}`}
-              />
-              <ChartTooltip
-                content={({ active, payload }) => (
-                  <ChartTooltipContent
-                    active={active}
-                    payload={payload}
-                    formatter={(value) => [`₹${value}`, "Sales"]}
-                  />
-                )}
-              />
-              <Bar
-                dataKey="sales"
-                fill="currentColor"
-                radius={[4, 4, 0, 0]}
-                className="fill-primary"
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartContainer>
-        {analytics?.loading && <div className="text-center text-xs text-gray-400 mt-2">Loading...</div>}
+        {dailySalesLoading || dailySalesError || data.length === 0 ? (
+          <AnalyticsState
+            loading={dailySalesLoading}
+            error={dailySalesError}
+            emptyMessage="No completed sales were recorded for this period."
+            onRetry={() => params && dispatch(getDailySalesChart(params))}
+          />
+        ) : (
+          <ChartContainer config={chartConfig} className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
+                <XAxis dataKey="date" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value}`} />
+                <ChartTooltip
+                  content={({ active, payload }) => (
+                    <ChartTooltipContent
+                      active={active}
+                      payload={payload}
+                      formatter={(value) => [new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Number(value || 0)), "Sales"]}
+                    />
+                  )}
+                />
+                <Bar dataKey="sales" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        )}
       </CardContent>
     </Card>
   );

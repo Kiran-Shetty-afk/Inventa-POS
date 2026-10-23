@@ -42,6 +42,9 @@ const buildMonthAwareQuery = ({ branchId, days, date, year, month }) => {
 const isRequestCanceled = (error) =>
   error?.name === "CanceledError" || error?.code === "ERR_CANCELED";
 
+const getApiErrorMessage = (error, fallback) =>
+  error.response?.data?.detail || error.response?.data?.message || error.message || fallback;
+
 const buildDemandForecastQuery = ({ branchId, horizons = [7, 14, 30], lookbackDays = 90, anchorDate }) => {
   const params = new URLSearchParams();
   params.set("branchId", branchId);
@@ -82,7 +85,7 @@ export const getDailySalesChart = createAsyncThunk(
     } catch (err) {
       if (isRequestCanceled(err)) throw err;
       console.error('❌ Failed to fetch daily sales chart:', err.response?.data || err.message);
-      return rejectWithValue(err.response?.data?.message || 'Failed to fetch daily sales chart');
+      return rejectWithValue(getApiErrorMessage(err, 'Failed to fetch daily sales chart'));
     }
   }
 );
@@ -100,7 +103,7 @@ export const getTopProductsByQuantity = createAsyncThunk(
     } catch (err) {
       if (isRequestCanceled(err)) throw err;
       console.error('❌ Failed to fetch top products:', err.response?.data || err.message);
-      return rejectWithValue(err.response?.data?.message || 'Failed to fetch top products');
+      return rejectWithValue(getApiErrorMessage(err, 'Failed to fetch top products'));
     }
   }
 );
@@ -118,7 +121,7 @@ export const getTopCashiersByRevenue = createAsyncThunk(
     } catch (err) {
       if (isRequestCanceled(err)) throw err;
       console.error('❌ Failed to fetch top cashiers:', err.response?.data || err.message);
-      return rejectWithValue(err.response?.data?.message || 'Failed to fetch top cashiers');
+      return rejectWithValue(getApiErrorMessage(err, 'Failed to fetch top cashiers'));
     }
   }
 );
@@ -136,7 +139,7 @@ export const getCategoryWiseSalesBreakdown = createAsyncThunk(
     } catch (err) {
       if (isRequestCanceled(err)) throw err;
       console.error('❌ Failed to fetch category-wise sales breakdown:', err.response?.data || err.message);
-      return rejectWithValue(err.response?.data?.message || 'Failed to fetch category-wise sales breakdown');
+      return rejectWithValue(getApiErrorMessage(err, 'Failed to fetch category-wise sales breakdown'));
     }
   }
 );
@@ -144,17 +147,17 @@ export const getCategoryWiseSalesBreakdown = createAsyncThunk(
 // Get today's branch overview
 export const getTodayOverview = createAsyncThunk(
   'branchAnalytics/getTodayOverview',
-  async ({ branchId, date }, { rejectWithValue, signal }) => {
+  async ({ branchId, date, year, month }, { rejectWithValue, signal }) => {
     try {
       const headers = getAuthHeaders();
-      const query = buildMonthAwareQuery({ branchId, date });
+      const query = buildMonthAwareQuery({ branchId, date, year, month });
       const res = await api.get(`/api/branch-analytics/today-overview?${query}`, { headers, signal });
       console.log('✅ Today overview response:', res.data);
       return res.data;
     } catch (err) {
       if (isRequestCanceled(err)) throw err;
       console.error('❌ Failed to fetch today overview:', err.response?.data || err.message);
-      return rejectWithValue(err.response?.data?.message || 'Failed to fetch today overview');
+      return rejectWithValue(getApiErrorMessage(err, 'Failed to fetch branch overview'));
     }
   }
 );
@@ -172,7 +175,7 @@ export const getPaymentBreakdown = createAsyncThunk(
     } catch (err) {
       if (isRequestCanceled(err)) throw err;
       console.error('❌ Failed to fetch payment breakdown:', err.response?.data || err.message);
-      return rejectWithValue(err.response?.data?.message || 'Failed to fetch payment breakdown');
+      return rejectWithValue(getApiErrorMessage(err, 'Failed to fetch payment breakdown'));
     }
   }
 ); 
@@ -187,7 +190,7 @@ export const getDemandForecast = createAsyncThunk(
       return res.data;
     } catch (err) {
       if (isRequestCanceled(err)) throw err;
-      return rejectWithValue(err.response?.data?.message || 'Failed to fetch demand forecast');
+      return rejectWithValue(getApiErrorMessage(err, 'Failed to fetch demand forecast'));
     }
   }
 );

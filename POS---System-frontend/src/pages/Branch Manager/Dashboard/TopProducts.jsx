@@ -1,129 +1,78 @@
-import React, { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Cell, Pie, PieChart } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PieChart, Pie, Cell } from "recharts";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-} from "@/components/ui/chart";
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { getTopProductsByQuantity } from "@/Redux Toolkit/features/branchAnalytics/branchAnalyticsThunks";
+import AnalyticsState from "./AnalyticsState";
 
 const COLORS = ["#6D214F", "#B33771", "#D980FA", "#833471", "#84817a"];
 
 const TopProducts = ({ selectedMonth, selectedDate, viewMode }) => {
   const dispatch = useDispatch();
   const branchId = useSelector((state) => state.branch.branch?.id);
-  const { topProducts, loading } = useSelector((state) => state.branchAnalytics);
+  const { topProducts, topProductsLoading, topProductsError } = useSelector((state) => state.branchAnalytics);
+  const params = useMemo(() => {
+    if (!branchId) return null;
+    if (viewMode === "month") {
+      const [year, month] = selectedMonth.split("-").map(Number);
+      return Number.isInteger(year) && Number.isInteger(month) ? { branchId, year, month } : null;
+    }
+    return selectedDate ? { branchId, date: selectedDate } : null;
+  }, [branchId, selectedDate, selectedMonth, viewMode]);
 
   useEffect(() => {
-    if (branchId) {
-      let request;
-      if (viewMode === "month") {
-        const [year, month] = selectedMonth.split("-").map(Number);
-        if (Number.isInteger(year) && Number.isInteger(month)) {
-          request = dispatch(getTopProductsByQuantity({ branchId, year, month }));
-        }
-      } else if (selectedDate) {
-        request = dispatch(getTopProductsByQuantity({ branchId, date: selectedDate }));
-      }
-      return () => {
-        request?.abort?.();
-      };
-    }
-  }, [branchId, dispatch, selectedMonth, selectedDate, viewMode]);
+    if (!params) return undefined;
+    const request = dispatch(getTopProductsByQuantity(params));
+    return () => request.abort?.();
+  }, [dispatch, params]);
 
-  // Map API data to recharts format
-  const data = topProducts?.map((item) => ({
-    name: item.productName,
-    value: item.quantitySold,
-    percentage: item.percentage,
-  })) || [];
-
-  const config = data.reduce((acc, item, idx) => {
-    acc[item.name] = {
-      label: item.name,
-      color: COLORS[idx % COLORS.length],
-    };
-    return acc;
+  const data = (topProducts || []).map((item) => ({
+    name: item.productName || "Product",
+    value: Number(item.quantitySold ?? 0),
+    percentage: Number(item.percentage ?? 0),
+  })).filter((item) => item.value > 0);
+  const config = data.reduce((result, item, index) => {
+    result[item.name] = { label: item.name, color: COLORS[index % COLORS.length] };
+    return result;
   }, {});
-
-  const renderCustomizedLabel = ({
-    cx,
-    cy,
-    midAngle,
-    innerRadius,
-    outerRadius,
-    percent,
-    index
-  }) => {
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
-    const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
-    // Use percentage from data if available
-    const percentValue = data[index]?.percentage ?? percent * 100;
-    return (
-      <text
-        x={x}
-        y={y}
-        fill="white"
-        textAnchor="middle"
-        dominantBaseline="central"
-      >
-        {`${percentValue.toFixed(0)}%`}
-      </text>
-    );
-  };
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-xl font-semibold">
-          Product Performance
-        </CardTitle>
-      </CardHeader>
+      <CardHeader><CardTitle className="text-xl font-semibold">Top products by units sold</CardTitle></CardHeader>
       <CardContent>
-        <ChartContainer config={config}>
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={renderCustomizedLabel}
-              outerRadius={80}
-              fill="#8884d8"
-              dataKey="value"
-            >
-              {data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                />
-              ))}
-            </Pie>
-            <ChartTooltip
-              content={({ active, payload }) => (
-                <ChartTooltipContent
-                  active={active}
-                  payload={payload}
-                  formatter={(value) => [
-                    `${value}%`,
-                    "Sales Percentage"
-                  ]}
-                />
-              )}
-            />
-            <ChartLegend
-              content={({ payload }) => (
-                <ChartLegendContent payload={payload} />
-              )}
-            />
-          </PieChart>
-        </ChartContainer>
-        {loading && <div className="text-center text-xs text-gray-400 mt-2">Loading...</div>}
+        {topProductsLoading || topProductsError || data.length === 0 ? (
+          <AnalyticsState
+            loading={topProductsLoading}
+            error={topProductsError}
+            emptyMessage="No product sales were recorded for this period."
+            onRetry={() => params && dispatch(getTopProductsByQuantity(params))}
+          />
+        ) : (
+          <ChartContainer config={config} className="h-72 w-full">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="45%"
+                dataKey="value"
+                nameKey="name"
+                innerRadius={48}
+                outerRadius={88}
+                labelLine={false}
+                label={({ name, percent = 0 }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+              >
+                {data.map((entry, index) => <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />)}
+              </Pie>
+              <ChartTooltip
+                content={({ active, payload }) => (
+                  <ChartTooltipContent active={active} payload={payload} formatter={(value) => [`${value} units`, "Quantity sold"]} />
+                )}
+              />
+              <ChartLegend content={({ payload }) => <ChartLegendContent payload={payload} />} />
+            </PieChart>
+          </ChartContainer>
+        )}
       </CardContent>
     </Card>
   );
