@@ -6,7 +6,9 @@ import com.zosh.modal.Subscription;
 import com.zosh.payload.dto.SubscriptionDTO;
 import com.zosh.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,16 +33,14 @@ public class SubscriptionController {
         return ResponseEntity.ok(sub);
     }
 
-    // 🔁 Store upgrades to a new plan
+    // Direct upgrades used to activate a plan before payment. Require the verified
+    // payment-link flow instead so an unpaid upgrade cannot become active.
     @PostMapping("/upgrade")
-    public ResponseEntity<Subscription> upgradePlan(
-            @RequestParam Long storeId,
-            @RequestParam Long planId,
-            @RequestParam(defaultValue = "RAZORPAY") String gateway,
-            @RequestParam(required = false) String transactionId) {
-
-        Subscription sub = subscriptionService.upgradeSubscription(storeId, planId, gateway, transactionId);
-        return ResponseEntity.ok(sub);
+    public ResponseEntity<Void> upgradePlan() {
+        throw new ResponseStatusException(
+                HttpStatus.GONE,
+                "Start an upgrade through the verified Razorpay payment flow."
+        );
     }
 
     // ✅ Activate a subscription

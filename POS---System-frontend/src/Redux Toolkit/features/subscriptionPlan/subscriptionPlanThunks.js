@@ -25,7 +25,7 @@ export const createSubscriptionPlan = createAsyncThunk(
   async (plan, { rejectWithValue }) => {
     try {
       const headers = getAuthHeaders();
-      const res = await api.post("/api/super-admin/subscription-plans", plan, {
+      const res = await api.post("/api/subscriptions/plans", plan, {
         headers,
       });
       console.log("create subscription plan - ",res.data);
@@ -45,7 +45,7 @@ export const updateSubscriptionPlan = createAsyncThunk(
     try {
       const headers = getAuthHeaders();
       const res = await api.put(
-        `/api/super-admin/subscription-plans/${id}`,
+        `/api/subscriptions/plans/${id}`,
         plan,
         { headers }
       );
@@ -65,7 +65,7 @@ export const getAllSubscriptionPlans = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const headers = getAuthHeaders();
-      const res = await api.get("/api/super-admin/subscription-plans", {
+      const res = await api.get("/api/subscriptions/plans", {
         headers,
       });
       console.log("get all subscription plans - ",res.data);
@@ -84,7 +84,7 @@ export const getSubscriptionPlanById = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const headers = getAuthHeaders();
-      const res = await api.get(`/api/super-admin/subscription-plans/${id}`, {
+      const res = await api.get(`/api/subscriptions/plans/${id}`, {
         headers,
       });
       console.log("get subscription plan by id - ",res.data);
@@ -103,7 +103,7 @@ export const deleteSubscriptionPlan = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const headers = getAuthHeaders();
-      await api.delete(`/api/super-admin/subscription-plans/${id}`, {
+      await api.delete(`/api/subscriptions/plans/${id}`, {
         headers,
       });
       console.log("delete subscription plan - ",id);

@@ -15,7 +15,7 @@ public interface SubscriptionService {
                                     String gateway,
                                     String transactionId);
 
-    Subscription upgradeSubscription(Long storeId,
+    Subscription completePaidUpgrade(Long storeId,
                                      Long planId,
                                      String gateway,
                                      String transactionId);

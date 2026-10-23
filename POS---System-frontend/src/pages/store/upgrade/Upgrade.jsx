@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '../../../components/ui/button';
 import { CheckCircle, Store, Users, ShoppingCart, Info, Star } from 'lucide-react';
 import { getAllSubscriptionPlans } from '../../../Redux Toolkit/features/subscriptionPlan/subscriptionPlanThunks';
-import { subscribeToPlan, upgradeSubscription, getStoreSubscriptions } from '../../../Redux Toolkit/features/subscription/subscriptionThunks';
+import { subscribeToPlan, getStoreSubscriptions } from '../../../Redux Toolkit/features/subscription/subscriptionThunks';
 import { createPaymentLinkThunk } from '../../../Redux Toolkit/features/payment/paymentThunks';
 
 const Upgrade = () => {
@@ -48,10 +48,15 @@ const Upgrade = () => {
     setSuccessMsg(null);
     try {
       if (currentSubscription) {
-        // Upgrade
-        await dispatch(upgradeSubscription({ storeId: store.id, planId })).unwrap();
-        // setSuccessMsg('Subscription upgraded successfully!');
-        await dispatch(createPaymentLinkThunk({planId, paymentMethod: 'STRIPE'})).unwrap();
+        // Create a Razorpay payment link first. The subscription changes only after
+        // the server verifies the captured payment on the return route.
+        await dispatch(
+          createPaymentLinkThunk({
+            storeId: store.id,
+            planId,
+            paymentMethod: 'RAZORPAY',
+          })
+        ).unwrap();
       } else {
         // New subscription
         await dispatch(subscribeToPlan({ storeId: store.id, planId })).unwrap();
