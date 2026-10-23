@@ -1,5 +1,9 @@
 # Brain Changelog
 
+## v2026.10.24-0422-kb-sync
+- KB: documented branch analytics and stock suggestions, store administration analytics, branch-scoped fraud alerts, and Super Admin dashboard/settings behavior.
+- KB: updated API, UI, auth, persistence, workflow, deployment, and risk notes for the corresponding code changes.
+
 ## v2026.10.24-0230-kenmark-init
 - Initialized the numbered `brain/kb/` and modular `brain/rules/` for the current microservices project while preserving existing historical notes.
 - Added the issue tracker index; retained the existing plan tracker and did not add IDE-specific instruction files.

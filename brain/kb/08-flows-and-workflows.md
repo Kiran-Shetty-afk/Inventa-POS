@@ -10,6 +10,9 @@ Status: reviewed
 - Shift reporting aggregates orders and refunds from shift start through the current time; top products are grouped by product ID and ranked by units sold.
 - Store subscription upgrade creates a Razorpay link. The callback page submits the returned data to Billing, which verifies the payment before changing the subscription.
 - Branch employee creation validates branch assignment and session presence, then displays request outcomes and refreshes the employee list.
+- Branch Reports shows demand forecasts and a suggested quantity; after manager confirmation, Inventory/Catalog updates branch on-hand stock directly. This action is not a supplier purchase order.
+- Fraud scoring is requested during order creation. A flagged order is exposed to the assigned Branch Manager, who can resolve the alert without deleting the order.
+- Super Admin profile and password forms call User/Org persistence endpoints. Password changes require the current password; non-persisted settings are omitted.
 
 ## Important files inspected
 
@@ -17,6 +20,8 @@ Status: reviewed
 - `POS---System-frontend/src/pages/common/Auth/Login.jsx` — cashier shift start request.
 - `POS---Microservices/order-sales-service/src/main/java/com/zosh/service/impl/ShiftReportServiceImpl.java` — shift calculations.
 - `POS---System-frontend/src/pages/store/upgrade/PaymentSuccess.jsx` and Billing payment service — subscription payment flow.
+- `POS---System-frontend/src/pages/Branch Manager/Reports/Reports.jsx` — suggested stock confirmation flow.
+- `POS---Microservices/order-sales-service/src/main/java/com/zosh/service/impl/FraudAlertServiceImpl.java` — alert resolution workflow.
 
 ## Assumptions
 

@@ -11,6 +11,10 @@ Status: reviewed
 | 002 | Branch employee and inventory access | [features/002-branch-employee-inventory-access.md](features/002-branch-employee-inventory-access.md) |
 | 003 | Verified Razorpay subscription payments | [features/003-verified-razorpay-subscriptions.md](features/003-verified-razorpay-subscriptions.md) |
 | 004 | Cashier shift reporting | [features/004-cashier-shift-reporting.md](features/004-cashier-shift-reporting.md) |
+| 005 | Branch analytics and suggested stock | [features/005-branch-analytics-and-suggested-stock.md](features/005-branch-analytics-and-suggested-stock.md) |
+| 006 | Store administration analytics | [features/006-store-administration-analytics.md](features/006-store-administration-analytics.md) |
+| 007 | Branch-scoped fraud alerts | [features/007-branch-scoped-fraud-alerts.md](features/007-branch-scoped-fraud-alerts.md) |
+| 008 | Super Admin dashboard and account settings | [features/008-super-admin-console.md](features/008-super-admin-console.md) |
 
 ## Important files inspected
 

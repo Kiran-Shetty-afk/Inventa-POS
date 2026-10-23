@@ -12,6 +12,8 @@ Status: reviewed
 - Risk: Hibernate uses `ddl-auto: update`; schema evolution is not managed by a versioned migration tool in the inspected setup.
 - Risk: User/Org SMTP settings use required `MAIL_USERNAME` and `MAIL_PASSWORD` values, and the mail health indicator can affect service health.
 - Risk: Compose health checks establish service readiness only; they do not prove that payment, email, authenticated workflows, or third-party integrations succeed.
+- Risk: Fraud scoring is best-effort during order creation; if ML is unavailable, checkout continues without a fraud alert for that order.
+- Risk: Demand reorder confirmation increases branch on-hand inventory directly and does not create a supplier order or receiving record.
 - Risk: The frontend bundle build emits a chunk-size warning above 500 kB; the build still completes.
 
 ## Important files inspected
