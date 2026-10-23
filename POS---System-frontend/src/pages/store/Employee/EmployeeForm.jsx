@@ -59,8 +59,8 @@ const EmployeeForm = ({ initialData, onSubmit, roles }) => {
       branchId: initialData ? String(initialData.branchId) : "",
     },
     validationSchema: validationSchema,
-    onSubmit: (values) => {
-      onSubmit(values);
+    onSubmit: async (values) => {
+      await onSubmit(values);
     },
   });
 
@@ -189,8 +189,14 @@ const EmployeeForm = ({ initialData, onSubmit, roles }) => {
         )}
       </div>
       <div className="flex justify-end pt-4">
-        <Button type="submit" className="">
-          {initialData ? "Save Changes" : "Add Employee"}
+        <Button type="submit" disabled={formik.isSubmitting}>
+          {formik.isSubmitting
+            ? initialData
+              ? "Saving..."
+              : "Adding..."
+            : initialData
+              ? "Save Changes"
+              : "Add Employee"}
         </Button>
       </div>
     </form>

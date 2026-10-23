@@ -17,13 +17,13 @@ public class InventoryController {
     private final InventoryService inventoryService;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_STORE_MANAGER', 'ROLE_STORE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_STORE_MANAGER', 'ROLE_STORE_ADMIN', 'ROLE_BRANCH_MANAGER', 'ROLE_BRANCH_ADMIN')")
     public ResponseEntity<InventoryDTO> create(@RequestBody InventoryDTO dto) throws Exception {
         return ResponseEntity.ok(inventoryService.createInventory(dto));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_STORE_MANAGER', 'ROLE_STORE_ADMIN', 'ROLE_ADMIN', 'ROLE_CASHIER', 'ROLE_BRANCH_CASHIER') or permitAll()")
+    @PreAuthorize("hasAnyAuthority('ROLE_STORE_MANAGER', 'ROLE_STORE_ADMIN', 'ROLE_ADMIN', 'ROLE_CASHIER', 'ROLE_BRANCH_CASHIER', 'ROLE_BRANCH_MANAGER', 'ROLE_BRANCH_ADMIN')")
     public ResponseEntity<InventoryDTO> update(@PathVariable Long id,
             @RequestBody InventoryDTO dto) throws Exception {
         return ResponseEntity.ok(inventoryService.updateInventory(id, dto));
