@@ -67,7 +67,8 @@ public class AuthServiceImpl implements AuthService {
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(savedUser.getEmail(), savedUser.getPassword());
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtProvider.generateToken(authentication);
+        Long branchId = savedUser.getBranch() == null ? null : savedUser.getBranch().getId();
+        String jwt = jwtProvider.generateToken(authentication, branchId);
 
         AuthResponse response = new AuthResponse();
         response.setTitle("Welcome " + createdUser.getEmail());
@@ -83,9 +84,10 @@ public class AuthServiceImpl implements AuthService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
         String role =  authorities.iterator().next().getAuthority();
-        String token = jwtProvider.generateToken(authentication);
 
         User user = userRepository.findByEmail(username);
+        Long branchId = user.getBranch() == null ? null : user.getBranch().getId();
+        String token = jwtProvider.generateToken(authentication, branchId);
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
 

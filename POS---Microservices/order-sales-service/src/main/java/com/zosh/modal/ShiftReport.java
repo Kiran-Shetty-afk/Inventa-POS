@@ -1,6 +1,7 @@
 package com.zosh.modal;
 
 import jakarta.persistence.*;
+import com.zosh.payload.dto.TopSellingProductDTO;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -65,4 +66,8 @@ public class ShiftReport {
     @Transient
     @Builder.Default
     private List<Order> recentOrders = new ArrayList<>();
+
+    @Transient
+    @Builder.Default
+    private List<TopSellingProductDTO> topSellingProducts = new ArrayList<>();
 }

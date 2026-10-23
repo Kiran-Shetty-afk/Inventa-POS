@@ -1,6 +1,6 @@
 package com.zosh.modal;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.zosh.domain.UserRole;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -28,7 +28,7 @@ public class User {
     @NotBlank(message = "fullName is mandatory")
     private String fullName;
 
-    @JsonIgnore
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     @Column(nullable = false, unique = true)

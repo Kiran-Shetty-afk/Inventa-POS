@@ -33,7 +33,7 @@ spring:
 
 app:
   frontend:
-    reset-url: http://localhost:5173/auth/reset-password?token=
+    reset-url: ${FRONTEND_BASE_URL:http://localhost:5173}/auth/reset-password?token=
 
 eureka:
   instance:
@@ -42,7 +42,7 @@ eureka:
     fetch-registry: true
     register-with-eureka: true
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
 
 logging:
   level:

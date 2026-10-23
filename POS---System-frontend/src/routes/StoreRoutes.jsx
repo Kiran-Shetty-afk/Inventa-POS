@@ -18,6 +18,7 @@ import StoreEmployees from "../pages/store/Employee/StoreEmployees";
 import Stores from "../pages/store/storeInformation/Stores";
 import PricingSection from "../pages/common/Landing/PricingSection";
 import Upgrade from "../pages/store/upgrade/Upgrade";
+import PaymentSuccess from "../pages/store/upgrade/PaymentSuccess";
 import Alerts from "../pages/store/Alerts/Alerts";
 import FraudAnalytics from "../pages/store/Fraud/FraudAnalytics";
 import DynamicPricing from "../pages/store/DynamicPricing/DynamicPricing";
@@ -39,6 +40,7 @@ const StoreRoutes = () => {
 
         <Route path="reports" element={<Reports />} />
         <Route path="upgrade" element={<Upgrade />} />
+        <Route path="payment-success/:paymentOrderId" element={<PaymentSuccess />} />
         <Route path="settings" element={<Settings />} />
         <Route path="alerts" element={<Alerts />} />
         <Route path="/dynamic-pricing" element={<DynamicPricing />}/>

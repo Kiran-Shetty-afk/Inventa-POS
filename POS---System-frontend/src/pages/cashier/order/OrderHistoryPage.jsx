@@ -28,6 +28,7 @@ import OrderDetails from "./OrderDetails/OrderDetails";
 
 import OrderTable from "./OrderTable";
 import { handleDownloadOrderPDF } from "./pdf/pdfUtils";
+import { parseOrderDate } from "./data";
 
 const OrderHistoryPage = () => {
   const dispatch = useDispatch();
@@ -66,6 +67,8 @@ const OrderHistoryPage = () => {
   // Get current date for filtering
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
 
   const weekStart = new Date(today);
   weekStart.setDate(today.getDate() - today.getDay());
@@ -79,10 +82,11 @@ const OrderHistoryPage = () => {
     }
 
     if (!order.createdAt) return dateFilter === "all";
-    const orderDate = new Date(order.createdAt);
+    const orderDate = parseOrderDate(order.createdAt);
+    if (!orderDate) return dateFilter === "all";
 
     if (dateFilter === "today") {
-      return orderDate >= today;
+      return orderDate >= today && orderDate < tomorrow;
     }
     if (dateFilter === "week") {
       return orderDate >= weekStart;
@@ -149,7 +153,7 @@ const OrderHistoryPage = () => {
           <h1>POS Invoice</h1>
           <div class="meta">
             <p><strong>Order:</strong> #${order.id ?? "-"}</p>
-            <p><strong>Date:</strong> ${order.createdAt ? new Date(order.createdAt).toLocaleString() : "-"}</p>
+            <p><strong>Date:</strong> ${order.createdAt ? parseOrderDate(order.createdAt)?.toLocaleString() ?? "-" : "-"}</p>
             <p><strong>Customer:</strong> ${customerName}</p>
             <p><strong>Payment:</strong> ${order.paymentType ?? "-"}</p>
             <p><strong>Status:</strong> ${order.status ?? "-"}</p>

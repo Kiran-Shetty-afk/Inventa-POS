@@ -4,6 +4,7 @@ import com.razorpay.Payment;
 import com.razorpay.PaymentLink;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
+import com.razorpay.Utils;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
@@ -16,12 +17,14 @@ import com.zosh.payload.response.PaymentLinkResponse;
 import com.zosh.repository.PaymentOrderRepository;
 import com.zosh.repository.SubscriptionPlanRepository;
 import com.zosh.service.PaymentService;
+import com.zosh.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -36,8 +39,12 @@ public class PaymentServiceImpl implements PaymentService {
     @Value("${razorpay.api.secret:placeholder_secret}")
     private String razorpayApiSecret;
 
+    @Value("${app.frontend.base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
+
     private final PaymentOrderRepository paymentOrderRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
+    private final SubscriptionService subscriptionService;
 
     @Override
     public PaymentLinkResponse createOrder(Long userId,
@@ -46,6 +53,10 @@ public class PaymentServiceImpl implements PaymentService {
                                            Long storeId,
                                            Long planId,
                                            PaymentMethod paymentMethod) throws RazorpayException, StripeException, Exception {
+
+        if (storeId == null) {
+            throw new IllegalArgumentException("A store is required for a subscription payment.");
+        }
 
         if (paymentMethod == PaymentMethod.STRIPE && !isStripeConfigured()) {
             throw new IllegalStateException("Stripe payments are disabled because STRIPE_API_KEY is not configured");
@@ -93,31 +104,70 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public PaymentOrder getPaymentOrderByPaymentId(String paymentLinkId) throws Exception {
-        return paymentOrderRepository.findByPaymentLinkId(paymentLinkId)
-                .orElseThrow(() -> new Exception("Payment order not found with paymentLinkId: " + paymentLinkId));
-    }
-
-    @Override
-    public Boolean proceedPaymentOrder(PaymentOrder paymentOrder,
-                                       String paymentId,
-                                       String paymentLinkId) throws RazorpayException {
-        if (paymentOrder.getStatus().equals(PaymentOrderStatus.PENDING)) {
-            RazorpayClient razorpay = new RazorpayClient(razorpayApiKey, razorpayApiSecret);
-            Payment payment = razorpay.payments.fetch(paymentId);
-            String status = payment.get("status");
-
-            if ("captured".equals(status)) {
-                paymentOrder.setStatus(PaymentOrderStatus.SUCCESS);
-                paymentOrderRepository.save(paymentOrder);
-                return true;
-            }
-
-            paymentOrder.setStatus(PaymentOrderStatus.FAILED);
-            paymentOrderRepository.save(paymentOrder);
+    @Transactional
+    public Boolean proceedPaymentOrder(String paymentId,
+                                       String paymentLinkId,
+                                       String paymentLinkReferenceId,
+                                       String paymentLinkStatus,
+                                       String signature) throws RazorpayException {
+        if (paymentLinkId == null || paymentLinkId.isBlank()) {
             return false;
         }
-        return false;
+        PaymentOrder paymentOrder = paymentOrderRepository.findByPaymentLinkIdForUpdate(paymentLinkId)
+                .orElse(null);
+        if (paymentOrder == null
+                || paymentOrder.getPaymentMethod() != PaymentMethod.RAZORPAY
+                || !String.valueOf(paymentOrder.getId()).equals(paymentLinkReferenceId)
+                || !"paid".equalsIgnoreCase(paymentLinkStatus)
+                || paymentId == null
+                || paymentId.isBlank()
+                || signature == null
+                || signature.isBlank()) {
+            return false;
+        }
+
+        JSONObject signatureAttributes = new JSONObject()
+                .put("payment_link_id", paymentLinkId)
+                .put("payment_link_reference_id", paymentLinkReferenceId)
+                .put("payment_link_status", paymentLinkStatus)
+                .put("razorpay_payment_id", paymentId)
+                .put("razorpay_signature", signature);
+        if (!Utils.verifyPaymentLink(signatureAttributes, razorpayApiSecret)) {
+            return false;
+        }
+
+        if (paymentOrder.getStatus() == PaymentOrderStatus.SUCCESS) {
+            return true;
+        }
+        if (paymentOrder.getStatus() != PaymentOrderStatus.PENDING
+                || paymentOrder.getStoreId() == null
+                || paymentOrder.getAmount() == null) {
+            return false;
+        }
+
+        RazorpayClient razorpay = new RazorpayClient(razorpayApiKey, razorpayApiSecret);
+        Payment payment = razorpay.payments.fetch(paymentId);
+        Object amountValue = payment.get("amount");
+        String status = payment.get("status");
+        String currency = payment.get("currency");
+        long expectedAmount = BigDecimal.valueOf(paymentOrder.getAmount()).movePointRight(2).longValueExact();
+
+        if (!(amountValue instanceof Number amount)
+                || amount.longValue() != expectedAmount
+                || !"INR".equalsIgnoreCase(currency)
+                || !"captured".equalsIgnoreCase(status)) {
+            return false;
+        }
+
+        paymentOrder.setStatus(PaymentOrderStatus.SUCCESS);
+        paymentOrderRepository.save(paymentOrder);
+        subscriptionService.completePaidUpgrade(
+                paymentOrder.getStoreId(),
+                paymentOrder.getPlanId(),
+                PaymentMethod.RAZORPAY.name(),
+                paymentId
+        );
+        return true;
     }
 
     @Override
@@ -125,7 +175,7 @@ public class PaymentServiceImpl implements PaymentService {
                                                   String userFullName,
                                                   Double amount,
                                                   Long orderId) throws RazorpayException {
-        double paise = amount * 100;
+        long paise = BigDecimal.valueOf(amount).movePointRight(2).longValueExact();
         try {
             RazorpayClient razorpay = new RazorpayClient(razorpayApiKey, razorpayApiSecret);
 
@@ -143,7 +193,8 @@ public class PaymentServiceImpl implements PaymentService {
             paymentLinkRequest.put("notify", notify);
 
             paymentLinkRequest.put("reminder_enable", true);
-            paymentLinkRequest.put("callback_url", "http://localhost:5173/payment-success/" + orderId);
+            paymentLinkRequest.put("reference_id", String.valueOf(orderId));
+            paymentLinkRequest.put("callback_url", frontendUrl("/store/payment-success/" + orderId));
             paymentLinkRequest.put("callback_method", "get");
 
             return razorpay.paymentLink.create(paymentLinkRequest);
@@ -162,8 +213,8 @@ public class PaymentServiceImpl implements PaymentService {
         SessionCreateParams params = SessionCreateParams.builder()
                 .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl("http://localhost:5173/payment-success/" + planId)
-                .setCancelUrl("http://localhost:5173/payment/cancel")
+                .setSuccessUrl(frontendUrl("/payment-success/" + planId))
+                .setCancelUrl(frontendUrl("/payment/cancel"))
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setQuantity(1L)
                         .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
@@ -182,5 +233,9 @@ public class PaymentServiceImpl implements PaymentService {
 
     private boolean isStripeConfigured() {
         return stripeSecretKey != null && !stripeSecretKey.isBlank();
+    }
+
+    private String frontendUrl(String path) {
+        return frontendBaseUrl.replaceAll("/+$", "") + path;
     }
 }

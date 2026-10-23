@@ -22,7 +22,7 @@ import subscriptionPlanReducer from "./features/subscriptionPlan/subscriptionPla
 import subscriptionReducer from "./features/subscription/subscriptionSlice.js";
 import paymentReducer from "./features/payment/paymentSlice.js";
 import fraudReducer from "./features/fraud/fraudSlice.js";
-import branchAdminReducer from "./features/branchAdmin/adminSlice";
+import branchAdminReducer from "./features/branchadmin/adminSlice.js";
 import pricingReducer from "../customer/Redux/Admin/pricing/pricingSlice";
 import notificationReducer
   from "./features/notification/notificationSlice";

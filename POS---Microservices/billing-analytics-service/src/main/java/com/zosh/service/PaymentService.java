@@ -18,11 +18,11 @@ public interface PaymentService {
 
     PaymentOrder getPaymentOrderById(Long id) throws Exception;
 
-    PaymentOrder getPaymentOrderByPaymentId(String paymentLinkId) throws Exception;
-
-    Boolean proceedPaymentOrder(PaymentOrder paymentOrder,
-                                String paymentId,
-                                String paymentLinkId) throws RazorpayException;
+    Boolean proceedPaymentOrder(String paymentId,
+                                String paymentLinkId,
+                                String paymentLinkReferenceId,
+                                String paymentLinkStatus,
+                                String signature) throws RazorpayException;
 
     PaymentLink createRazorpayPaymentLink(String userEmail,
                                           String userFullName,

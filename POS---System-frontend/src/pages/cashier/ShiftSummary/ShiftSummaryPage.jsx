@@ -24,21 +24,27 @@ const ShiftSummaryPage = () => {
   const navigate=useNavigate()
 
   const { currentShift, loading, error, currentError } = useSelector((state) => state.shiftReport);
+  const { userProfile } = useSelector((state) => state.user);
   const displayError = currentError || error;
 
   useEffect(() => {
-    dispatch(getCurrentShiftProgress());
-  }, [dispatch]);
+    if (!userProfile?.id) return undefined;
 
-  useEffect(() => {
-    if (!currentShift && !loading && displayError) {
-      const retryTimer = setTimeout(() => {
-        dispatch(getCurrentShiftProgress());
-      }, 1500);
-      return () => clearTimeout(retryTimer);
-    }
-    return undefined;
-  }, [currentShift, loading, displayError, dispatch]);
+    const refreshShift = () => {
+      if (document.visibilityState === 'visible') {
+        dispatch(getCurrentShiftProgress(userProfile.id));
+      }
+    };
+
+    refreshShift();
+    const refreshTimer = window.setInterval(refreshShift, 30_000);
+    window.addEventListener('focus', refreshShift);
+
+    return () => {
+      window.clearInterval(refreshTimer);
+      window.removeEventListener('focus', refreshShift);
+    };
+  }, [dispatch, userProfile?.id]);
 
   const handlePrintSummary = () => {
     setShowPrintDialog(false);
@@ -98,14 +104,25 @@ const ShiftSummaryPage = () => {
   };
 
   const handleEndShift = async () => {
-    setShowLogoutConfirmDialog(false);
-    dispatch(endShift());
-    dispatch(logout());
-    navigate("/", { replace: true });
-    toast({
-      title: 'Shift Ended',
-      description: 'You have been logged out successfully',
-    });
+    try {
+      await dispatch(endShift(userProfile?.id)).unwrap();
+      setShowLogoutConfirmDialog(false);
+      await dispatch(logout()).unwrap();
+      navigate("/", { replace: true });
+      toast({
+        title: 'Shift Ended',
+        description: 'You have been logged out successfully',
+      });
+    } catch (endShiftError) {
+      toast({
+        title: 'Unable to end shift',
+        description:
+          typeof endShiftError === 'string'
+            ? endShiftError
+            : 'The shift could not be ended. Please retry.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (

@@ -1,6 +1,7 @@
 package com.zosh.service.impl;
 
 import com.zosh.mapper.InventoryMapper;
+import com.zosh.exception.AccessDeniedException;
 import com.zosh.modal.Inventory;
 import com.zosh.modal.Product;
 import com.zosh.payload.dto.InventoryDTO;
@@ -10,10 +11,15 @@ import com.zosh.service.InventoryService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -22,11 +28,16 @@ import java.util.stream.Collectors;
 @Transactional
 public class InventoryServiceImpl implements InventoryService {
 
+    private static final Set<String> BRANCH_SCOPED_ROLES = Set.of(
+            "ROLE_BRANCH_MANAGER", "ROLE_BRANCH_ADMIN", "ROLE_BRANCH_CASHIER", "ROLE_CASHIER"
+    );
+
     private final InventoryRepository inventoryRepository;
     private final ProductRepository productRepository;
 
     @Override
     public InventoryDTO createInventory(InventoryDTO dto) throws Exception {
+        requireBranchAccess(dto.getBranchId());
         Product product = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
@@ -38,6 +49,10 @@ public class InventoryServiceImpl implements InventoryService {
     public InventoryDTO updateInventory(Long id, InventoryDTO dto) throws Exception {
         Inventory inventory = inventoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Inventory not found with id: " + id));
+        requireBranchAccess(inventory.getBranchId());
+        if (dto.getBranchId() != null) {
+            requireBranchAccess(dto.getBranchId());
+        }
 
         log.info("Updating Inventory ID: {} for Product ID: {} from Quantity: {} to: {}", 
                 id, inventory.getProduct() != null ? inventory.getProduct().getId() : null, 
@@ -68,11 +83,19 @@ public class InventoryServiceImpl implements InventoryService {
     public InventoryDTO getInventoryById(Long id) {
         Inventory inventory = inventoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Inventory not found"));
+        requireBranchAccess(inventory.getBranchId());
         return InventoryMapper.toDto(inventory);
     }
 
     @Override
     public InventoryDTO getInventoryByProductId(Long productId) {
+        Long branchId = requireCurrentBranchId();
+        if (branchId != null) {
+            return inventoryRepository.findAllByBranchIdAndProductIdOrderByIdAsc(branchId, productId).stream()
+                    .findFirst()
+                    .map(InventoryMapper::toDto)
+                    .orElseThrow(() -> new EntityNotFoundException("Inventory not found for product in branch"));
+        }
         Inventory inventory = inventoryRepository.findFirstByProductIdOrderByIdAsc(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Inventory not found for product"));
         return InventoryMapper.toDto(inventory);
@@ -80,6 +103,7 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public InventoryDTO getInventoryByBranchAndProduct(Long branchId, Long productId) {
+        requireBranchAccess(branchId);
         List<Inventory> inventories = inventoryRepository.findAllByBranchIdAndProductIdOrderByIdAsc(branchId, productId);
         if (inventories.isEmpty()) {
             throw new EntityNotFoundException("Inventory not found for branch and product");
@@ -89,8 +113,38 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public List<InventoryDTO> getInventoryByBranch(Long branchId) {
+        requireBranchAccess(branchId);
         return inventoryRepository.findByBranchIdOrderByIdAsc(branchId).stream()
                 .map(InventoryMapper::toDto)
                 .collect(Collectors.toList());
+    }
+
+    private void requireBranchAccess(Long targetBranchId) {
+        if (!isBranchScopedRole()) {
+            return;
+        }
+        Long currentBranchId = requireCurrentBranchId();
+        if (!Objects.equals(currentBranchId, targetBranchId)) {
+            throw new AccessDeniedException("You are not authorized to access inventory for this branch");
+        }
+    }
+
+    private Long requireCurrentBranchId() {
+        if (!isBranchScopedRole()) {
+            return null;
+        }
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Object details = authentication == null ? null : authentication.getDetails();
+        if (details instanceof Number number) {
+            return number.longValue();
+        }
+        throw new AccessDeniedException("Your account is not assigned to a branch. Please sign in again or contact an administrator.");
+    }
+
+    private boolean isBranchScopedRole() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(BRANCH_SCOPED_ROLES::contains);
     }
 }

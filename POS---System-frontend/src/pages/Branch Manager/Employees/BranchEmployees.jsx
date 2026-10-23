@@ -34,19 +34,64 @@ const BranchEmployees = () => {
   const { userProfile } = useSelector((state) => state.user);
 
 
-  const handleAddEmployee = (newEmployeeData) => {
-    if (branch?.id && userProfile.branchId) {
-      const data = {
-        employee: {
-          ...newEmployeeData,
+  const handleAddEmployee = async (newEmployeeData) => {
+    const branchId = userProfile?.branchId ?? userProfile?.branch?.id;
+    const token = localStorage.getItem("jwt");
 
-          username: newEmployeeData.email.split("@")[0],
-        },
-        branchId: branch.id,
-        token: localStorage.getItem("jwt"),
-      };
-      dispatch(createBranchEmployee(data));
+    if (!branchId) {
+      toast({
+        title: "Unable to add employee",
+        description: "Your account is not assigned to a branch. Refresh your session and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!token) {
+      toast({
+        title: "Session expired",
+        description: "Sign in again before adding an employee.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await dispatch(
+        createBranchEmployee({
+          employee: {
+            ...newEmployeeData,
+            username: newEmployeeData.email.split("@")[0],
+          },
+          branchId,
+          token,
+        })
+      ).unwrap();
+
       setIsAddDialogOpen(false);
+      toast({
+        title: "Employee added",
+        description: "The cashier account was created successfully.",
+      });
+
+      try {
+        await dispatch(findBranchEmployees({ branchId })).unwrap();
+      } catch {
+        toast({
+          title: "Employee added",
+          description: "The account was created, but the employee list could not refresh. Reload the page to see it.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Employee creation failed",
+        description:
+          typeof error === "string"
+            ? error
+            : error?.message || "Could not create the employee. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -188,7 +233,7 @@ const BranchEmployees = () => {
           isAddDialogOpen={isAddDialogOpen}
           setIsAddDialogOpen={setIsAddDialogOpen}
           handleAddEmployee={handleAddEmployee}
-          roles={branchAdminRole}
+          roles={["ROLE_BRANCH_CASHIER"]}
         />
       </div>
       <EmployeeStats employees={employees} />

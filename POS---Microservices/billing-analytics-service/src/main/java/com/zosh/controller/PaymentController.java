@@ -5,6 +5,7 @@ import com.stripe.exception.StripeException;
 import com.zosh.domain.PaymentMethod;
 import com.zosh.modal.PaymentOrder;
 import com.zosh.payload.response.PaymentLinkResponse;
+import com.zosh.payload.request.RazorpayPaymentVerificationRequest;
 import com.zosh.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,8 +23,8 @@ public class PaymentController {
     public ResponseEntity<PaymentLinkResponse> createPaymentLink(
             @RequestHeader(value = "X-User-Email", required = false) String userEmail,
             @RequestHeader(value = "X-User-FullName", required = false) String userFullName,
-            @RequestHeader(value = "X-Store-Id", required = false) Long storeId,
             @RequestHeader(value = "X-User-Id", required = false) Long userId,
+            @RequestParam Long storeId,
             @RequestParam Long planId,
             @RequestParam(defaultValue = "RAZORPAY") PaymentMethod paymentMethod,
             Authentication authentication) throws Exception, RazorpayException, StripeException {
@@ -38,11 +39,15 @@ public class PaymentController {
 
     @PatchMapping("/proceed")
     public ResponseEntity<Boolean> proceedPayment(
-            @RequestParam String paymentId,
-            @RequestParam String paymentLinkId) throws Exception {
+            @RequestBody RazorpayPaymentVerificationRequest request) throws Exception {
 
-        PaymentOrder paymentOrder = paymentService.getPaymentOrderByPaymentId(paymentLinkId);
-        Boolean success = paymentService.proceedPaymentOrder(paymentOrder, paymentId, paymentLinkId);
+        Boolean success = paymentService.proceedPaymentOrder(
+                request.paymentId(),
+                request.paymentLinkId(),
+                request.paymentLinkReferenceId(),
+                request.paymentLinkStatus(),
+                request.signature()
+        );
         return ResponseEntity.ok(success);
     }
 

@@ -49,15 +49,19 @@ export const createBranchEmployee = createAsyncThunk(
       const res = await api.post(`/api/employees/branch/${branchId}`, employee, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("createBranchEmployee fulfilled:", res.data);
       return res.data;
     } catch (err) {
-      console.error(
-        "createBranchEmployee rejected:",
-        err.response?.data?.message || "Failed to create branch employee"
-      );
+      const responseMessage = err.response?.data?.message;
+      const message =
+        err.response?.status === 401
+          ? "Your session expired. Sign in again and retry."
+          : err.response?.status === 403
+            ? "You do not have permission to add employees to this branch."
+            : typeof responseMessage === "string"
+              ? responseMessage
+              : "Could not create the branch employee. Please try again.";
       return rejectWithValue(
-        err.response?.data?.message || "Failed to create branch employee"
+        message
       );
     }
   }

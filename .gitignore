@@ -57,3 +57,6 @@ edge_out.txt
 
 # Local browser profile data
 edge-profile/
+
+# Kenmark scratch space
+/temp/

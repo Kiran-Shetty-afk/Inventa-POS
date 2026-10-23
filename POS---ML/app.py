@@ -9,9 +9,10 @@ import py_eureka_client.eureka_client as eureka_client
 from demand_forecast import predict_demand
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-EUREKA_SERVER = os.getenv("EUREKA_SERVER", "http://localhost:8761/eureka")
+EUREKA_SERVER = os.getenv("EUREKA_SERVER", "http://localhost:8761/eureka/")
 APP_NAME = os.getenv("APP_NAME", "ml-intelligence-service")
 PORT = int(os.getenv("PORT", "8000"))
+EUREKA_INSTANCE_HOSTNAME = os.getenv("EUREKA_INSTANCE_HOSTNAME", "localhost")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -21,7 +22,7 @@ async def lifespan(app: FastAPI):
             eureka_server=EUREKA_SERVER,
             app_name=APP_NAME,
             instance_port=PORT,
-            instance_host="localhost"
+            instance_host=EUREKA_INSTANCE_HOSTNAME
         )
         print(f"[Eureka] Successfully registered {APP_NAME} on {EUREKA_SERVER}")
     except Exception as e:

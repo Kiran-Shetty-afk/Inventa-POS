@@ -11,6 +11,7 @@ import com.zosh.service.SubscriptionService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -77,7 +78,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
-    public Subscription upgradeSubscription(Long storeId, Long planId, String gateway, String transactionId) {
+    @Transactional
+    public Subscription completePaidUpgrade(Long storeId, Long planId, String gateway, String transactionId) {
         SubscriptionPlan plan = planRepository.findById(planId)
                 .orElseThrow(() -> new EntityNotFoundException("Subscription Plan not found"));
 

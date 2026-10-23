@@ -22,12 +22,17 @@ const getAuthHeaders = () => {
 // 🔹 Start Shift
 export const startShift = createAsyncThunk(
   'shiftReport/start',
-  async (branchId, { rejectWithValue }) => {
+  async ({ branchId, cashierId, cashierName, branchName }, { rejectWithValue }) => {
     try {
-      console.log('🔄 Starting shift...', { branchId });
+      if (!branchId || !cashierId) {
+        return rejectWithValue('Cashier and branch information is required to start a shift.');
+      }
       
       const headers = getAuthHeaders();
-      const res = await api.post(`/api/shift-reports/start?branchId=${branchId}`, {}, { headers });
+      const res = await api.post('/api/shift-reports/start', {}, {
+        headers,
+        params: { branchId, cashierId, cashierName, branchName },
+      });
       
       console.log('✅ Shift started successfully:', {
         shiftId: res.data.id,
@@ -54,12 +59,17 @@ export const startShift = createAsyncThunk(
 // 🔹 End Shift
 export const endShift = createAsyncThunk(
   'shiftReport/end',
-  async (_, { rejectWithValue }) => {
+  async (cashierId, { rejectWithValue }) => {
     try {
-      console.log('🔄 Ending shift...');
+      if (!cashierId) {
+        return rejectWithValue('Cashier information is required to end a shift.');
+      }
       
       const headers = getAuthHeaders();
-      const res = await api.patch('/api/shift-reports/end', {}, { headers });
+      const res = await api.patch('/api/shift-reports/end', {}, {
+        headers,
+        params: { cashierId },
+      });
       
       console.log('✅ Shift ended successfully:', {
         shiftId: res.data.id,
@@ -85,12 +95,17 @@ export const endShift = createAsyncThunk(
 // 🔹 Get Current Shift Progress
 export const getCurrentShiftProgress = createAsyncThunk(
   'shiftReport/getCurrent',
-  async (_, { rejectWithValue }) => {
+  async (cashierId, { rejectWithValue }) => {
     try {
-      console.log('🔄 Fetching current shift progress...');
+      if (!cashierId) {
+        return rejectWithValue('Cashier information is required to load the shift summary.');
+      }
       
       const headers = getAuthHeaders();
-      const res = await api.get('/api/shift-reports/current', { headers });
+      const res = await api.get('/api/shift-reports/current', {
+        headers,
+        params: { cashierId },
+      });
       
       console.log('✅ Current shift progress fetched successfully:', {
         shiftId: res.data.id,
@@ -316,4 +331,4 @@ export const deleteShift = createAsyncThunk(
       return rejectWithValue(err.response?.data?.message || 'Failed to delete shift');
     }
   }
-); 
+);

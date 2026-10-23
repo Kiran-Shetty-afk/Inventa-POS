@@ -42,6 +42,9 @@ public class ShiftReportMapper {
         }
 
         dto.setRefunds(mapRefunds(shiftReport.getRefunds()));
+        dto.setTopSellingProducts(shiftReport.getTopSellingProducts() != null
+                ? shiftReport.getTopSellingProducts()
+                : new ArrayList<>());
 
         // Payment summaries mapping
         List<PaymentSummary> summaries = shiftReport.getPaymentSummaries();

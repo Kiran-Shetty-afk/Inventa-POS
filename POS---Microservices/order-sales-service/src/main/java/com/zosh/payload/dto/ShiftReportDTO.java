@@ -28,7 +28,7 @@ public class ShiftReportDTO {
     private Long branchId;
     private String branchName;
     private List<OrderDTO> recentOrders;
-    private List<ProductDTO> topSellingProducts;
+    private List<TopSellingProductDTO> topSellingProducts;
     private List<RefundDTO> refunds;
     @Builder.Default
     private List<PaymentSummary> paymentSummaries = new ArrayList<>();
