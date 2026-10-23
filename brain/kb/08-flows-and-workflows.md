@@ -1,0 +1,31 @@
+# Flows and workflows
+
+Last updated: 2026-10-24
+Status: reviewed
+
+## Confirmed facts
+
+- Local startup: create `.env` from `.env.example`, fill required settings privately, then run `docker compose --env-file .env up -d --build` and inspect with `docker compose --env-file .env ps`.
+- Cashier login starts or finds a shift using cashier and branch identifiers. The shift summary requests live progress and polls while visible.
+- Shift reporting aggregates orders and refunds from shift start through the current time; top products are grouped by product ID and ranked by units sold.
+- Store subscription upgrade creates a Razorpay link. The callback page submits the returned data to Billing, which verifies the payment before changing the subscription.
+- Branch employee creation validates branch assignment and session presence, then displays request outcomes and refreshes the employee list.
+
+## Important files inspected
+
+- `README.md` and `docker-compose.yml` — local startup workflow.
+- `POS---System-frontend/src/pages/common/Auth/Login.jsx` — cashier shift start request.
+- `POS---Microservices/order-sales-service/src/main/java/com/zosh/service/impl/ShiftReportServiceImpl.java` — shift calculations.
+- `POS---System-frontend/src/pages/store/upgrade/PaymentSuccess.jsx` and Billing payment service — subscription payment flow.
+
+## Assumptions
+
+- Test data should be used for local business workflow demonstrations.
+
+## Unknowns / documentation gaps
+
+- A reproducible end-to-end test-data setup is not documented here.
+
+## Maintenance notes
+
+- Update workflow steps when login, checkout, inventory, shift, or payment behavior changes.

@@ -3,6 +3,8 @@
 This folder is the workspace knowledge base.
 
 ## Files
+- `kb/`: Current numbered project knowledge base. Use this for current architecture, APIs, UI, workflows, and deployment facts.
+- `rules/`: Shared project standards and workflow notes for future changes.
 - `001-workspace-overview.md`: High-level scope and structure of this workspace.
 - `002-fullstack-architecture-roles-audit.md`: Historical audit of the removed monolith; not current architecture guidance.
 - `003-qa-bugfix-sweep-apr-23.md`: QA bugfix record for dashboards, reports, cashier flows, and landing links.
@@ -19,6 +21,23 @@ This folder is the workspace knowledge base.
 - `014-store-sales-kpi-and-reports-export-apr-23.md`: Fixes store sales KPI counts and adds `/store/reports` CSV export action.
 - `015-role-features-superadmin-storeadmin-branchmanager-cashier-apr-23.md`: Consolidated role-feature reference for super admin, store admin, branch manager, and cashier.
 - `CHANGELOG.md`: Versioned log of important changes and fixes.
+
+## Current Knowledge Base
+
+- [Project overview](kb/00-project-overview.md)
+- [Architecture](kb/01-architecture.md)
+- [Stack and dependencies](kb/02-stack-and-dependencies.md)
+- [Data model and persistence](kb/03-data-model.md)
+- [Authentication and permissions](kb/04-auth-and-permissions.md)
+- [APIs and integrations](kb/05-api-and-integrations.md)
+- [UI and routes](kb/06-ui-and-routes.md)
+- [Feature index](kb/07-features.md)
+- [Workflows](kb/08-flows-and-workflows.md)
+- [Infrastructure and deployment](kb/09-infra-and-deployment.md)
+- [Testing and quality](kb/10-testing-and-quality.md)
+- [Risks and decisions](kb/11-known-risks-and-decisions.md)
+- [Issue tracker](issues/INDEX.md)
+- [Plan tracker](plans/INDEX.md)
 
 ## Update Rules
 - Keep notes small and focused.

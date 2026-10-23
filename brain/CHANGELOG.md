@@ -1,5 +1,14 @@
 # Brain Changelog
 
+## v2026.10.24-0230-kenmark-init
+- Initialized the numbered `brain/kb/` and modular `brain/rules/` for the current microservices project while preserving existing historical notes.
+- Added the issue tracker index; retained the existing plan tracker and did not add IDE-specific instruction files.
+
+## v2026.10.24-0230-kb-sync
+- Documented current architecture, stack, database persistence, auth and branch permissions, APIs/integrations, UI workflows, Docker deployment, and testing limits.
+- Added feature notes for Docker Compose, branch employee/inventory workflows, verified Razorpay subscriptions, and cashier shift reporting.
+- Recorded the local Compose networking decision and updated the brain index.
+
 ## 2026-10-22 - Remove legacy monolith for microservices submission
 - Removed the former `POS---System` monolithic backend from the repository.
 - Updated the root README and workspace overview to document the microservices architecture only, corrected the sales database name, and removed the obsolete monolith config ignore rule.
