@@ -5,6 +5,14 @@ spring:
   application:
     name: order-sales-service
 
+  cloud:
+    openfeign:
+      client:
+        config:
+          ml-intelligence-service:
+            connectTimeout: 1000
+            readTimeout: 2000
+
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:salesdb}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
     driver-class-name: com.mysql.cj.jdbc.Driver

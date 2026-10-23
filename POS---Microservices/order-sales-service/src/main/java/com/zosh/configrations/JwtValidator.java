@@ -28,35 +28,60 @@ public class JwtValidator extends OncePerRequestFilter {
         // First check for gateway-forwarded headers (preferred in microservice architecture)
         String gatewayEmail = request.getHeader("X-User-Email");
         String gatewayRole = request.getHeader("X-User-Role");
+        String authorizationHeader = request.getHeader(JwtConstant.JWT_HEADER);
+        Claims claims = null;
+
+        if (authorizationHeader != null) {
+            if (!authorizationHeader.startsWith("Bearer ")) {
+                throw new BadCredentialsException("Invalid authorization header format");
+            }
+            try {
+                SecretKey key = Keys.hmacShaKeyFor(JwtConstant.SECRET_KEY.getBytes());
+                claims = Jwts.parser().verifyWith(key).build()
+                        .parseSignedClaims(authorizationHeader.substring(7)).getPayload();
+            } catch (Exception e) {
+                throw new BadCredentialsException("Invalid token....");
+            }
+        }
+
+        Long branchId = toLong(claims == null ? null : claims.get("branchId"));
 
         if (gatewayEmail != null && !gatewayEmail.isEmpty()) {
             // Trust the gateway's pre-validated headers
             List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(
                     gatewayRole != null ? gatewayRole : "");
-            Authentication authentication = new UsernamePasswordAuthenticationToken(gatewayEmail, null, auths);
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(gatewayEmail, null, auths);
+            authentication.setDetails(branchId);
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } else {
             // Fallback: validate JWT directly (for direct access without gateway)
-            String jwt = request.getHeader(JwtConstant.JWT_HEADER);
-            if (jwt != null) {
-                jwt = jwt.substring(7);
-                try {
-                    SecretKey key = Keys.hmacShaKeyFor(JwtConstant.SECRET_KEY.getBytes());
-                    Claims claims = Jwts.parser().verifyWith(key).build()
-                            .parseSignedClaims(jwt).getPayload();
+            if (claims != null) {
+                String email = String.valueOf(claims.get("email"));
+                String authorities = String.valueOf(claims.get("authorities"));
 
-                    String email = String.valueOf(claims.get("email"));
-                    String authorities = String.valueOf(claims.get("authorities"));
-
-                    List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(authorities);
-                    Authentication authentication = new UsernamePasswordAuthenticationToken(email, null, auths);
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                } catch (Exception e) {
-                    throw new BadCredentialsException("Invalid token....");
-                }
+                List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(authorities);
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(email, null, auths);
+                authentication.setDetails(branchId);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private Long toLong(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value instanceof String string && !string.isBlank()) {
+            try {
+                return Long.parseLong(string);
+            } catch (NumberFormatException e) {
+                throw new BadCredentialsException("Invalid branch claim in token");
+            }
+        }
+        return null;
     }
 }

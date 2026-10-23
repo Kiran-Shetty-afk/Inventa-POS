@@ -19,6 +19,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     List<Order> findByBranchId(Long branchId);
 
+    List<Order> findByBranchIdAndIsFraudTrueOrderByCreatedAtDesc(Long branchId);
+
+    Optional<Order> findByIdAndBranchIdAndIsFraudTrue(Long id, Long branchId);
+
     List<Order> findByCashierId(Long cashierId);
 
     List<Order> findByBranchIdAndCreatedAtBetween(Long branchId,

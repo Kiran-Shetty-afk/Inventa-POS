@@ -5,6 +5,12 @@ const getHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem("jwt")}`,
 });
 
+const getErrorMessage = (error, fallback) => {
+  const responseData = error.response?.data;
+  if (typeof responseData === "string") return responseData;
+  return responseData?.message || responseData?.error || fallback;
+};
+
 // Get all fraud alerts
 export const getFraudAlerts = createAsyncThunk(
   "fraud/getFraudAlerts",
@@ -16,9 +22,7 @@ export const getFraudAlerts = createAsyncThunk(
 
       return res.data;
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data || "Failed to fetch fraud alerts"
-      );
+      return rejectWithValue(getErrorMessage(err, "Failed to fetch fraud alerts"));
     }
   }
 );
@@ -34,9 +38,7 @@ export const resolveFraudAlert = createAsyncThunk(
 
       return id;
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data || "Failed to resolve alert"
-      );
+      return rejectWithValue(getErrorMessage(err, "Failed to resolve alert"));
     }
   }
 )
@@ -50,9 +52,7 @@ export const getFraudDashboard = createAsyncThunk(
 
       return res.data;
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data || "Failed to fetch dashboard"
-      );
+      return rejectWithValue(getErrorMessage(err, "Failed to fetch fraud dashboard"));
     }
   }
 );;

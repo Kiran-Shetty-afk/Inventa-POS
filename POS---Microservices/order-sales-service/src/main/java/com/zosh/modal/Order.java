@@ -42,6 +42,13 @@ public class Order {
     @Builder.Default
     private Boolean isFraud = false;
 
+    @Builder.Default
+    @Column(name = "fraud_status")
+    private String fraudStatus = "NONE";
+
+    @Column(name = "fraud_reason", length = 500)
+    private String fraudReason;
+
     private LocalDateTime createdAt;
 
     @Column(name = "branch_id")

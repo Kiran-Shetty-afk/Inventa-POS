@@ -49,7 +49,7 @@ spring:
         - id: order-sales-service
           uri: lb://ORDER-SALES-SERVICE
           predicates:
-            - Path=/api/orders/**, /api/customers/**, /api/refunds/**, /api/shift-reports/**
+            - Path=/api/orders/**, /api/customers/**, /api/refunds/**, /api/shift-reports/**, /api/fraud/**
           filters:
             - name: AuthenticationFilter
 

@@ -1,467 +1,209 @@
-import React, { useEffect,useState } from "react";
-
-import { useDispatch, useSelector } from "react-redux";
-import {
-    ShieldAlert,
-    AlertTriangle,
-    CheckCircle2,
-    Activity,
-    Building2,
-    TrendingUp,
-} from "lucide-react";
-import {
-    LineChart,
-    Line,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    PieChart,
-    Pie,
-} from "recharts";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import api from "@/utils/api";
 import { Button } from "@/components/ui/button";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Activity, AlertTriangle, RefreshCw, ShieldCheck } from "lucide-react";
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+const riskLabel = (probability) => {
+  if (probability >= 0.8) return "Critical";
+  if (probability >= 0.6) return "High";
+  if (probability >= 0.35) return "Medium";
+  return "Low";
+};
 
-
-import {
-    getBranchAdminDashboard,
-    getRecentFraudAlerts,
-    getFraudTrend,
-    getRiskDistribution,
-} from "../../../Redux Toolkit/features/branchadmin/adminThunks.js";
+const assessOrder = async (order, branchName, config) => {
+  const items = Array.isArray(order.items) ? order.items : [];
+  const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const itemValue = items.reduce((sum, item) => {
+    const quantity = Number(item.quantity || 0);
+    const lineTotal = item.price != null
+      ? Number(item.price)
+      : Number(item.product?.sellingPrice || 0) * quantity;
+    return sum + lineTotal;
+  }, 0);
+  const response = await api.post("/predict-fraud", {
+    totalAmount: Number(order.totalAmount || 0),
+    paymentType: order.paymentType || "CASH",
+    itemsCount: items.length,
+    totalQuantity,
+    averageItemPrice: totalQuantity ? itemValue / totalQuantity : 0,
+    discountPercent: Number(order.discountPercent || 0),
+    orderHour: order.createdAt ? new Date(order.createdAt).getHours() : 0,
+  }, config);
+  const probability = Number(response.data?.fraudProbability);
+  if (!Number.isFinite(probability)) throw new Error("The model returned an invalid risk score.");
+  return {
+    id: order.id,
+    branchName,
+    createdAt: order.createdAt,
+    totalAmount: Number(order.totalAmount || 0),
+    paymentType: order.paymentType || "Unknown",
+    probability: Math.min(1, Math.max(0, probability)),
+    flagged: Number(response.data?.prediction) === 1,
+  };
+};
 
 export default function FraudAnalytics() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [unscoredCount, setUnscoredCount] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-    const dispatch = useDispatch();
-
-    const {
-        dashboard,
-        recentAlerts,
-        trend,
-        riskDistribution,
-        loading,
-    } = useSelector((state) => state.branchAdmin);
-
-    const [lastUpdated, setLastUpdated] = useState(new Date());
-
-    useEffect(() => {
-        dispatch(getBranchAdminDashboard());
-        dispatch(getRecentFraudAlerts());
-        dispatch(getFraudTrend());
-        dispatch(getRiskDistribution());
-         setLastUpdated(new Date());
-    }, [dispatch]);
-    useEffect(() => {
-
-    const interval = setInterval(() => {
-        setLastUpdated(new Date());
-    }, 60000);
-
-    return () => clearInterval(interval);
-
-}, []);
-    const fraudTrendData =
-        trend?.map((item) => ({
-            date: new Date(item.date).toLocaleDateString("en-US", {
-                month: "short",
-                day: "2-digit",
-            }),
-            fraud: item.totalAlerts,
-        })) || [];
-
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center h-[70vh]">
-                Loading...
-            </div>
-        );
+  const refresh = useCallback(async () => {
+    const token = localStorage.getItem("jwt");
+    if (!token) {
+      setError("Sign in again to review store orders.");
+      return;
     }
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    setLoading(true);
+    setError("");
+    try {
+      const store = (await api.get("/api/stores/admin", config)).data;
+      if (!store?.id) throw new Error("The signed-in account has no store profile.");
+      const branchResponse = await api.get(`/api/branches/store/${store.id}`, config);
+      const branches = Array.isArray(branchResponse.data) ? branchResponse.data : [];
+      const branchOrders = await Promise.all(branches.map(async (branch) => {
+        const response = await api.get(`/api/orders/branch/${branch.id}`, config);
+        return (Array.isArray(response.data) ? response.data : []).map((order) => ({ order, branchName: branch.name || `Branch ${branch.id}` }));
+      }));
+      const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      const recent = branchOrders.flat().filter(({ order }) =>
+        order.createdAt && new Date(order.createdAt).getTime() >= cutoff
+      ).sort((a, b) => new Date(b.order.createdAt) - new Date(a.order.createdAt)).slice(0, 50);
 
-    const cards = [
-        {
-            title: "Total Alerts",
-            value: dashboard?.totalAlerts,
-            icon: ShieldAlert,
-            color: "text-blue-500",
-        },
-        {
-            title: "Critical Alerts",
-            value: dashboard?.criticalAlerts,
-            icon: AlertTriangle,
-            color: "text-red-500",
-        },
-        {
-            title: "Resolved",
-            value: dashboard?.resolvedAlerts,
-            icon: CheckCircle2,
-            color: "text-green-500",
-        },
-        {
-            title: "Average Risk",
-            value: dashboard?.averageRiskScore,
-            icon: TrendingUp,
-            color: "text-orange-500",
-        },
-        {
-            title: "Branches",
-            value: dashboard?.totalBranches,
-            icon: Building2,
-            color: "text-purple-500",
-        },
-        {
-            title: "Highest Risk",
-            value: dashboard?.highestRiskBranch,
-            icon: Activity,
-            color: "text-pink-500",
-        },
-    ];
-    const totalRiskAlerts = riskDistribution.reduce(
-        (sum, item) => sum + item.total,
-        0
-    );
+      const assessed = [];
+      let failed = 0;
+      for (let index = 0; index < recent.length; index += 5) {
+        const results = await Promise.allSettled(recent.slice(index, index + 5).map(({ order, branchName }) =>
+          assessOrder(order, branchName, config)
+        ));
+        for (const result of results) {
+          if (result.status === "fulfilled") assessed.push(result.value);
+          else failed += 1;
+        }
+      }
+      setOrders(assessed.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+      setUnscoredCount(failed);
+      setLastUpdated(new Date());
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || requestError.message || "Could not load fraud analytics.");
+      setOrders([]);
+      setUnscoredCount(0);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    const riskData = riskDistribution.map((item) => ({
-        label: item.riskLevel,
-        total: item.total,
-        percentage:
-            totalRiskAlerts === 0
-                ? 0
-                : (item.total / totalRiskAlerts) * 100,
-        color:
-            item.riskLevel === "CRITICAL"
-                ? "bg-red-500"
-                : item.riskLevel === "HIGH"
-                    ? "bg-orange-500"
-                    : item.riskLevel === "MEDIUM"
-                        ? "bg-yellow-500"
-                        : "bg-green-500",
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const flaggedOrders = useMemo(() => orders.filter((order) => order.flagged), [orders]);
+  const averageRisk = orders.length
+    ? orders.reduce((sum, order) => sum + order.probability, 0) / orders.length
+    : 0;
+  const riskDistribution = [
+    { name: "Low", total: orders.filter((order) => riskLabel(order.probability) === "Low").length },
+    { name: "Medium", total: orders.filter((order) => riskLabel(order.probability) === "Medium").length },
+    { name: "High", total: orders.filter((order) => riskLabel(order.probability) === "High").length },
+    { name: "Critical", total: orders.filter((order) => riskLabel(order.probability) === "Critical").length },
+  ];
+  const trend = useMemo(() => {
+    const dates = new Map();
+    for (let offset = 13; offset >= 0; offset -= 1) {
+      const date = new Date();
+      date.setDate(date.getDate() - offset);
+      dates.set(date.toISOString().slice(0, 10), 0);
+    }
+    for (const order of flaggedOrders) {
+      const day = new Date(order.createdAt).toISOString().slice(0, 10);
+      if (dates.has(day)) dates.set(day, dates.get(day) + 1);
+    }
+    return [...dates.entries()].map(([date, flagged]) => ({
+      date: new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", { month: "short", day: "numeric" }),
+      flagged,
     }));
-
-    return (
-
-        <div className="space-y-8 p-8">
-
-            <div>
-
-                <h1 className="text-4xl font-bold">
-                    Fraud Analytics
-                </h1>
-
-                <p className="text-muted-foreground mt-2">
-                    Monitor fraud activity across all branches.
-                </p>
-
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-
-                {cards.map((card, index) => {
-
-                    const Icon = card.icon;
-
-                    return (
-
-                        <div
-                            key={index}
-                            className="rounded-2xl border bg-card p-6 shadow-sm hover:shadow-xl transition-all duration-300"
-                        >
-
-                            <div className="flex justify-between">
-
-                                <div>
-
-                                    <p className="text-sm text-muted-foreground">
-                                        {card.title}
-                                    </p>
-
-                                    <h2 className="text-4xl font-bold mt-4">
-                                        {card.value}
-                                    </h2>
-
-                                </div>
-
-                                <div className="h-14 w-14 rounded-xl bg-muted flex items-center justify-center">
-
-                                    <Icon className={`h-7 w-7 ${card.color}`} />
-
-                                </div>
-
-                            </div>
-
-
-                        </div>
-
-                    );
-
-                })}
-
-            </div>
-            <Card className="rounded-2xl">
-                <CardHeader>
-                    <CardTitle>Fraud Trend</CardTitle>
-                </CardHeader>
-
-                <CardContent className="overflow-x-auto">
-
-                    <LineChart
-                        width={900}
-                        height={300}
-                        data={fraudTrendData}
-                    >
-                        <CartesianGrid strokeDasharray="3 3" />
-
-                        <XAxis
-                            dataKey="date"
-                            tick={{ fontSize: 12 }}
-                        />
-
-                        <YAxis />
-
-                        <Tooltip />
-
-                        <Line
-                            type="natural"
-                            dataKey="fraud"
-                            stroke="#ef4444"
-                            strokeWidth={3}
-                            dot={{ r: 5 }}
-                            activeDot={{ r: 7 }}
-                        />
-
-                    </LineChart>
-
-                </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-                {/* Risk Distribution */}
-
-                <Card className="rounded-2xl shadow-sm">
-
-                    <CardHeader>
-
-                        <CardTitle>
-                            Risk Distribution
-                        </CardTitle>
-
-                    </CardHeader>
-
-                    <CardContent className="space-y-5">
-
-                        {riskData.map((item) => (
-
-                            <div key={item.label}>
-
-                                <div className="flex justify-between mb-2">
-
-                                    <span>
-                                        {item.label.charAt(0) + item.label.slice(1).toLowerCase()}
-                                    </span>
-
-                                    <span className="font-semibold">
-                                        {item.percentage.toFixed(0)}%
-                                    </span>
-
-                                </div>
-
-                                <div className="h-2 rounded-full bg-muted overflow-hidden">
-
-                                    <div
-                                        className={`h-full ${item.color}`}
-                                        style={{
-                                            width: `${item.percentage}%`,
-                                        }}
-                                    />
-
-                                </div>
-
-                            </div>
-
-                        ))}
-
-                    </CardContent>
-
-                </Card>
-
-                {/* Branch Comparison */}
-
-                <Card className="rounded-2xl shadow-sm">
-
-                    <CardHeader>
-
-                        <CardTitle>
-                            Branch Comparison
-                        </CardTitle>
-
-                    </CardHeader>
-
-                    <CardContent className="space-y-6">
-
-                        {dashboard?.branchAnalytics?.map((branch) => (
-
-                            <div key={branch.branchName}>
-
-                                <div className="flex justify-between mb-2">
-
-                                    <span className="font-medium">
-                                        {branch.branchName}
-                                    </span>
-
-                                    <span className="font-bold">
-                                        {branch.averageRiskScore?.toFixed(1)}
-                                    </span>
-
-                                </div>
-
-                                <div className="h-3 rounded-full bg-muted overflow-hidden">
-
-                                    <div
-                                        className="h-full rounded-full bg-gradient-to-r from-red-500 to-orange-500"
-                                        style={{
-                                            width: `${branch.averageRiskScore}%`,
-                                        }}
-                                    />
-
-                                </div>
-
-                            </div>
-
-                        ))}
-
-                    </CardContent>
-
-                </Card>
-                <Card className="rounded-2xl shadow-sm col-span-full">
-
-                    <CardHeader className="flex flex-row items-center justify-between">
-
-                        <CardTitle>
-                            Recent Fraud Activity
-                        </CardTitle>
-
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-
-    <span className="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse"></span>
-
-    <div className="flex flex-col items-end leading-tight">
-
-        <span className="font-medium text-foreground">
-            Live Data
-        </span>
-
-        <span>
-            Last updated{" "}
-            {lastUpdated.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-            })}
-        </span>
-
-    </div>
-
-</div>
-
-                    </CardHeader>
-
-                    <CardContent>
-
-                        <Table>
-
-                            <TableHeader>
-
-                                <TableRow className="h-14 hover:bg-slate-50 transition-colors">
-
-                                    <TableHead>Order</TableHead>
-
-                                    <TableHead>Branch</TableHead>
-
-                                    <TableHead>Risk</TableHead>
-
-                                    <TableHead>Status</TableHead>
-
-                                    <TableHead>Amount</TableHead>
-
-                                    <TableHead>Payment</TableHead>
-
-                                </TableRow>
-
-                            </TableHeader>
-
-                            <TableBody>
-                                {recentAlerts?.map((alert) => (
-                                    <TableRow key={alert.id}>
-
-                                        <TableCell className="font-semibold text-primary">
-                                            #{alert.orderId}
-                                        </TableCell>
-
-                                        <TableCell>
-                                            {alert.branchName}
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Badge
-                                                className={
-                                                    alert.riskLevel === "CRITICAL"
-                                                        ? "bg-red-100 text-red-700 border border-red-200 hover:bg-red-100"
-                                                        : alert.riskLevel === "HIGH"
-                                                            ? "bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-100"
-                                                            : alert.riskLevel === "MEDIUM"
-                                                                ? "bg-yellow-100 text-yellow-700 border border-yellow-200 hover:bg-yellow-100"
-                                                                : "bg-green-100 text-green-700 border border-green-200 hover:bg-green-100"
-                                                }
-                                            >
-                                                {alert.riskLevel.charAt(0) + alert.riskLevel.slice(1).toLowerCase()}
-                                            </Badge>
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Badge
-                                                variant="outline"
-                                                className="bg-slate-50 text-slate-700 border-slate-300"
-                                            >
-                                                {alert.status.charAt(0) + alert.status.slice(1).toLowerCase()}
-                                            </Badge>
-                                        </TableCell>
-
-                                        <TableCell>
-                                            ₹{Number(alert.totalAmount).toLocaleString("en-IN")}
-                                        </TableCell>
-
-                                        <TableCell>
-                                            {alert.paymentMethod.charAt(0) +
-                                                alert.paymentMethod.slice(1).toLowerCase()}
-                                        </TableCell>
-
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-
-                        </Table>
-
-                    </CardContent>
-
-                </Card>
-
-            </div>
-
+  }, [flaggedOrders]);
+
+  return (
+    <section className="space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Fraud Analytics</h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Model assessments for up to 50 of the store’s orders from the last 30 days. A flagged result means the model recommends review; it is not a confirmed fraud finding.
+          </p>
         </div>
-    );
+        <Button variant="outline" onClick={refresh} disabled={loading}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh assessments
+        </Button>
+      </header>
+
+      {error && <p role="alert" className="rounded-md border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
+      {unscoredCount > 0 && <p className="text-sm text-amber-700">{unscoredCount} order{unscoredCount === 1 ? "" : "s"} could not be assessed. Check the ML service and refresh.</p>}
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">Orders assessed</p><p className="mt-2 text-2xl font-semibold">{loading ? "…" : orders.length}</p></div><Activity className="h-5 w-5 text-sky-700" /></CardContent></Card>
+        <Card><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">Flagged for review</p><p className="mt-2 text-2xl font-semibold">{loading ? "…" : flaggedOrders.length}</p></div><AlertTriangle className="h-5 w-5 text-amber-700" /></CardContent></Card>
+        <Card><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">Average model risk</p><p className="mt-2 text-2xl font-semibold">{loading ? "…" : `${(averageRisk * 100).toFixed(1)}%`}</p></div><ShieldCheck className="h-5 w-5 text-emerald-700" /></CardContent></Card>
+        <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Assessment window</p><p className="mt-2 text-lg font-semibold">Last 30 days</p><p className="mt-1 text-xs text-muted-foreground">Maximum 50 most recent orders</p></CardContent></Card>
+      </div>
+
+      {lastUpdated && <p className="text-xs text-muted-foreground">Last assessed {lastUpdated.toLocaleString()}</p>}
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle>Flagged orders over the last 14 days</CardTitle></CardHeader>
+          <CardContent>
+            {loading ? <p className="py-16 text-center text-sm text-muted-foreground">Assessing recent orders…</p> : trend.length ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={trend}>
+                  <XAxis dataKey="date" /><YAxis allowDecimals={false} /><Tooltip />
+                  <Line type="monotone" dataKey="flagged" stroke="#d97706" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : <p className="py-16 text-center text-sm text-muted-foreground">No assessed order history yet.</p>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Risk distribution</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            {riskDistribution.map((item) => (
+              <div key={item.name} className="grid grid-cols-[6rem_1fr_2rem] items-center gap-3 text-sm">
+                <span>{item.name}</span>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full bg-sky-700" style={{ width: `${orders.length ? item.total / orders.length * 100 : 0}%` }} />
+                </div>
+                <span className="text-right tabular-nums">{item.total}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle>Orders recommended for review</CardTitle></CardHeader>
+        <CardContent className="overflow-x-auto">
+          <Table>
+            <TableHeader><TableRow><TableHead>Order</TableHead><TableHead>Branch</TableHead><TableHead>Risk</TableHead><TableHead>Model result</TableHead><TableHead>Amount</TableHead><TableHead>Payment</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {loading ? <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Loading assessments…</TableCell></TableRow> : flaggedOrders.length ? flaggedOrders.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell>#{order.id}<span className="block text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleString()}</span></TableCell>
+                  <TableCell>{order.branchName}</TableCell>
+                  <TableCell><Badge variant="outline">{riskLabel(order.probability)}</Badge><span className="ml-2 text-sm">{(order.probability * 100).toFixed(1)}%</span></TableCell>
+                  <TableCell>Review suggested</TableCell>
+                  <TableCell>₹{order.totalAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</TableCell>
+                  <TableCell>{order.paymentType}</TableCell>
+                </TableRow>
+              )) : <TableRow><TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">{orders.length ? "The model did not flag any assessed orders for review." : "No orders are available for assessment in the selected period."}</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </section>
+  );
 }
