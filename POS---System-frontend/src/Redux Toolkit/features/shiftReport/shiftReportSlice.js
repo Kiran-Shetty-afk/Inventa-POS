@@ -97,7 +97,7 @@ const shiftReportSlice = createSlice({
 
       // Get Current Shift Progress
       .addCase(getCurrentShiftProgress.pending, (state) => {
-        state.loading = true;
+        if (!state.currentShift) state.loading = true;
         state.error = null;
         state.currentError = null;
       })
@@ -227,4 +227,4 @@ export const {
   clearShiftsByBranch 
 } = shiftReportSlice.actions;
 
-export default shiftReportSlice.reducer; 
+export default shiftReportSlice.reducer;

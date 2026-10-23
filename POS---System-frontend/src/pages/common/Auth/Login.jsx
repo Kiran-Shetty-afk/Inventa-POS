@@ -96,7 +96,12 @@ const Login = () => {
         const userRole = normalizeAppRole(user.role)
         if (userRole === "ROLE_BRANCH_CASHIER") {
           try {
-            await dispatch(startShift(user.branchId)).unwrap()
+            await dispatch(startShift({
+              branchId: user.branchId ?? user.branch?.id,
+              cashierId: user.id,
+              cashierName: user.fullName,
+              branchName: user.branch?.name ?? user.branchName,
+            })).unwrap()
           } catch (shiftError) {
             const errorMessage =
               typeof shiftError === "string"

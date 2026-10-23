@@ -6,6 +6,7 @@ import com.zosh.modal.*;
 import com.zosh.repository.OrderRepository;
 import com.zosh.repository.RefundRepository;
 import com.zosh.repository.ShiftReportRepository;
+import com.zosh.payload.dto.TopSellingProductDTO;
 import com.zosh.service.ShiftReportService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -122,11 +123,13 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         shift.setRefunds(refunds);
         shift.setPaymentSummaries(getPaymentSummaries(orders, totalSales));
         shift.setRecentOrders(getRecentOrders(orders));
+        shift.setTopSellingProducts(getTopSellingProducts(orders));
 
         return shiftReportRepository.save(shift);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ShiftReport getShiftReportById(Long id) {
         ShiftReport shift = shiftReportRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Shift report not found with ID: " + id));
@@ -138,6 +141,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
             );
             shift.setPaymentSummaries(getPaymentSummaries(orders, shift.getTotalSales() != null ? shift.getTotalSales() : 0.0));
             shift.setRecentOrders(getRecentOrders(orders));
+            shift.setTopSellingProducts(getTopSellingProducts(orders));
         }
         return shift;
     }
@@ -158,6 +162,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ShiftReport getCurrentShiftProgress(Long cashierId) throws UserException {
         ShiftReport shift = shiftReportRepository
                 .findTopByCashierIdAndShiftEndIsNullOrderByShiftStartDesc(cashierId)
@@ -209,11 +214,13 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         shift.setRefunds(refunds);
         shift.setPaymentSummaries(getPaymentSummaries(orders, totalSales));
         shift.setRecentOrders(getRecentOrders(orders));
+        shift.setTopSellingProducts(getTopSellingProducts(orders));
 
         return shift;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ShiftReport getShiftReportByCashierAndDate(Long cashierId, LocalDateTime date) {
         LocalDateTime start = date.withHour(0).withMinute(0).withSecond(0).withNano(0);
         LocalDateTime end = date.withHour(23).withMinute(59).withSecond(59).withNano(999999999);
@@ -227,6 +234,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         );
         shift.setPaymentSummaries(getPaymentSummaries(orders, shift.getTotalSales() != null ? shift.getTotalSales() : 0.0));
         shift.setRecentOrders(getRecentOrders(orders));
+        shift.setTopSellingProducts(getTopSellingProducts(orders));
 
         return shift;
     }
@@ -279,5 +287,82 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 .sorted(Comparator.comparing(Order::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .limit(5)
                 .collect(Collectors.toList());
+    }
+
+    private List<TopSellingProductDTO> getTopSellingProducts(List<Order> orders) {
+        if (orders == null || orders.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        Map<Long, ProductSales> salesByProduct = new HashMap<>();
+        for (Order order : orders) {
+            if (order.getItems() == null) {
+                continue;
+            }
+
+            for (OrderItem item : order.getItems()) {
+                if (item == null || item.getProductId() == null || item.getQuantity() == null
+                        || item.getQuantity() <= 0) {
+                    continue;
+                }
+
+                double lineRevenue = item.getPrice() != null
+                        ? item.getPrice()
+                        : (item.getProductPrice() != null ? item.getProductPrice() * item.getQuantity() : 0.0);
+                salesByProduct.computeIfAbsent(item.getProductId(), id -> new ProductSales(
+                                id,
+                                item.getProductName() != null && !item.getProductName().isBlank()
+                                        ? item.getProductName()
+                                        : "Unnamed product"))
+                        .add(item.getQuantity(), lineRevenue);
+            }
+        }
+
+        return salesByProduct.values().stream()
+                .sorted(Comparator.comparingInt(ProductSales::getQuantity).reversed()
+                        .thenComparing(ProductSales::getName, String.CASE_INSENSITIVE_ORDER))
+                .limit(5)
+                .map(product -> TopSellingProductDTO.builder()
+                        .id(product.getId())
+                        .name(product.getName())
+                        .quantity(product.getQuantity())
+                        .sellingPrice(product.getQuantity() > 0
+                                ? product.getRevenue() / product.getQuantity()
+                                : 0.0)
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private static class ProductSales {
+        private final Long id;
+        private final String name;
+        private int quantity;
+        private double revenue;
+
+        private ProductSales(Long id, String name) {
+            this.id = id;
+            this.name = name;
+        }
+
+        private void add(int soldQuantity, double lineRevenue) {
+            quantity += soldQuantity;
+            revenue += lineRevenue;
+        }
+
+        private Long getId() {
+            return id;
+        }
+
+        private String getName() {
+            return name;
+        }
+
+        private int getQuantity() {
+            return quantity;
+        }
+
+        private double getRevenue() {
+            return revenue;
+        }
     }
 }

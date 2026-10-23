@@ -25,8 +25,30 @@
           }
         };
 
+   export const parseOrderDate = (date) => {
+    if (!date) return null;
+
+    if (date instanceof Date) {
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    // Order timestamps are LocalDateTime values emitted by the Docker service,
+    // whose clock runs in UTC. Treat timezone-free timestamps as UTC instants.
+    const value = typeof date === 'string'
+      ? /^\d{4}-\d{2}-\d{2}$/.test(date)
+        ? `${date}T00:00:00`
+        : !/(Z|[+-]\d{2}:?\d{2})$/i.test(date)
+          ? `${date}Z`
+          : date
+      : date;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
    export const formatDate = (date) => {
-    return new Date(date).toLocaleString('en-US', {
+    const parsed = parseOrderDate(date);
+    if (!parsed) return "-";
+    return parsed.toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
