@@ -50,14 +50,28 @@ const storeSlice = createSlice({
       .addCase(getAllStores.fulfilled, (state, action) => {
         state.stores = action.payload;
       })
+      .addCase(updateStore.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(updateStore.fulfilled, (state, action) => {
+        state.loading = false;
         state.store = action.payload;
+      })
+      .addCase(getStoreByAdmin.pending, (state) => {
+        state.loading = true;
+        state.error = null;
       })
       .addCase(deleteStore.fulfilled, (state) => {
         state.store = null;
       })
       .addCase(getStoreByAdmin.fulfilled, (state, action) => {
+        state.loading = false;
         state.store = action.payload;
+      })
+      .addCase(getStoreByAdmin.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
       .addCase(getStoreByEmployee.fulfilled, (state, action) => {
         state.store = action.payload;
@@ -80,6 +94,7 @@ const storeSlice = createSlice({
       .addMatcher(
         (action) => action.type.startsWith('store/') && action.type.endsWith('/rejected'),
         (state, action) => {
+          state.loading = false;
           state.error = action.payload;
         }
       );

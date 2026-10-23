@@ -6,7 +6,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Download, Plus, CreditCard, IndianRupee, User, Store, Building2 } from "lucide-react";
+import { Download, CreditCard, IndianRupee, User, Store, Building2 } from "lucide-react";
 import { 
   getStoreOverview, 
   getDailySales, 
@@ -28,9 +28,11 @@ export default function Sales() {
     dailySales, 
     salesByPaymentMethod, 
     salesByBranch,
-    loading 
+    loading,
+    error,
   } = useSelector((state) => state.storeAnalytics);
   const [selectedBranchId, setSelectedBranchId] = useState("all");
+  const storeAdminId = userProfile?.id;
 
   useEffect(() => {
     if (!store?.id || branches?.length > 0) return;
@@ -44,15 +46,15 @@ export default function Sales() {
 
 
   const fetchSalesData = useCallback(async () => {
-    if (!userProfile?.id) return;
+    if (!storeAdminId) return;
     const branchId =
       selectedBranchId !== "all" ? Number(selectedBranchId) : undefined;
     try {
       await Promise.all([
-        dispatch(getStoreOverview({ storeAdminId: userProfile.id, branchId })).unwrap(),
-        dispatch(getDailySales({ storeAdminId: userProfile.id, branchId })).unwrap(),
-        dispatch(getSalesByPaymentMethod({ storeAdminId: userProfile.id, branchId })).unwrap(),
-        dispatch(getSalesByBranch({ storeAdminId: userProfile.id, branchId })).unwrap(),
+        dispatch(getStoreOverview({ storeAdminId, branchId })).unwrap(),
+        dispatch(getDailySales({ storeAdminId, branchId })).unwrap(),
+        dispatch(getSalesByPaymentMethod({ storeAdminId, branchId })).unwrap(),
+        dispatch(getSalesByBranch({ storeAdminId, branchId })).unwrap(),
       ]);
     } catch (err) {
       toast({
@@ -61,13 +63,13 @@ export default function Sales() {
         variant: "destructive",
       });
     }
-  }, [dispatch, toast, userProfile, selectedBranchId]);
+  }, [dispatch, toast, storeAdminId, selectedBranchId]);
 
   useEffect(() => {
-    if (userProfile?.id) {
+    if (storeAdminId) {
       fetchSalesData();
     }
-  }, [userProfile?.id, fetchSalesData]);
+  }, [storeAdminId, fetchSalesData]);
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -81,7 +83,7 @@ export default function Sales() {
 
   // Format percentage change
   const formatChange = (current, previous) => {
-    if (!previous || previous === 0) return "+0%";
+    if (!previous || previous === 0) return current > 0 ? "New" : "0%";
     const change = ((current - previous) / previous) * 100;
     const sign = change >= 0 ? "+" : "";
     return `${sign}${change.toFixed(1)}%`;
@@ -175,7 +177,7 @@ export default function Sales() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Sales Management</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Sales</h1>
         <div className="flex gap-2 flex-wrap">
           <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
             <SelectTrigger className="w-[220px]">
@@ -193,11 +195,10 @@ export default function Sales() {
           <Button type="button" variant="outline" onClick={handleExportSalesCsv}>
             <Download className="mr-2 h-4 w-4" /> Export CSV
           </Button>
-          <Button className="bg-emerald-600 hover:bg-emerald-700">
-            <Plus className="mr-2 h-4 w-4" /> New Sale
-          </Button>
         </div>
       </div>
+
+      {error && <p role="alert" className="rounded-md border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
@@ -205,7 +206,7 @@ export default function Sales() {
           <CardContent className="p-6 overflow-hidden">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-500">Total Sales</p>
+                <p className="text-sm font-medium text-gray-500">Sales This Month</p>
                 <h3 className="text-xl font-bold mt-1 leading-tight break-all">
                   {loading ? (
                     <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
@@ -218,7 +219,7 @@ export default function Sales() {
                     <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
                     formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales)
-                  )} from last week
+                  )} vs previous month
                 </p>
               </div>
               <div className="p-3 bg-emerald-100 rounded-full shrink-0">
@@ -302,7 +303,7 @@ export default function Sales() {
                     <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
                     formatChange(storeOverview?.averageOrderValue, storeOverview?.previousPeriodAverageOrderValue)
-                  )} from last week
+                  )} vs previous month
                 </p>
               </div>
               <div className="p-3 bg-orange-100 rounded-full shrink-0">

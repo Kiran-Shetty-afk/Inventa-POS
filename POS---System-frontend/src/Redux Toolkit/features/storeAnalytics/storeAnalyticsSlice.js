@@ -1,4 +1,4 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, isAnyOf } from '@reduxjs/toolkit';
 import {
   getStoreOverview,
   getSalesTrends,
@@ -35,6 +35,7 @@ const initialState = {
   
   // Loading and Error States
   loading: false,
+  pendingRequests: 0,
   error: null,
 };
 
@@ -54,6 +55,8 @@ const storeAnalyticsSlice = createSlice({
       state.branchPerformance = null;
       state.storeAlerts = null;
       state.error = null;
+      state.loading = false;
+      state.pendingRequests = 0;
     },
     clearSalesData: (state) => {
       state.salesTrends = null;
@@ -200,6 +203,54 @@ const storeAnalyticsSlice = createSlice({
         state.error = action.payload;
       })
 
+      .addMatcher(
+        isAnyOf(
+          getStoreOverview.pending,
+          getSalesTrends.pending,
+          getMonthlySales.pending,
+          getDailySales.pending,
+          getSalesByCategory.pending,
+          getSalesByPaymentMethod.pending,
+          getSalesByBranch.pending,
+          getPaymentBreakdown.pending,
+          getBranchPerformance.pending,
+          getStoreAlerts.pending
+        ),
+        (state) => {
+          state.pendingRequests += 1;
+          state.loading = true;
+          state.error = null;
+        }
+      )
+      .addMatcher(
+        isAnyOf(
+          getStoreOverview.fulfilled,
+          getStoreOverview.rejected,
+          getSalesTrends.fulfilled,
+          getSalesTrends.rejected,
+          getMonthlySales.fulfilled,
+          getMonthlySales.rejected,
+          getDailySales.fulfilled,
+          getDailySales.rejected,
+          getSalesByCategory.fulfilled,
+          getSalesByCategory.rejected,
+          getSalesByPaymentMethod.fulfilled,
+          getSalesByPaymentMethod.rejected,
+          getSalesByBranch.fulfilled,
+          getSalesByBranch.rejected,
+          getPaymentBreakdown.fulfilled,
+          getPaymentBreakdown.rejected,
+          getBranchPerformance.fulfilled,
+          getBranchPerformance.rejected,
+          getStoreAlerts.fulfilled,
+          getStoreAlerts.rejected
+        ),
+        (state) => {
+          state.pendingRequests = Math.max(0, state.pendingRequests - 1);
+          state.loading = state.pendingRequests > 0;
+        }
+      )
+
       // Global error handler for all rejected actions
       .addMatcher(
         (action) => action.type.startsWith('storeAnalytics/') && action.type.endsWith('/rejected'),
@@ -216,4 +267,4 @@ export const {
   clearBranchData 
 } = storeAnalyticsSlice.actions;
 
-export default storeAnalyticsSlice.reducer; 
+export default storeAnalyticsSlice.reducer;

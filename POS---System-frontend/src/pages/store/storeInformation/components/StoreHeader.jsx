@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const StoreHeader = ({ onRefresh, refreshing, loading }) => {
+const StoreHeader = ({ title = "Store Management", onRefresh, refreshing, loading }) => {
   return (
     <div className="flex justify-between items-center">
-      <h2 className="text-3xl font-bold tracking-tight">Store Management</h2>
+      <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -28,4 +28,4 @@ const StoreHeader = ({ onRefresh, refreshing, loading }) => {
   );
 };
 
-export default StoreHeader; 
+export default StoreHeader;

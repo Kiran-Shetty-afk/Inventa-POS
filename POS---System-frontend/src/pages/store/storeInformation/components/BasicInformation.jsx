@@ -9,12 +9,12 @@ const BasicInformation = ({ storeData }) => {
       <div className="space-y-4">
         <div>
           <Label className="text-sm text-muted-foreground">Store Name</Label>
-          <p className="text-base font-medium">{storeData.brand}</p>
+          <p className="text-base font-medium">{storeData.brand || "Not provided"}</p>
         </div>
         <div>
           <Label className="text-sm text-muted-foreground">Store Type</Label>
           <Badge variant="secondary" className="mt-1">
-            {storeData.storeType}
+            {storeData.storeType || "Not selected"}
           </Badge>
         </div>
         <div>
@@ -26,4 +26,4 @@ const BasicInformation = ({ storeData }) => {
   );
 };
 
-export default BasicInformation; 
+export default BasicInformation;

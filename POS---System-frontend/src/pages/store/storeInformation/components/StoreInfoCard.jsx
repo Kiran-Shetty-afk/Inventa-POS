@@ -26,17 +26,31 @@ const StoreInfoCard = ({ storeData, onEditClick }) => {
           <BasicInformation storeData={storeData} />
           <ContactInformation storeData={storeData} />
         </div>
-        
-        {storeData.createdAt && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <p className="text-sm text-muted-foreground">
-              Store created on {new Date(storeData.createdAt).toLocaleDateString()}
+        <div className="grid gap-4 border-t pt-4 text-sm sm:grid-cols-2">
+          <div>
+            <p className="text-muted-foreground">Store ID</p>
+            <p className="font-medium">{storeData.id ?? "Not available"}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Approval status</p>
+            <p className="font-medium">{storeData.status || "Not available"}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Store administrator</p>
+            <p className="font-medium">
+              {storeData.storeAdmin?.fullName || storeData.storeAdmin?.email || "Not available"}
             </p>
           </div>
-        )}
+          <div>
+            <p className="text-muted-foreground">Last updated</p>
+            <p className="font-medium">
+              {storeData.updatedAt ? new Date(storeData.updatedAt).toLocaleString() : "Not available"}
+            </p>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
 };
 
-export default StoreInfoCard; 
+export default StoreInfoCard;
