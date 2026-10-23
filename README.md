@@ -167,6 +167,43 @@ The frontend runs on `http://localhost:5173`.
 
 During local development, Vite proxies API traffic to `http://localhost:5000` through [`POS---System-frontend/vite.config.js`](D:/Projects/Inventa-POS/POS---System-frontend/vite.config.js).
 
+### Docker and hosted URL configuration
+
+The Docker images use Docker DNS names for service-to-service calls, while direct local runs keep their `localhost` defaults. Override these values at container runtime when the network or service names differ:
+
+| Variable | Used by | Default for direct local runs | Docker image default / hosted value |
+|---|---|---|---|
+| `EUREKA_URL` | Java Eureka clients | `http://localhost:8761/eureka/` | `http://eureka-server:8761/eureka/` |
+| `EUREKA_INSTANCE_HOSTNAME` | Eureka server and ML registration | `localhost` | `eureka-server` in Eureka; `ml-intelligence-service` in ML |
+| `EUREKA_SERVER` | ML Eureka client | `http://localhost:8761/eureka/` | `http://eureka-server:8761/eureka/` |
+| `ORDER_SALES_SERVICE_URL` | Billing analytics | `http://localhost:8083` | `http://order-sales-service:8083` |
+| `INVENTORY_SERVICE_URL` | Billing analytics | `http://localhost:8082` | `http://inventory-catalog-service:8082` |
+| `USER_ORG_SERVICE_URL` | Billing analytics | `http://localhost:8081` | `http://user-org-service:8081` |
+| `FRONTEND_BASE_URL` | Password-reset and payment return links | `http://localhost:5173` | Set to the public/browser-reachable frontend origin |
+| `CORS_ALLOWED_ORIGINS` | API Gateway | `http://localhost:5173,http://localhost:3000` | Set to comma-separated, exact browser origins |
+| `VITE_API_BASE_URL` | Frontend build | `http://localhost:5000` | Set at build time to the browser-reachable gateway URL |
+
+The browser cannot resolve Docker-only names such as `api-gateway`; use the public gateway URL or a browser-facing same-origin proxy for `VITE_API_BASE_URL`. Set `FRONTEND_BASE_URL` without a trailing slash. Keep the comma-separated CORS list limited to the frontend origins you serve. These URL settings contain no credentials; sensitive credentials remain separate environment values.
+
+### Run the complete stack with Docker Compose
+
+The root `docker-compose.yml` builds and runs MySQL, Eureka, the API Gateway, the four domain services, the ML API, the frontend, Prometheus, and Grafana on one private Compose network. For local access, the published URLs are the frontend (`http://localhost:5173`), API Gateway (`http://localhost:5000`), Prometheus (`http://localhost:9090`), and Grafana (`http://localhost:3000`). MySQL, Eureka, the individual domain services, and the ML API are reachable only by containers on that network.
+
+Create a private environment file from the checked-in template and replace its placeholders before starting the stack:
+
+```powershell
+Copy-Item .env.example .env
+# Edit .env and set the required values; never commit this file.
+docker compose up --build -d
+docker compose ps
+```
+
+Required values are `MYSQL_ROOT_PASSWORD`, `DB_PASSWORD`, `JWT_SECRET`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `RAZORPAY_API_KEY`, `RAZORPAY_API_SECRET`, and `GRAFANA_ADMIN_PASSWORD`. Use Razorpay **test-mode** credentials for local demonstration. `STRIPE_API_KEY` and `GEMINI_API_KEY` are optional and may remain blank. `FRONTEND_BASE_URL` and `CORS_ALLOWED_ORIGINS` should match the browser-visible frontend origin(s). `VITE_API_BASE_URL` is baked into the frontend during the image build; use the public/browser-reachable Gateway URL for hosted deployments, never a Docker-only service name.
+
+Compose creates the four schemas on first initialization and grants the `inventa_app` database user access to those schemas. MySQL data persists in the named volume `inventa_mysql_data`; initialization scripts run only when that volume is empty. Keep the volume when stopping or updating the stack. The MySQL and Java services wait for their database/Eureka prerequisites to become healthy; downstream services and the Gateway also wait for the services they call. User/Org health includes its configured SMTP check, so valid Gmail SMTP app credentials and network access are needed for it to become healthy. Actuator checks use each service's existing `/actuator/health` endpoint.
+
+Prometheus keeps its existing data volume and dashboard configuration, and scrapes services through Compose DNS. Grafana keeps its existing data and provisioning mounts. Do not use `docker compose down -v` for routine stops because it removes named volumes.
+
 ### Build commands
 
 #### Frontend

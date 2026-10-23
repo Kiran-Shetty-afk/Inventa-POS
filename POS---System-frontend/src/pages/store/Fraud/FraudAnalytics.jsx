@@ -44,7 +44,7 @@ import {
     getRecentFraudAlerts,
     getFraudTrend,
     getRiskDistribution,
-} from "../../../Redux Toolkit/features/branchAdmin/adminThunks";
+} from "../../../Redux Toolkit/features/branchadmin/adminThunks.js";
 
 export default function FraudAnalytics() {
 

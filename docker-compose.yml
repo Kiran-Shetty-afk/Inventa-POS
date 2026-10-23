@@ -1,4 +1,251 @@
 services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the private .env file}
+      MYSQL_DATABASE: userdb
+      MYSQL_USER: inventa_app
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the private .env file}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - inventa-network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'MYSQL_PWD="$${MYSQL_ROOT_PASSWORD}" mysqladmin ping --protocol=tcp --host=127.0.0.1 --user=root --silent'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  eureka-server:
+    image: inventa-eureka-server:latest
+    build:
+      context: ./POS---Microservices
+      dockerfile: eureka-server/Dockerfile
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: eureka-server
+    networks:
+      - inventa-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--max-time", "3", "http://127.0.0.1:8761/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
+    restart: unless-stopped
+
+  user-org-service:
+    image: inventa-user-org-service:latest
+    build:
+      context: ./POS---Microservices
+      dockerfile: user-org-service/Dockerfile
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: userdb
+      DB_USERNAME: inventa_app
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the private .env file}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the private .env file}
+      MAIL_USERNAME: ${MAIL_USERNAME:?Set MAIL_USERNAME in the private .env file}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?Set MAIL_PASSWORD in the private .env file}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - inventa-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--max-time", "3", "http://127.0.0.1:8081/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  inventory-catalog-service:
+    image: inventa-inventory-catalog:latest
+    build:
+      context: ./POS---Microservices
+      dockerfile: inventory-catalog-service/Dockerfile
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: inventorydb
+      DB_USERNAME: inventa_app
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the private .env file}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the private .env file}
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - inventa-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--max-time", "3", "http://127.0.0.1:8082/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  order-sales-service:
+    image: inventa-order-sales:latest
+    build:
+      context: ./POS---Microservices
+      dockerfile: order-sales-service/Dockerfile
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: salesdb
+      DB_USERNAME: inventa_app
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the private .env file}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the private .env file}
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      inventory-catalog-service:
+        condition: service_healthy
+    networks:
+      - inventa-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--max-time", "3", "http://127.0.0.1:8083/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  billing-analytics-service:
+    image: inventa-billing-analytics:latest
+    build:
+      context: ./POS---Microservices
+      dockerfile: billing-analytics-service/Dockerfile
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: billingdb
+      DB_USERNAME: inventa_app
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the private .env file}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the private .env file}
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      ORDER_SALES_SERVICE_URL: http://order-sales-service:8083
+      INVENTORY_SERVICE_URL: http://inventory-catalog-service:8082
+      USER_ORG_SERVICE_URL: http://user-org-service:8081
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
+      RAZORPAY_API_KEY: ${RAZORPAY_API_KEY:?Set RAZORPAY_API_KEY in the private .env file}
+      RAZORPAY_API_SECRET: ${RAZORPAY_API_SECRET:?Set RAZORPAY_API_SECRET in the private .env file}
+      STRIPE_API_KEY: ${STRIPE_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      user-org-service:
+        condition: service_healthy
+      inventory-catalog-service:
+        condition: service_healthy
+      order-sales-service:
+        condition: service_healthy
+    networks:
+      - inventa-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--max-time", "3", "http://127.0.0.1:8084/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  api-gateway:
+    image: inventa-api-gateway:latest
+    build:
+      context: ./POS---Microservices
+      dockerfile: api-gateway/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the private .env file}
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      user-org-service:
+        condition: service_healthy
+      inventory-catalog-service:
+        condition: service_healthy
+      order-sales-service:
+        condition: service_healthy
+      billing-analytics-service:
+        condition: service_healthy
+    networks:
+      - inventa-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--max-time", "3", "http://127.0.0.1:5000/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  ml-intelligence-service:
+    image: inventa-ml-api:latest
+    build:
+      context: ./POS---ML
+      dockerfile: Dockerfile
+    environment:
+      EUREKA_SERVER: http://eureka-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: ml-intelligence-service
+      APP_NAME: ml-intelligence-service
+      PORT: "8000"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - inventa-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
+    restart: unless-stopped
+
+  frontend:
+    image: inventa-frontend:latest
+    build:
+      context: ./POS---System-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:5000}
+    ports:
+      - "5173:80"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    networks:
+      - inventa-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+
   prometheus:
     image: prom/prometheus:latest
     container_name: inventa-prometheus
@@ -7,14 +254,14 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.enable-lifecycle'
+    networks:
+      - inventa-network
     restart: unless-stopped
 
   grafana:
@@ -23,10 +270,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/inventa-pos-overview.json
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in the private .env file}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/inventa-pos-overview.json
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
@@ -34,8 +281,16 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
+    networks:
+      - inventa-network
     restart: unless-stopped
 
+networks:
+  inventa-network:
+    driver: bridge
+
 volumes:
+  mysql_data:
+    name: inventa_mysql_data
   prometheus_data:
   grafana_data:

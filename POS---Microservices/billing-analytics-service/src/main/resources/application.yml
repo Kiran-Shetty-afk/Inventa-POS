@@ -26,7 +26,19 @@ eureka:
     fetch-registry: true
     register-with-eureka: true
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+
+services:
+  order-sales:
+    url: ${ORDER_SALES_SERVICE_URL:http://localhost:8083}
+  inventory:
+    url: ${INVENTORY_SERVICE_URL:http://localhost:8082}
+  user-org:
+    url: ${USER_ORG_SERVICE_URL:http://localhost:8081}
+
+app:
+  frontend:
+    base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
 
 razorpay:
   api:
