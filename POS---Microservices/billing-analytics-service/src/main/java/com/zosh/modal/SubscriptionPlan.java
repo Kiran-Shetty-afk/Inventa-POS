@@ -43,6 +43,9 @@ public class SubscriptionPlan {
     @Column(nullable = false)
     private Integer maxProducts;
 
+    @Builder.Default
+    private Boolean active = true;
+
     private Boolean enableAdvancedReports;
     private Boolean enableInventory;
     private Boolean enableIntegrations;
@@ -65,6 +68,9 @@ public class SubscriptionPlan {
     public void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = this.createdAt;
+        if (active == null) {
+            active = true;
+        }
     }
 
     @PreUpdate

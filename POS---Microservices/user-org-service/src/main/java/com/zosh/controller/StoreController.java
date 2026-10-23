@@ -7,6 +7,8 @@ import com.zosh.mapper.StoreMapper;
 import com.zosh.modal.Store;
 import com.zosh.modal.User;
 import com.zosh.payload.dto.StoreDTO;
+import com.zosh.payload.dto.StoreDashboardStatsDTO;
+import com.zosh.payload.dto.StoreRegistrationStatDTO;
 import com.zosh.payload.dto.UserDTO;
 import com.zosh.payload.response.ApiResponse;
 import com.zosh.service.StoreService;
@@ -14,6 +16,8 @@ import com.zosh.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -86,10 +90,31 @@ public class StoreController {
         return ResponseEntity.ok(storeService.getAllStores(status));
     }
 
+    @GetMapping("/stats")
+    public ResponseEntity<StoreDashboardStatsDTO> getDashboardStats(Authentication authentication) {
+        requireAdmin(authentication);
+        return ResponseEntity.ok(storeService.getDashboardStats());
+    }
+
+    @GetMapping("/registration-stats")
+    public ResponseEntity<List<StoreRegistrationStatDTO>> getLast7DayRegistrationStats(
+            Authentication authentication) {
+        requireAdmin(authentication);
+        return ResponseEntity.ok(storeService.getLast7DayRegistrationStats());
+    }
+
     @PutMapping("/{storeId}/moderate")
     public StoreDTO moderateStore(
             @PathVariable Long storeId,
             @RequestParam StoreStatus action) throws ResourceNotFoundException {
         return storeService.moderateStore(storeId, action);
+    }
+
+    private void requireAdmin(Authentication authentication) {
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+        if (!isAdmin) {
+            throw new AccessDeniedException("Administrator access is required");
+        }
     }
 }

@@ -13,5 +13,6 @@ public class DashboardSummaryDTO {
     private Long totalStores;
     private Long activeStores;
     private Long pendingStores;
+    private Long blockedStores;
     private Double totalPlatformRevenue;
 }

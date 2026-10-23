@@ -1,6 +1,5 @@
 package com.zosh.payload.AdminAnalysis;
 
-import com.zosh.domain.StoreStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,6 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StoreStatusDistributionDTO {
-    private StoreStatus status;
-    private Long count;
+    private Long total;
+    private Long active;
+    private Long pending;
+    private Long blocked;
+    private Long closed;
 }

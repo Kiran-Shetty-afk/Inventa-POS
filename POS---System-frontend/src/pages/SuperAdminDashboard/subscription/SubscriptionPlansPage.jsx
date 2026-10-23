@@ -114,7 +114,7 @@ const SubscriptionPlansPage = () => {
 
   const handleStatusToggle = async (plan) => {
     setStatusLoadingId(plan.id);
-    const updated = { ...plan, active: !plan.active };
+    const updated = { ...plan, active: !(plan.active ?? true) };
     // Remove fields not needed for update (like Redux entity fields)
     delete updated.createdAt;
     delete updated.updatedAt;
@@ -206,12 +206,12 @@ const SubscriptionPlansPage = () => {
                   
                   <div className="flex items-center gap-2">
                     <Switch
-                      checked={!!plan.active}
+                      checked={plan.active ?? true}
                       onCheckedChange={() => handleStatusToggle(plan)}
                       disabled={statusLoadingId === plan.id}
                     />
-                    <span className={plan.active ? 'text-green-600' : 'text-red-500'}>
-                      {plan.active ? 'Active' : 'Inactive'}
+                    <span className={(plan.active ?? true) ? 'text-green-600' : 'text-red-500'}>
+                      {(plan.active ?? true) ? 'Active' : 'Inactive'}
                     </span>
                     {statusLoadingId === plan.id && <span className="text-xs text-gray-400">Updating...</span>}
                   </div>

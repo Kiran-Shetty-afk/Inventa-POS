@@ -5,17 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Key, Eye, EyeOff } from "lucide-react";
 
-const PasswordInput = ({ id, label, value, onChange, show, onToggle }) => (
+const PasswordInput = ({ id, label, value, onChange, show, onToggle, disabled, autoComplete }) => (
   <div className="space-y-2">
     <Label htmlFor={id}>{label}</Label>
     <div className="relative">
-      <Input id={id} type={show ? "text" : "password"} value={value} onChange={onChange} />
+      <Input id={id} type={show ? "text" : "password"} value={value} onChange={onChange} disabled={disabled} autoComplete={autoComplete} />
       <Button
         type="button"
         variant="ghost"
         size="sm"
         className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
         onClick={onToggle}
+        disabled={disabled}
       >
         {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
       </Button>
@@ -29,6 +30,7 @@ const SecuritySettingsForm = ({
   onPasswordChange,
   onShowPasswordToggle,
   onUpdate,
+  loading,
 }) => {
   return (
     <Card>
@@ -46,6 +48,8 @@ const SecuritySettingsForm = ({
           onChange={(e) => onPasswordChange("currentPassword", e.target.value)}
           show={showPasswords.current}
           onToggle={() => onShowPasswordToggle("current")}
+          disabled={loading}
+          autoComplete="current-password"
         />
         <PasswordInput
           id="new-password"
@@ -54,6 +58,8 @@ const SecuritySettingsForm = ({
           onChange={(e) => onPasswordChange("newPassword", e.target.value)}
           show={showPasswords.new}
           onToggle={() => onShowPasswordToggle("new")}
+          disabled={loading}
+          autoComplete="new-password"
         />
         <PasswordInput
           id="confirm-password"
@@ -62,14 +68,16 @@ const SecuritySettingsForm = ({
           onChange={(e) => onPasswordChange("confirmPassword", e.target.value)}
           show={showPasswords.confirm}
           onToggle={() => onShowPasswordToggle("confirm")}
+          disabled={loading}
+          autoComplete="new-password"
         />
-        <Button onClick={onUpdate} className="flex items-center gap-2">
+        <Button onClick={onUpdate} className="flex items-center gap-2" disabled={loading}>
           <Key className="w-4 h-4" />
-          Change Password
+          {loading ? "Saving..." : "Change Password"}
         </Button>
       </CardContent>
     </Card>
   );
 };
 
-export default SecuritySettingsForm; 
+export default SecuritySettingsForm;

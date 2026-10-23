@@ -11,6 +11,8 @@ import com.zosh.modal.Store;
 import com.zosh.modal.StoreContact;
 import com.zosh.modal.User;
 import com.zosh.payload.dto.StoreDTO;
+import com.zosh.payload.dto.StoreDashboardStatsDTO;
+import com.zosh.payload.dto.StoreRegistrationStatDTO;
 import com.zosh.payload.dto.UserDTO;
 import com.zosh.repository.BranchRepository;
 import com.zosh.repository.StoreRepository;
@@ -23,6 +25,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.time.LocalDate;
+import java.util.stream.IntStream;
 import java.util.stream.Collectors;
 
 @Service
@@ -59,6 +63,31 @@ public class StoreServiceImpl implements StoreService {
         return stores.stream()
                 .map(StoreMapper::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public StoreDashboardStatsDTO getDashboardStats() {
+        return StoreDashboardStatsDTO.builder()
+                .total(storeRepository.count())
+                .active(storeRepository.countByStatus(StoreStatus.ACTIVE))
+                .pending(storeRepository.countByStatus(StoreStatus.PENDING))
+                .blocked(storeRepository.countByStatus(StoreStatus.SUSPENDED))
+                .closed(storeRepository.countByStatus(StoreStatus.CLOSED))
+                .build();
+    }
+
+    @Override
+    public List<StoreRegistrationStatDTO> getLast7DayRegistrationStats() {
+        LocalDate today = LocalDate.now();
+        return IntStream.rangeClosed(0, 6)
+                .mapToObj(daysFromStart -> {
+                    LocalDate date = today.minusDays(6L - daysFromStart);
+                    return StoreRegistrationStatDTO.builder()
+                            .date(date.atStartOfDay())
+                            .count(storeRepository.countByDate(date))
+                            .build();
+                })
+                .toList();
     }
 
     @Override
