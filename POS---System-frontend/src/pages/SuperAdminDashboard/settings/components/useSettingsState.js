@@ -2,11 +2,14 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useToast } from "@/components/ui/use-toast";
 import { getUserProfile } from "@/Redux Toolkit/features/user/userThunks";
+import api from "@/utils/api";
 
 export const useSettingsState = () => {
   const dispatch = useDispatch();
-  const { userProfile,loading } = useSelector((state) => state.user);
+  const { userProfile, loading: profileLoading } = useSelector((state) => state.user);
   const { toast } = useToast();
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   const [profileData, setProfileData] = useState({
     fullName: "",
@@ -26,10 +29,9 @@ export const useSettingsState = () => {
       setProfileData({
         fullName: userProfile.fullName || "",
         email: userProfile.email || "",
-        phone: userProfile.mobile || "",
+        phone: userProfile.phone || userProfile.mobile || "",
       });
     }
-    console.log("User data loaded:", userProfile.email);
   }, [userProfile]);
 
   const [passwordData, setPasswordData] = useState({
@@ -44,29 +46,38 @@ export const useSettingsState = () => {
     confirm: false,
   });
 
-  const [notifications, setNotifications] = useState({
-    newStoreRequests: true,
-    storeApprovals: true,
-    commissionUpdates: false,
-    systemAlerts: true,
-    emailNotifications: true,
-  });
+  const handleProfileUpdate = async () => {
+    const token = localStorage.getItem("jwt");
+    if (!token) {
+      toast({ title: "Sign in required", description: "Please sign in again to update your profile.", variant: "destructive" });
+      return;
+    }
 
-  const [systemSettings, setSystemSettings] = useState({
-    autoApproveStores: false,
-    requireDocumentVerification: true,
-    commissionAutoCalculation: true,
-    maintenanceMode: false,
-  });
-
-  const handleProfileUpdate = () => {
-    toast({
-      title: "Profile Updated",
-      description: "Your profile information has been updated successfully.",
-    });
+    setProfileSaving(true);
+    try {
+      const response = await api.put("/api/users/profile", {
+        fullName: profileData.fullName,
+        phone: profileData.phone,
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setProfileData((current) => ({
+        ...current,
+        fullName: response.data.fullName || current.fullName,
+        phone: response.data.phone || "",
+      }));
+      dispatch(getUserProfile(token));
+      toast({ title: "Profile updated", description: "Your name and phone number have been saved." });
+    } catch (error) {
+      toast({
+        title: "Profile update failed",
+        description: error.response?.data?.message || "Could not save your profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast({
         title: "Password Mismatch",
@@ -85,30 +96,29 @@ export const useSettingsState = () => {
       return;
     }
 
-    toast({
-      title: "Password Changed",
-      description: "Your password has been changed successfully.",
-    });
+    const token = localStorage.getItem("jwt");
+    if (!token) {
+      toast({ title: "Sign in required", description: "Please sign in again to change your password.", variant: "destructive" });
+      return;
+    }
 
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
-  };
-
-  const handleNotificationToggle = (key) => {
-    setNotifications((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
-  const handleSystemSettingToggle = (key) => {
-    setSystemSettings((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+    setPasswordSaving(true);
+    try {
+      await api.put("/api/users/password", {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      toast({ title: "Password changed", description: "Your new password has been saved." });
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (error) {
+      toast({
+        title: "Password change failed",
+        description: error.response?.data?.message || "Could not change your password. Check your current password and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setPasswordSaving(false);
+    }
   };
 
   const handleProfileFieldChange = (field, value) => {
@@ -125,17 +135,15 @@ export const useSettingsState = () => {
   
   return {
     profileData,
-    loading,
+    profileLoading,
+    profileSaving,
+    passwordSaving,
     passwordData,
     showPasswords,
-    notifications,
-    systemSettings,
     handleProfileUpdate,
     handlePasswordChange,
-    handleNotificationToggle,
-    handleSystemSettingToggle,
     handleProfileFieldChange,
     handlePasswordFieldChange,
     handleShowPasswordToggle
   };
-}; 
+};

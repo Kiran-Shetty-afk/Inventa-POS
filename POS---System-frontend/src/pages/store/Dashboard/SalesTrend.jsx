@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, Calendar } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import {
   getSalesTrends,
   getDailySales,
@@ -29,17 +29,17 @@ const SalesTrend = () => {
   const { salesTrends, dailySales, loading } = useSelector(
     (state) => state.storeAnalytics
   );
-  const { userProfile } = useSelector((state) => state.user);
+  const userProfileId = useSelector((state) => state.user.userProfile?.id);
   const [period, setPeriod] = useState("daily");
 
   const fetchSalesData = useCallback(async () => {
-    if (!userProfile?.id) return;
+    if (!userProfileId) return;
     try {
       if (period === "daily") {
-        await dispatch(getDailySales(userProfile.id)).unwrap();
+        await dispatch(getDailySales(userProfileId)).unwrap();
       } else {
         await dispatch(
-          getSalesTrends({ storeAdminId: userProfile.id, period })
+          getSalesTrends({ storeAdminId: userProfileId, period })
         ).unwrap();
       }
     } catch (err) {
@@ -49,13 +49,13 @@ const SalesTrend = () => {
         variant: "destructive",
       });
     }
-  }, [dispatch, period, toast, userProfile]);
+  }, [dispatch, period, toast, userProfileId]);
 
   useEffect(() => {
-    if (userProfile?.id) {
+    if (userProfileId) {
       fetchSalesData();
     }
-  }, [userProfile, fetchSalesData]);
+  }, [userProfileId, fetchSalesData]);
 
   // Format currency for tooltip
   const formatCurrency = (value) => {
@@ -80,7 +80,7 @@ const SalesTrend = () => {
     } else if (salesTrends) {
       const trendPoints = Array.isArray(salesTrends)
         ? salesTrends
-        : salesTrends?.points ?? [];
+        : salesTrends?.[period] ?? [];
       return trendPoints.map((item) => ({
         date: item.date
           ? new Date(item.date).toLocaleDateString("en-US", {

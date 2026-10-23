@@ -25,10 +25,11 @@ export default function Reports() {
   const { userProfile } = useSelector((state) => state.user);
   const { store } = useSelector((state) => state.store);
   const { branches } = useSelector((state) => state.branch);
-  const { monthlySales, salesByCategory, salesByBranch, salesByPaymentMethod, loading } =
+  const { monthlySales, salesByCategory, salesByBranch, salesByPaymentMethod, loading, error } =
     useSelector((state) => state.storeAnalytics);
   const [selectedBranchId, setSelectedBranchId] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState("");
+  const storeAdminId = userProfile?.id;
 
   useEffect(() => {
     if (!store?.id || branches?.length > 0) return;
@@ -41,7 +42,7 @@ export default function Reports() {
   }, [dispatch, store?.id, branches?.length]);
   
   const fetchReportsData = useCallback(async () => {
-    if (!userProfile?.id) return;
+    if (!storeAdminId) return;
     const branchId =
       selectedBranchId !== "all" ? Number(selectedBranchId) : undefined;
     const [year, month] = selectedMonth
@@ -50,16 +51,16 @@ export default function Reports() {
     try {
       await Promise.all([
         dispatch(
-          getMonthlySales({ storeAdminId: userProfile.id, branchId, year, month })
+          getMonthlySales({ storeAdminId, branchId, year, month })
         ).unwrap(),
         dispatch(
-          getSalesByCategory({ storeAdminId: userProfile.id, branchId, year, month })
+          getSalesByCategory({ storeAdminId, branchId, year, month })
         ).unwrap(),
         dispatch(
-          getSalesByBranch({ storeAdminId: userProfile.id, branchId, year, month })
+          getSalesByBranch({ storeAdminId, branchId, year, month })
         ).unwrap(),
         dispatch(
-          getSalesByPaymentMethod({ storeAdminId: userProfile.id, branchId, year, month })
+          getSalesByPaymentMethod({ storeAdminId, branchId, year, month })
         ).unwrap(),
       ]);
     } catch (err) {
@@ -69,13 +70,13 @@ export default function Reports() {
         variant: "destructive",
       });
     }
-  }, [dispatch, toast, userProfile, selectedBranchId, selectedMonth]);
+  }, [dispatch, toast, storeAdminId, selectedBranchId, selectedMonth]);
 
   useEffect(() => {
-    if (userProfile?.id) {
+    if (storeAdminId) {
       fetchReportsData();
     }
-  }, [userProfile?.id, fetchReportsData]);
+  }, [storeAdminId, fetchReportsData]);
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -229,6 +230,8 @@ export default function Reports() {
           </Button>
         </div>
       </div>
+
+      {error && <p role="alert" className="rounded-md border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
 
 
       {/* Charts */}

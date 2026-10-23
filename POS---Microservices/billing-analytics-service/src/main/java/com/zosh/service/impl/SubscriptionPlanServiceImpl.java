@@ -32,6 +32,9 @@ public class SubscriptionPlanServiceImpl implements SubscriptionPlanService {
         existing.setMaxBranches(updatedPlan.getMaxBranches());
         existing.setMaxUsers(updatedPlan.getMaxUsers());
         existing.setMaxProducts(updatedPlan.getMaxProducts());
+        if (updatedPlan.getActive() != null) {
+            existing.setActive(updatedPlan.getActive());
+        }
         existing.setEnableAdvancedReports(updatedPlan.getEnableAdvancedReports());
         existing.setEnableInventory(updatedPlan.getEnableInventory());
         existing.setEnableIntegrations(updatedPlan.getEnableIntegrations());

@@ -30,7 +30,16 @@ import { downloadFraudReport } from "@/utils/fraudReport";
 export default function FraudAlerts() {
     const dispatch = useDispatch();
 
-    const { alerts, dashboard, loading } = useSelector(
+    const {
+        alerts,
+        dashboard,
+        alertsLoading,
+        dashboardLoading,
+        alertsError,
+        dashboardError,
+        resolveError,
+        resolvingAlertId,
+    } = useSelector(
         (state) => state.fraud
     );
 
@@ -42,7 +51,7 @@ export default function FraudAlerts() {
     }, [dispatch]);
 
 
-    if (loading) {
+    if (alertsLoading && alerts.length === 0 && !alertsError) {
         return (
             <div className="flex justify-center items-center h-[70vh]">
                 <p className="text-lg font-medium">Loading Fraud Alerts...</p>
@@ -87,6 +96,21 @@ export default function FraudAlerts() {
 
             </div>
 
+            {dashboardError && (
+                <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    <span>Fraud dashboard could not load: {dashboardError}</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => dispatch(getFraudDashboard())}>
+                        Retry dashboard
+                    </Button>
+                </div>
+            )}
+
+            {resolveError && (
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    Alert could not be resolved: {resolveError}
+                </div>
+            )}
+
             {/* Dashboard Cards */}
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -100,7 +124,7 @@ export default function FraudAlerts() {
                             </p>
 
                             <h2 className="text-3xl font-bold mt-2">
-                                {dashboard?.totalAlerts ?? 0}
+                                {dashboardLoading && !dashboard ? "…" : dashboardError ? "—" : dashboard?.totalAlerts ?? 0}
                             </h2>
                         </div>
 
@@ -118,7 +142,7 @@ export default function FraudAlerts() {
                             </p>
 
                             <h2 className="text-3xl font-bold text-red-600 mt-2">
-                                {dashboard?.criticalAlerts ?? 0}
+                                {dashboardLoading && !dashboard ? "…" : dashboardError ? "—" : dashboard?.criticalAlerts ?? 0}
                             </h2>
                         </div>
 
@@ -136,7 +160,7 @@ export default function FraudAlerts() {
                             </p>
 
                             <h2 className="text-3xl font-bold text-orange-500 mt-2">
-                                {dashboard?.highAlerts ?? 0}
+                                {dashboardLoading && !dashboard ? "…" : dashboardError ? "—" : dashboard?.highAlerts ?? 0}
                             </h2>
                         </div>
 
@@ -154,7 +178,7 @@ export default function FraudAlerts() {
                             </p>
 
                             <h2 className="text-3xl font-bold text-green-600 mt-2">
-                                {dashboard?.averageRiskScore?.toFixed(1) ?? 0}
+                                {dashboardLoading && !dashboard ? "…" : dashboardError ? "—" : dashboard?.averageRiskScore?.toFixed(1) ?? 0}
                             </h2>
                         </div>
 
@@ -240,7 +264,16 @@ export default function FraudAlerts() {
 
                         <tbody>
 
-                            {alerts.length === 0 ? (
+                            {alertsError ? (
+                                <tr>
+                                    <td colSpan={7} className="py-12 text-center" role="alert">
+                                        <p className="font-medium text-red-700">Fraud alerts could not load: {alertsError}</p>
+                                        <Button type="button" variant="outline" className="mt-3" onClick={() => dispatch(getFraudAlerts())}>
+                                            Retry alerts
+                                        </Button>
+                                    </td>
+                                </tr>
+                            ) : alerts.length === 0 ? (
 
                                 <tr>
 
@@ -266,20 +299,7 @@ export default function FraudAlerts() {
 
                                     <tr
                                         key={alert.id}
-                                        className={`border-t hover:bg-muted/30 transition border-l-4
-
-        ${alert.riskLevel === "CRITICAL"
-                                                ? "border-l-red-600"
-
-                                                : alert.riskLevel === "HIGH"
-                                                    ? "border-l-orange-500"
-
-                                                    : alert.riskLevel === "MEDIUM"
-                                                        ? "border-l-yellow-500"
-
-                                                        : "border-l-green-500"
-                                            }
-    `}
+                                        className="border-t transition hover:bg-muted/30"
                                     >
 
                                         <td className="p-4 font-semibold">
@@ -411,18 +431,16 @@ export default function FraudAlerts() {
                                                     <Button
                                                         size="sm"
                                                         className="bg-green-600 ml-2 hover:bg-green-700"
+                                                        disabled={resolvingAlertId === alert.id}
                                                         onClick={async () => {
-
-                                                            await dispatch(resolveFraudAlert(alert.id));
-
-                                                            dispatch(getFraudAlerts());
-
-                                                            dispatch(getFraudDashboard());
-
+                                                            const result = await dispatch(resolveFraudAlert(alert.id));
+                                                            if (resolveFraudAlert.fulfilled.match(result)) {
+                                                                dispatch(getFraudDashboard());
+                                                            }
                                                         }}
                                                     >
 
-                                                        Resolve
+                                                        {resolvingAlertId === alert.id ? "Resolving…" : "Resolve"}
 
                                                     </Button>
 

@@ -43,7 +43,7 @@ const StoreRoutes = () => {
         <Route path="payment-success/:paymentOrderId" element={<PaymentSuccess />} />
         <Route path="settings" element={<Settings />} />
         <Route path="alerts" element={<Alerts />} />
-        <Route path="/dynamic-pricing" element={<DynamicPricing />}/>
+        <Route path="dynamic-pricing" element={<DynamicPricing />}/>
         {/* Add more store-specific routes here as needed */}
       </Route>
     </Routes>

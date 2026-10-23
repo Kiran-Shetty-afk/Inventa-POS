@@ -69,6 +69,20 @@ public class BranchServiceImpl implements BranchService {
         Branch existing = branchRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Branch not found"));
 
+        boolean isSystemAdmin = user != null && user.getRole() == UserRole.ROLE_ADMIN;
+        boolean isAssignedBranchManager = user != null
+                && user.getRole() == UserRole.ROLE_BRANCH_MANAGER
+                && user.getBranch() != null
+                && user.getBranch().getId().equals(existing.getId());
+        boolean isOwningStoreUser = user != null
+                && (user.getRole() == UserRole.ROLE_STORE_ADMIN || user.getRole() == UserRole.ROLE_STORE_MANAGER)
+                && user.getStore() != null
+                && existing.getStore() != null
+                && user.getStore().getId().equals(existing.getStore().getId());
+        if (!isSystemAdmin && !isAssignedBranchManager && !isOwningStoreUser) {
+            throw new UserException("You are not authorized to update this branch");
+        }
+
         existing.setName(branchDto.getName());
         existing.setAddress(branchDto.getAddress());
         existing.setEmail(branchDto.getEmail());

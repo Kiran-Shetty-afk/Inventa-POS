@@ -12,6 +12,7 @@ Status: reviewed
 - `.env` and nested environment files are excluded by `.gitignore`; `.env.example` files list required variable names without real credentials.
 - Prometheus scrapes Java Actuator Prometheus endpoints and the ML `/metrics` endpoint. Grafana provisions Prometheus as its data source.
 - `EUREKA_URL`, `EUREKA_SERVER`, `EUREKA_INSTANCE_HOSTNAME`, Billing service URLs, `FRONTEND_BASE_URL`, `CORS_ALLOWED_ORIGINS`, and `VITE_API_BASE_URL` make network locations configurable.
+- Billing receives the Docker-reachable ML API address through `ML_SERVICE_URL` for forecast and optional model-backed analytics calls.
 
 ## Important files inspected
 

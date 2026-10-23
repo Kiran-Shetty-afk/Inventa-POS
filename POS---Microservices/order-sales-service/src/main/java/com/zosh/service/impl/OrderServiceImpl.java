@@ -1,6 +1,7 @@
 package com.zosh.service.impl;
 
 import com.zosh.client.InventoryClient;
+import com.zosh.client.FraudDetectionClient;
 import com.zosh.domain.OrderStatus;
 import com.zosh.domain.PaymentType;
 import com.zosh.exception.UserException;
@@ -9,6 +10,8 @@ import com.zosh.modal.Customer;
 import com.zosh.modal.Order;
 import com.zosh.modal.OrderItem;
 import com.zosh.payload.dto.InventoryDTO;
+import com.zosh.payload.dto.FraudPredictionRequest;
+import com.zosh.payload.dto.FraudPredictionResponse;
 import com.zosh.payload.dto.OrderDTO;
 import com.zosh.payload.dto.OrderItemDTO;
 import com.zosh.payload.dto.ProductDTO;
@@ -25,6 +28,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -35,6 +39,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final CustomerRepository customerRepository;
     private final InventoryClient inventoryClient;
+    private final FraudDetectionClient fraudDetectionClient;
 
     @Override
     @Transactional
@@ -273,12 +278,13 @@ public class OrderServiceImpl implements OrderService {
                         : 0.0);
 
         // ============================================================
-        // FRAUD DEFAULT VALUES
+        // Fraud scoring is best-effort so a temporary ML outage does not stop sales.
         // ============================================================
 
         order.setRiskScore(0.0);
-
         order.setIsFraud(false);
+        order.setFraudStatus("NONE");
+        scoreForFraud(order);
 
         // ============================================================
         // CUSTOMER LOYALTY POINTS
@@ -300,6 +306,40 @@ public class OrderServiceImpl implements OrderService {
         Order savedOrder = orderRepository.save(order);
 
         return OrderMapper.toDto(savedOrder);
+    }
+
+    private void scoreForFraud(Order order) {
+        try {
+            FraudPredictionResponse prediction = fraudDetectionClient.predictFraud(
+                    new FraudPredictionRequest(
+                            order.getTotalAmount() != null ? order.getTotalAmount() : 0.0,
+                            order.getPaymentType() != null ? order.getPaymentType().name() : PaymentType.CASH.name(),
+                            order.getItemsCount() != null ? order.getItemsCount() : 0,
+                            order.getTotalQuantity() != null ? order.getTotalQuantity() : 0,
+                            order.getAverageItemPrice() != null ? order.getAverageItemPrice() : 0.0,
+                            order.getDiscountPercent() != null ? order.getDiscountPercent() : 0.0,
+                            order.getOrderHour() != null ? order.getOrderHour() : 0));
+
+            if (prediction == null || prediction.fraudProbability() == null
+                    || !Double.isFinite(prediction.fraudProbability())) {
+                log.warn("ML fraud scoring returned an invalid response; saving order without a fraud alert");
+                return;
+            }
+
+            double probability = Math.max(0.0, Math.min(1.0, prediction.fraudProbability()));
+            double riskScore = Math.round(probability * 1000.0) / 10.0;
+            boolean flagged = Integer.valueOf(1).equals(prediction.prediction());
+
+            order.setRiskScore(riskScore);
+            order.setIsFraud(flagged);
+            if (flagged) {
+                order.setFraudStatus("OPEN");
+                order.setFraudReason(String.format(Locale.ROOT,
+                        "AI model flagged this order; AI Probability: %.1f%%", riskScore));
+            }
+        } catch (RuntimeException e) {
+            log.warn("ML fraud scoring is unavailable; saving order without a fraud alert");
+        }
     }
 
     // ================================================================

@@ -1,59 +1,66 @@
-import React from 'react'
+import { useSelector } from "react-redux";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useSelector } from 'react-redux';
-import { getPaymentIcon } from '../../../utils/getPaymentIcon';
+import { getPaymentIcon } from "../../../utils/getPaymentIcon";
+import AnalyticsState from "./AnalyticsState";
 
+const formatCurrency = (value) => new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+}).format(value);
 
-const PaymentBreakdown = () => {
-      const { paymentBreakdown, loading } = useSelector((state) => state.branchAnalytics);
-      const normalizedPaymentBreakdown = (paymentBreakdown || [])
-        .map((payment) => {
-          const label = payment.type || payment.paymentType || payment.paymentMethod || "Unknown";
-          const amount = Number(payment.totalAmount ?? payment.amount ?? payment.total ?? 0);
-          const percentage = Number(payment.percentage ?? 0);
-          const transactionCount = Number(payment.transactionCount ?? payment.count ?? 0);
+const PaymentBreakdown = ({ onRetry }) => {
+  const { paymentBreakdown, paymentBreakdownLoading, paymentBreakdownError } = useSelector((state) => state.branchAnalytics);
+  const normalized = (paymentBreakdown || []).map((payment) => {
+    const amount = Number(payment.totalAmount ?? payment.amount ?? payment.total ?? 0);
+    const count = Number(payment.transactionCount ?? payment.count ?? 0);
+    const percentage = Number(payment.percentage ?? 0);
+    return {
+      label: payment.type || payment.paymentType || payment.paymentMethod || "Unknown",
+      amount: Number.isFinite(amount) ? amount : 0,
+      count: Number.isFinite(count) ? count : 0,
+      percentage: Number.isFinite(percentage) ? Math.min(100, Math.max(0, percentage)) : 0,
+    };
+  }).filter((payment) => payment.amount > 0 || payment.count > 0);
 
-          return {
-            label,
-            amount: Number.isFinite(amount) ? amount : 0,
-            percentage: Number.isFinite(percentage) ? percentage : 0,
-            transactionCount: Number.isFinite(transactionCount) ? transactionCount : 0,
-          };
-        })
-        .filter((payment) => payment.amount > 0 || payment.transactionCount > 0);
+  const stateView = paymentBreakdownLoading || paymentBreakdownError || normalized.length === 0;
 
   return (
-   <Card>
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold">Payment Breakdown</CardTitle>
-        </CardHeader>
-        <CardContent>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-xl font-semibold">Payment breakdown</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {stateView ? (
+          <AnalyticsState
+            loading={paymentBreakdownLoading}
+            error={paymentBreakdownError}
+            emptyMessage="No completed payments were recorded for this period."
+            onRetry={onRetry}
+            height="h-32"
+          />
+        ) : (
           <div className="space-y-4">
-            {normalizedPaymentBreakdown.length > 0 ? normalizedPaymentBreakdown.map((payment, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    {getPaymentIcon(payment.label)}
+            {normalized.map((payment) => (
+              <div key={payment.label} className="grid gap-2 sm:grid-cols-[minmax(9rem,1fr)_2fr_auto] sm:items-center">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  {getPaymentIcon(payment.label)}
                   <span>{payment.label}</span>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary"
-                      style={{ width: `${payment.percentage}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm font-medium">₹{payment.amount.toLocaleString('en-IN')}</span>
-                  <span className="text-xs text-gray-500">{payment.percentage ? `${payment.percentage}%` : ""}</span>
-                  <span className="text-xs text-gray-500">{payment.transactionCount ? `(${payment.transactionCount} txns)` : ""}</span>
+                <div className="h-2 overflow-hidden rounded-full bg-muted" aria-label={`${payment.percentage.toFixed(1)} percent`}>
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${payment.percentage}%` }} />
+                </div>
+                <div className="flex items-center justify-between gap-4 text-sm sm:min-w-48 sm:justify-end">
+                  <span className="font-medium tabular-nums">{formatCurrency(payment.amount)}</span>
+                  <span className="text-muted-foreground">{payment.count} {payment.count === 1 ? "order" : "orders"}</span>
                 </div>
               </div>
-            )) : (
-              <div className="text-center text-gray-400">{loading ? "Loading payment breakdown..." : "No data available"}</div>
-            )}
+            ))}
           </div>
-        </CardContent>
-      </Card>
-  )
-}
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
-export default PaymentBreakdown
+export default PaymentBreakdown;

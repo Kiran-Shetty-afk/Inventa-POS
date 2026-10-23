@@ -11,7 +11,7 @@ export default function BranchHealthCopilotCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>AI Branch Health Copilot</CardTitle>
+        <CardTitle>Branch Health Summary</CardTitle>
         <Button
           type="button"
           size="sm"
@@ -19,7 +19,7 @@ export default function BranchHealthCopilotCard({
           onClick={onGenerate}
           disabled={loading}
         >
-          {loading ? "Generating..." : "Generate AI Summary"}
+          {loading ? "Generating..." : "Generate Summary"}
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -29,7 +29,7 @@ export default function BranchHealthCopilotCard({
 
         {!summary && !loading ? (
           <p className="text-sm text-muted-foreground">
-            Generate an AI narrative from current branch filters to highlight trends, risks, and actions.
+            Generate a summary from completed orders and current inventory for the selected period.
           </p>
         ) : null}
 

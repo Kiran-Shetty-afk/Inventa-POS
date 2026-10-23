@@ -9,12 +9,12 @@ const DashboardStats = () => {
   const dispatch = useDispatch();
   const { toast } = useToast();
   const { storeOverview, loading } = useSelector((state) => state.storeAnalytics);
-  const { userProfile } = useSelector((state) => state.user);
+  const storeAdminId = useSelector((state) => state.user.userProfile?.id);
 
   const fetchStoreOverview = useCallback(async () => {
-    if (!userProfile?.id) return;
+    if (!storeAdminId) return;
     try {
-      await dispatch(getStoreOverview(userProfile.id)).unwrap();
+      await dispatch(getStoreOverview(storeAdminId)).unwrap();
     } catch (err) {
       toast({
         title: "Error",
@@ -22,13 +22,13 @@ const DashboardStats = () => {
         variant: "destructive",
       });
     }
-  }, [dispatch, toast, userProfile]);
+  }, [dispatch, toast, storeAdminId]);
 
   useEffect(() => {
-    if (userProfile?.id) {
+    if (storeAdminId) {
       fetchStoreOverview();
     }
-  }, [userProfile, fetchStoreOverview]);
+  }, [storeAdminId, fetchStoreOverview]);
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -40,9 +40,9 @@ const DashboardStats = () => {
     }).format(amount || 0);
   };
 
-  // Format percentage change
+  // Compare current month-to-date sales with the previous month.
   const formatChange = (current, previous) => {
-    if (!previous || previous === 0) return "+0%";
+    if (!previous || previous === 0) return current > 0 ? "New" : "0%";
     const change = ((current - previous) / previous) * 100;
     const sign = change >= 0 ? "+" : "";
     return `${sign}${change.toFixed(1)}%`;
@@ -50,31 +50,31 @@ const DashboardStats = () => {
 
   const stats = [
     { 
-      title: "Total Sales", 
+      title: "Sales This Month",
       value: formatCurrency(storeOverview?.totalSales || 0), 
       icon: <IndianRupee className="w-8 h-8 text-emerald-500" />, 
-      change: formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales),
+      change: `${formatChange(storeOverview?.totalSales, storeOverview?.previousPeriodSales)} from last month`,
       loading: loading
     },
     { 
-      title: "Total Branches", 
+      title: "Store Branches",
       value: storeOverview?.totalBranches || 0, 
       icon: <Store className="w-8 h-8 text-emerald-500" />, 
-      change: formatChange(storeOverview?.totalBranches, storeOverview?.previousPeriodBranches),
+      change: "Currently registered",
       loading: loading
     },
     { 
       title: "Total Products", 
       value: storeOverview?.totalProducts || 0, 
       icon: <ShoppingCart className="w-8 h-8 text-emerald-500" />, 
-      change: formatChange(storeOverview?.totalProducts, storeOverview?.previousPeriodProducts),
+      change: "Across your store",
       loading: loading
     },
     { 
       title: "Total Employees", 
       value: storeOverview?.totalEmployees ?? storeOverview?.employeesCount ?? 0, 
       icon: <Users className="w-8 h-8 text-emerald-500" />, 
-      change: formatChange(storeOverview?.totalEmployees, storeOverview?.previousPeriodEmployees),
+      change: "Across your store",
       loading: loading
     },
   ];
@@ -95,12 +95,12 @@ const DashboardStats = () => {
                   )}
                 </h3>
                 <p className={`text-xs font-medium mt-1 ${
-                  stat.change.startsWith('+') ? 'text-emerald-500' : 'text-red-500'
+                  stat.change.startsWith('+') ? 'text-emerald-500' : 'text-gray-500'
                 }`}>
                   {stat.loading ? (
                     <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
                   ) : (
-                    `${stat.change} from last month`
+                    stat.change
                   )}
                 </p>
               </div>

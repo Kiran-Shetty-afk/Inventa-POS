@@ -6,6 +6,8 @@ import com.zosh.exception.UserException;
 import com.zosh.modal.Store;
 import com.zosh.modal.User;
 import com.zosh.payload.dto.StoreDTO;
+import com.zosh.payload.dto.StoreDashboardStatsDTO;
+import com.zosh.payload.dto.StoreRegistrationStatDTO;
 import com.zosh.payload.dto.UserDTO;
 
 import java.util.List;
@@ -14,6 +16,8 @@ public interface StoreService {
     StoreDTO createStore(StoreDTO storeDto, User user);
     StoreDTO getStoreById(Long id) throws ResourceNotFoundException;
     List<StoreDTO> getAllStores(StoreStatus status);
+    StoreDashboardStatsDTO getDashboardStats();
+    List<StoreRegistrationStatDTO> getLast7DayRegistrationStats();
     Store getStoreByAdminId() throws UserException;
     StoreDTO getStoreByEmployee() throws UserException;
     StoreDTO updateStore(Long id, StoreDTO storeDto) throws ResourceNotFoundException, UserException;

@@ -30,7 +30,7 @@ const RecentSales = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xl font-semibold">Recent Sales</CardTitle>
+        <CardTitle className="text-xl font-semibold">Recent Daily Sales</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">

@@ -12,7 +12,7 @@ import {
   getInitialValues
 } from "./components";
 
-export default function Stores() {
+export default function Stores({ heading = "Store Management" }) {
   const dispatch = useDispatch();
   const { store, loading, error } = useSelector((state) => state.store);
 
@@ -34,12 +34,6 @@ export default function Stores() {
       setRefreshing(false);
     }
   }, [dispatch]);
-
-  useEffect(() => {
-    if (store?.id) {
-      fetchStoreData();
-    }
-  }, [store?.id, fetchStoreData]);
 
   useEffect(() => {
     if (store) {
@@ -79,6 +73,7 @@ export default function Stores() {
   return (
     <div className="space-y-6">
       <StoreHeader 
+        title={heading}
         onRefresh={fetchStoreData}
         refreshing={refreshing}
         loading={loading}

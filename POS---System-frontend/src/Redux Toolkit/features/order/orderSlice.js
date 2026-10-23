@@ -18,6 +18,8 @@ const initialState = {
   loading: false,
   error: null,
   recentOrders: [], // Added for recent orders
+  recentOrdersLoading: false,
+  recentOrdersError: null,
 };
 
 const dedupeOrdersById = (orders = []) => {
@@ -45,6 +47,7 @@ const orderSlice = createSlice({
       state.customerOrders = [];
       state.selectedOrder = null;
       state.error = null;
+      state.recentOrdersError = null;
     },
     clearCustomerOrders: (state) => {
       state.customerOrders = [];
@@ -94,8 +97,17 @@ const orderSlice = createSlice({
         state.customerOrders = action.payload;
       })
 
+      .addCase(getRecentOrdersByBranch.pending, (state) => {
+        state.recentOrdersLoading = true;
+        state.recentOrdersError = null;
+      })
       .addCase(getRecentOrdersByBranch.fulfilled, (state, action) => {
+        state.recentOrdersLoading = false;
         state.recentOrders = action.payload;
+      })
+      .addCase(getRecentOrdersByBranch.rejected, (state, action) => {
+        state.recentOrdersLoading = false;
+        state.recentOrdersError = action.meta.aborted ? null : (action.payload || action.error.message);
       })
 
       .addCase(deleteOrder.fulfilled, (state, action) => {

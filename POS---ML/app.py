@@ -1,5 +1,6 @@
 import os
 from contextlib import asynccontextmanager
+from datetime import date
 from fastapi import FastAPI
 from pydantic import BaseModel
 import pandas as pd
@@ -87,6 +88,7 @@ class DemandRequest(BaseModel):
     productId: int
     dailyDemand: list[float]
     horizon: int
+    anchorDate: date | None = None
 
 @app.get("/")
 @app.get("/health")
@@ -152,7 +154,8 @@ def predict_demand_endpoint(request: DemandRequest):
     forecast = predict_demand(
         request.dailyDemand,
         request.horizon,
-        request.productId
+        request.productId,
+        request.anchorDate
     )
 
     return {

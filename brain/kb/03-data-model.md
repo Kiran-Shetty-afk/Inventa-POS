@@ -10,6 +10,8 @@ Status: reviewed
 - Spring Data JPA manages relational entities. The datasource configs currently use Hibernate `ddl-auto: update`.
 - MySQL data persists in the named volume `inventa_mysql_data`; the initialization SQL only runs when MySQL initializes an empty data directory.
 - Shift `topSellingProducts`, payment summaries, and recent orders are transient report data and do not add database columns or tables.
+- Subscription plans persist an `active` status; older rows with a null value are presented as active until explicitly changed.
+- Order records include fraud score, flag, status, and reason fields used to retain model alerts and their resolution state.
 
 ## Important files inspected
 
@@ -17,6 +19,8 @@ Status: reviewed
 - `docker-compose.yml` — database volume and per-service schema environment.
 - `POS---Microservices/*/src/main/resources/application.yml` — datasource configuration.
 - `POS---Microservices/order-sales-service/src/main/java/com/zosh/modal/ShiftReport.java` — persisted shift totals and transient summary fields.
+- `POS---Microservices/order-sales-service/src/main/java/com/zosh/modal/Order.java` — order-level fraud metadata.
+- `POS---Microservices/billing-analytics-service/src/main/java/com/zosh/modal/SubscriptionPlan.java` — subscription plan status.
 
 ## Assumptions
 
@@ -25,6 +29,7 @@ Status: reviewed
 ## Unknowns / documentation gaps
 
 - No schema migration tool or versioned migration directory was found in the inspected setup.
+- Hibernate `ddl-auto:update` applies entity changes such as the plan status field; deployments do not have a separate versioned migration for it.
 
 ## Maintenance notes
 

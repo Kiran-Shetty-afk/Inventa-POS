@@ -24,9 +24,10 @@ public class BranchAnalyticsController {
             @RequestParam(defaultValue = "7") int days,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer month
+            @RequestParam(required = false) Integer month,
+            @RequestHeader("Authorization") String authorization
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getDailySalesChart(branchId, days, date, year, month));
+        return ResponseEntity.ok(branchAnalyticsService.getDailySalesChart(branchId, days, date, year, month, authorization));
     }
 
     @GetMapping("/top-products")
@@ -34,9 +35,10 @@ public class BranchAnalyticsController {
             @RequestParam Long branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer month
+            @RequestParam(required = false) Integer month,
+            @RequestHeader("Authorization") String authorization
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getTopProductsByQuantityWithPercentage(branchId, date, year, month));
+        return ResponseEntity.ok(branchAnalyticsService.getTopProductsByQuantityWithPercentage(branchId, date, year, month, authorization));
     }
 
     @GetMapping("/top-cashiers")
@@ -44,9 +46,10 @@ public class BranchAnalyticsController {
             @RequestParam Long branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer month
+            @RequestParam(required = false) Integer month,
+            @RequestHeader("Authorization") String authorization
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getTopCashierPerformanceByOrders(branchId, date, year, month));
+        return ResponseEntity.ok(branchAnalyticsService.getTopCashierPerformanceByOrders(branchId, date, year, month, authorization));
     }
 
     @GetMapping("/category-sales")
@@ -54,17 +57,21 @@ public class BranchAnalyticsController {
             @RequestParam Long branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer month
+            @RequestParam(required = false) Integer month,
+            @RequestHeader("Authorization") String authorization
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getCategoryWiseSalesBreakdown(branchId, date, year, month));
+        return ResponseEntity.ok(branchAnalyticsService.getCategoryWiseSalesBreakdown(branchId, date, year, month, authorization));
     }
 
     @GetMapping("/today-overview")
     public ResponseEntity<BranchDashboardOverviewDTO> getTodayOverview(
             @RequestParam Long branchId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestHeader("Authorization") String authorization
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getBranchOverview(branchId, date));
+        return ResponseEntity.ok(branchAnalyticsService.getBranchOverview(branchId, date, year, month, authorization));
     }
 
     @GetMapping("/payment-breakdown")
@@ -72,9 +79,10 @@ public class BranchAnalyticsController {
             @RequestParam Long branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer month
+            @RequestParam(required = false) Integer month,
+            @RequestHeader("Authorization") String authorization
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getPaymentMethodBreakdown(branchId, date, year, month));
+        return ResponseEntity.ok(branchAnalyticsService.getPaymentMethodBreakdown(branchId, date, year, month, authorization));
     }
 
     @GetMapping("/demand-forecast")
@@ -82,15 +90,17 @@ public class BranchAnalyticsController {
             @RequestParam Long branchId,
             @RequestParam(defaultValue = "7,14,30") List<Integer> horizons,
             @RequestParam(defaultValue = "90") int lookbackDays,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate anchorDate
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate anchorDate,
+            @RequestHeader("Authorization") String authorization
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.getDemandForecast(branchId, horizons, lookbackDays, anchorDate));
+        return ResponseEntity.ok(branchAnalyticsService.getDemandForecast(branchId, horizons, lookbackDays, anchorDate, authorization));
     }
 
     @PostMapping("/health-copilot-summary")
     public ResponseEntity<BranchHealthCopilotResponseDTO> generateHealthCopilotSummary(
-            @RequestBody BranchHealthCopilotRequestDTO request
+            @RequestBody BranchHealthCopilotRequestDTO request,
+            @RequestHeader("Authorization") String authorization
     ) {
-        return ResponseEntity.ok(branchAnalyticsService.generateHealthCopilotSummary(request));
+        return ResponseEntity.ok(branchAnalyticsService.generateHealthCopilotSummary(request, authorization));
     }
 }

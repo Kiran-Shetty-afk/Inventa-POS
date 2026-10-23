@@ -7,7 +7,7 @@ import com.zosh.payload.AdminAnalysis.StoreStatusDistributionDTO;
 import java.util.List;
 
 public interface AdminDashboardService {
-    DashboardSummaryDTO getDashboardSummary();
-    List<StoreRegistrationStatDTO> getLast7DayRegistrationStats();
-    StoreStatusDistributionDTO getStoreStatusDistribution();
+    DashboardSummaryDTO getDashboardSummary(String authorization);
+    List<StoreRegistrationStatDTO> getLast7DayRegistrationStats(String authorization);
+    StoreStatusDistributionDTO getStoreStatusDistribution(String authorization);
 }

@@ -6,13 +6,13 @@ import { Label } from "@/components/ui/label";
 import { User, Save } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const ProfileInput = ({ id, label, value, onChange, disabled }) => (
+const ProfileInput = ({ id, label, value, onChange, loading, disabled, readOnly }) => (
   <div className="space-y-2">
     <Label htmlFor={id}>{label}</Label>
-    {disabled ? (
+    {loading ? (
       <Skeleton className="h-10 w-full" />
     ) : (
-      <Input id={id} value={value} onChange={onChange} disabled={disabled} />
+      <Input id={id} value={value} onChange={onChange} disabled={disabled} readOnly={readOnly} />
     )}
   </div>
 );
@@ -22,8 +22,8 @@ const ProfileSettingsForm = ({
   onUpdate,
   onFieldChange,
   loading,
+  saving,
 }) => {
-  console.log("ProfileSettingsForm rendered with data:", profileData);
   return (
     <Card>
       <CardHeader>
@@ -39,34 +39,35 @@ const ProfileSettingsForm = ({
             label="Full Name"
             value={profileData.fullName}
             onChange={(e) => onFieldChange("fullName", e.target.value)}
-            disabled={loading}
+            loading={loading}
+            disabled={saving}
           />
           <ProfileInput
             id="email"
             label="Email Address"
             value={profileData.email}
-            // onChange={(e) => onFieldChange("email", e.target.value)}
-            disabled={false}
-            
+            loading={loading}
+            readOnly
           />
           <ProfileInput
             id="phone"
             label="Phone Number"
             value={profileData.phone}
             onChange={(e) => onFieldChange("phone", e.target.value)}
-            disabled={loading}
+            loading={loading}
+            disabled={saving}
           />
         </div>
         <Button
           onClick={onUpdate}
           className="flex items-center gap-2"
-          disabled={loading}
+          disabled={loading || saving}
         >
-          {loading ? "Updating..." : <><Save className="w-4 h-4" /> Update Profile</>}
+          {saving ? "Saving..." : <><Save className="w-4 h-4" /> Update Profile</>}
         </Button>
       </CardContent>
     </Card>
   );
 };
 
-export default ProfileSettingsForm; 
+export default ProfileSettingsForm;
