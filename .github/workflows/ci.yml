@@ -1,0 +1,77 @@
+name: Inventa POS checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  java:
+    name: Java services
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Verify all Spring services
+        working-directory: POS---Microservices
+        run: mvn -B clean verify
+
+  frontend:
+    name: Frontend lint, tests, and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: POS---System-frontend/package-lock.json
+      - name: Use the locked npm release
+        run: npm install --global npm@11.6.2
+      - name: Install locked npm dependencies
+        working-directory: POS---System-frontend
+        run: npm ci
+      - name: Lint
+        working-directory: POS---System-frontend
+        run: npm run lint
+      - name: Test
+        working-directory: POS---System-frontend
+        run: npm test
+      - name: Production build
+        working-directory: POS---System-frontend
+        run: npm run build
+
+  ml-api:
+    name: ML API tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: POS---ML/requirements.txt
+      - name: Install declared ML dependencies
+        working-directory: POS---ML
+        run: python -m pip install -r requirements.txt
+      - name: Check syntax and security/input behavior
+        working-directory: POS---ML
+        run: |
+          python -m py_compile app.py demand_forecast.py
+          python -m unittest test_app_security.py
+
+  compose:
+    name: Compose configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate local and production Compose configuration
+        run: |
+          docker compose --env-file .env.example config --quiet
+          docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.production.yml config --quiet

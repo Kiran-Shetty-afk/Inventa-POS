@@ -1,0 +1,32 @@
+services:
+  user-org-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      LOCAL_SUPER_ADMIN_EMAIL: !reset null
+      LOCAL_SUPER_ADMIN_PASSWORD: !reset null
+
+  inventory-catalog-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      INTERNAL_SERVICE_JWT_SECRET: ${INTERNAL_SERVICE_JWT_SECRET:?Set a dedicated INTERNAL_SERVICE_JWT_SECRET}
+
+  order-sales-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      INTERNAL_SERVICE_JWT_SECRET: ${INTERNAL_SERVICE_JWT_SECRET:?Set a dedicated INTERNAL_SERVICE_JWT_SECRET}
+
+  api-gateway:
+    ports: !reset []
+
+  frontend:
+    ports: !reset
+      - "80:8080"
+    build:
+      args:
+        VITE_API_BASE_URL: /
+
+  prometheus:
+    ports: !reset []
+
+  grafana:
+    ports: !reset []

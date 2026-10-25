@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:8.4
+    image: mysql@sha256:76f0358884cb92d9a086d24e5671c38048d3fef40f2588703d73eb55392d6b69
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the private .env file}
       MYSQL_DATABASE: userdb
@@ -26,6 +26,8 @@ services:
     build:
       context: ./POS---Microservices
       dockerfile: eureka-server/Dockerfile
+    ports:
+      - "127.0.0.1:8761:8761"
     environment:
       EUREKA_INSTANCE_HOSTNAME: eureka-server
     networks:
@@ -44,6 +46,7 @@ services:
       context: ./POS---Microservices
       dockerfile: user-org-service/Dockerfile
     environment:
+      SPRING_PROFILES_ACTIVE: local
       DB_HOST: mysql
       DB_PORT: "3306"
       DB_NAME: userdb
@@ -52,6 +55,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the private .env file}
       MAIL_USERNAME: ${MAIL_USERNAME:?Set MAIL_USERNAME in the private .env file}
       MAIL_PASSWORD: ${MAIL_PASSWORD:?Set MAIL_PASSWORD in the private .env file}
+      LOCAL_SUPER_ADMIN_EMAIL: ${LOCAL_SUPER_ADMIN_EMAIL:-}
+      LOCAL_SUPER_ADMIN_PASSWORD: ${LOCAL_SUPER_ADMIN_PASSWORD:-}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
       EUREKA_URL: http://eureka-server:8761/eureka/
     depends_on:
@@ -81,6 +86,7 @@ services:
       DB_USERNAME: inventa_app
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the private .env file}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the private .env file}
+      INTERNAL_SERVICE_JWT_SECRET: ${INTERNAL_SERVICE_JWT_SECRET:-${JWT_SECRET}}
       EUREKA_URL: http://eureka-server:8761/eureka/
     depends_on:
       mysql:
@@ -109,7 +115,9 @@ services:
       DB_USERNAME: inventa_app
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the private .env file}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the private .env file}
+      INTERNAL_SERVICE_JWT_SECRET: ${INTERNAL_SERVICE_JWT_SECRET:-${JWT_SECRET}}
       EUREKA_URL: http://eureka-server:8761/eureka/
+      ORDER_TAX_RATE_PERCENT: ${ORDER_TAX_RATE_PERCENT:-18}
     depends_on:
       mysql:
         condition: service_healthy
@@ -176,7 +184,7 @@ services:
       context: ./POS---Microservices
       dockerfile: api-gateway/Dockerfile
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     environment:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the private .env file}
       EUREKA_URL: http://eureka-server:8761/eureka/
@@ -194,8 +202,9 @@ services:
         condition: service_healthy
     networks:
       - inventa-network
+      - frontend-edge
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "--max-time", "3", "http://127.0.0.1:5000/actuator/health"]
+      test: ["CMD", "curl", "-fsS", "--max-time", "3", "http://127.0.0.1:5001/actuator/health"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -208,10 +217,13 @@ services:
       context: ./POS---ML
       dockerfile: Dockerfile
     environment:
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the private .env file}
       EUREKA_SERVER: http://eureka-server:8761/eureka/
       EUREKA_INSTANCE_HOSTNAME: ml-intelligence-service
       APP_NAME: ml-intelligence-service
       PORT: "8000"
+      ML_MAX_REQUEST_BYTES: ${ML_MAX_REQUEST_BYTES:-262144}
+      ML_REQUESTS_PER_MINUTE: ${ML_REQUESTS_PER_MINUTE:-60}
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -233,14 +245,14 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:5000}
     ports:
-      - "5173:80"
+      - "127.0.0.1:5173:8080"
     depends_on:
       api-gateway:
         condition: service_healthy
     networks:
-      - inventa-network
+      - frontend-edge
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -248,10 +260,10 @@ services:
     restart: unless-stopped
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus@sha256:fa3302279710be2f21a8301ec17a8b4f2301fd829bd113839b3b6b02b6f191a2
     container_name: inventa-prometheus
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -266,10 +278,10 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
     container_name: inventa-grafana
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in the private .env file}
@@ -288,6 +300,8 @@ services:
 
 networks:
   inventa-network:
+    driver: bridge
+  frontend-edge:
     driver: bridge
 
 volumes:

@@ -8,17 +8,17 @@ scrape_configs:
     static_configs:
       - targets: ["prometheus:9090"]
 
+  - job_name: "api-gateway"
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["api-gateway:5001"]
+
   - job_name: "eureka-server"
     metrics_path: "/actuator/prometheus"
     scrape_interval: 10s
     static_configs:
       - targets: ["eureka-server:8761"]
-
-  - job_name: "api-gateway"
-    metrics_path: "/actuator/prometheus"
-    scrape_interval: 10s
-    static_configs:
-      - targets: ["api-gateway:5000"]
 
   - job_name: "user-org-service"
     metrics_path: "/actuator/prometheus"
