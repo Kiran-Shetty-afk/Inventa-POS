@@ -745,5 +745,4 @@ These are possible enhancements, not current capabilities:
 
 - **Project:** Inventa POS – Intelligent Point of Sale and Inventory Management System.
 - **Repository:** [Kiran-Shetty-afk/Inventa-POS](https://github.com/Kiran-Shetty-afk/Inventa-POS).
-- **Context:** MCA academic project covering microservices and cloud-computing concepts.
 - **License:** No LICENSE file or license declaration is currently present in the repository.
