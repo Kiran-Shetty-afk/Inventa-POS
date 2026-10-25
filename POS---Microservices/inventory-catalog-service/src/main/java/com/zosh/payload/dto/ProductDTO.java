@@ -3,6 +3,8 @@ package com.zosh.payload.dto;
 
 
 import lombok.*;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -14,8 +16,8 @@ public class ProductDTO {
     private String name;
     private String sku;
     private String description;
-    private Double mrp;
-    private Double sellingPrice;
+    private BigDecimal mrp;
+    private BigDecimal sellingPrice;
     private String brand;
     private Long categoryId;
     private String category;

@@ -15,11 +15,6 @@ import { getStoreAlerts } from "@/Redux Toolkit/features/storeAnalytics/storeAna
 import { getInventoryByBranch } from "@/Redux Toolkit/features/inventory/inventoryThunks";
 import { getProductsByStore } from "@/Redux Toolkit/features/product/productThunks";
 import { formatDateTime } from "@/utils/formateDate";
-import {
-  getNotifications,
-  markNotificationRead,
-  markAllNotificationsRead,
-} from "@/Redux Toolkit/features/notification/notificationThunks";
 
 /** When the API does not send a per-product minimum, treat quantity at or below this as low stock. */
 const BRANCH_LOW_STOCK_FALLBACK = 5;
@@ -198,21 +193,6 @@ export function DashboardNotifications({
     (state) => state.product.products
   );
 
-  // 🔔 Real database notifications
-  const notifications = useSelector(
-    (state) => state.notification.notifications
-  );
-
-  const notificationLoading = useSelector(
-    (state) => state.notification.loading
-  );
-
-  useEffect(() => {
-    if (userProfile?.id == null) return;
-
-    dispatch(getNotifications());
-  }, [dispatch, userProfile?.id]);
-
   const [readIds, setReadIds] = useState(() => new Set());
   const [pendingStores, setPendingStores] = useState([]);
   const [pendingLoading, setPendingLoading] = useState(false);
@@ -323,31 +303,7 @@ export function DashboardNotifications({
     // =========================
 
     if (isStoreAlerts) {
-
-      const existingAlerts =
-        flattenStoreAlerts(storeAlerts, readIds);
-
-      const fraudNotifications = notifications
-        .filter((n) => n.type === "FRAUD")
-        .map((n) => ({
-          id: `notification-${n.id}`,
-          notificationId: n.id,
-
-          title: n.title,
-
-          body: n.message,
-
-          time: formatRelativeTime(n.createdAt),
-
-          read: n.isRead,
-
-          type: n.type,
-        }));
-
-      return [
-        ...fraudNotifications,
-        ...existingAlerts,
-      ];
+      return flattenStoreAlerts(storeAlerts, readIds);
     }
 
     // =========================
@@ -355,35 +311,7 @@ export function DashboardNotifications({
     // =========================
 
     if (isBranchInventory) {
-
-      const existingAlerts =
-        flattenBranchLowStock(
-          inventories,
-          products,
-          readIds
-        );
-
-      const fraudNotifications = notifications
-        .filter((n) => n.type === "FRAUD")
-        .map((n) => ({
-          id: `notification-${n.id}`,
-          notificationId: n.id,
-
-          title: n.title,
-
-          body: n.message,
-
-          time: formatRelativeTime(n.createdAt),
-
-          read: n.isRead,
-
-          type: n.type,
-        }));
-
-      return [
-        ...fraudNotifications,
-        ...existingAlerts,
-      ];
+      return flattenBranchLowStock(inventories, products, readIds);
     }
 
     return [];
@@ -397,7 +325,6 @@ export function DashboardNotifications({
     storeAlerts,
     inventories,
     products,
-    notifications,
   ]);
 
   const unreadCount = useMemo(() => {
@@ -410,10 +337,6 @@ export function DashboardNotifications({
     }
 
     // Store admin / Branch manager
-    const databaseUnreadCount = notifications.filter(
-      (n) => !n.isRead
-    ).length;
-
     let existingUnreadCount = 0;
 
     if (isStoreAlerts) {
@@ -435,7 +358,7 @@ export function DashboardNotifications({
         ).filter((r) => !r.read).length;
     }
 
-    return databaseUnreadCount + existingUnreadCount;
+    return existingUnreadCount;
 
   }, [
     isSuperAdmin,
@@ -443,28 +366,12 @@ export function DashboardNotifications({
     isBranchInventory,
     pendingStores,
     readIds,
-    notifications,
     storeAlerts,
     inventories,
     products,
   ]);
 
   const markRead = (id) => {
-
-    // Database notification
-    if (id.toString().startsWith("notification-")) {
-
-      const notificationId =
-        Number(id.replace("notification-", ""));
-
-      dispatch(
-        markNotificationRead(notificationId)
-      );
-
-      return;
-    }
-
-    // Existing local notifications
     if (
       isSuperAdmin ||
       isStoreAlerts ||
@@ -477,10 +384,6 @@ export function DashboardNotifications({
   };
 
   const markAllRead = () => {
-
-    // Mark database notifications as read
-    dispatch(markAllNotificationsRead());
-
     // =========================
     // SUPER ADMIN
     // =========================

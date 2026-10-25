@@ -2,7 +2,12 @@ import React, { useCallback, useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/components/ui/use-toast";
-import { getStoreByAdmin, updateStore } from "@/Redux Toolkit/features/store/storeThunks";
+import {
+  getStoreByAdmin,
+  getStoreByEmployee,
+  updateStore,
+} from "@/Redux Toolkit/features/store/storeThunks";
+import { normalizeAppRole } from "@/utils/userRole";
 import {
   StoreHeader,
   StoreInfoCard,
@@ -15,6 +20,8 @@ import {
 export default function Stores({ heading = "Store Management" }) {
   const dispatch = useDispatch();
   const { store, loading, error } = useSelector((state) => state.store);
+  const { userProfile } = useSelector((state) => state.user);
+  const canEditStore = normalizeAppRole(userProfile?.role) === "ROLE_STORE_ADMIN";
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [storeData, setStoreData] = useState(null);
@@ -23,7 +30,7 @@ export default function Stores({ heading = "Store Management" }) {
   const fetchStoreData = useCallback(async () => {
     setRefreshing(true);
     try {
-      await dispatch(getStoreByAdmin()).unwrap();
+      await dispatch(canEditStore ? getStoreByAdmin() : getStoreByEmployee()).unwrap();
     } catch (err) {
       toast({
         title: "Error",
@@ -33,7 +40,7 @@ export default function Stores({ heading = "Store Management" }) {
     } finally {
       setRefreshing(false);
     }
-  }, [dispatch]);
+  }, [canEditStore, dispatch]);
 
   useEffect(() => {
     if (store) {
@@ -91,20 +98,23 @@ export default function Stores({ heading = "Store Management" }) {
         <EmptyState />
       ) : (
         <div className="grid gap-6">
-          <StoreInfoCard 
+          <StoreInfoCard
             storeData={storeData}
             onEditClick={handleEditClick}
+            canEdit={canEditStore}
           />
         </div>
       )}
 
-      <EditStoreDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        initialValues={getInitialValues(storeData)}
-        onSubmit={handleEditStore}
-        isSubmitting={false}
-      />
+      {canEditStore && (
+        <EditStoreDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          initialValues={getInitialValues(storeData)}
+          onSubmit={handleEditStore}
+          isSubmitting={false}
+        />
+      )}
     </div>
   );
 }

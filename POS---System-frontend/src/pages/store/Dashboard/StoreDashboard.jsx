@@ -1,18 +1,24 @@
 
 import { Outlet } from "react-router";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useEffect } from "react";
-import { getStoreByAdmin } from "../../../Redux Toolkit/features/store/storeThunks";
+import { getStoreByAdmin, getStoreByEmployee } from "../../../Redux Toolkit/features/store/storeThunks";
+import { normalizeAppRole } from "../../../utils/userRole";
 import StoreSidebar from "./StoreSidebar";
 import StoreTopbar from "./StoreTopbar";
 
 export default function StoreDashboard({ children }) {
   const dispatch = useDispatch();
+  const { userProfile } = useSelector((state) => state.user);
+  const role = normalizeAppRole(userProfile?.role);
   useEffect(() => {
-    if (localStorage.getItem("jwt")) {
-      dispatch(getStoreByAdmin(localStorage.getItem("jwt")));
+    if (!localStorage.getItem("jwt")) return;
+    if (role === "ROLE_STORE_ADMIN") {
+      dispatch(getStoreByAdmin());
+    } else if (role === "ROLE_STORE_MANAGER") {
+      dispatch(getStoreByEmployee());
     }
-  }, [dispatch]);
+  }, [dispatch, role]);
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10">

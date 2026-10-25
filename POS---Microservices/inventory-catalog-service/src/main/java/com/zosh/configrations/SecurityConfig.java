@@ -2,6 +2,7 @@ package com.zosh.configrations;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -27,14 +28,16 @@ public class SecurityConfig {
     private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            @Value("${JWT_SECRET}") String jwtSecret,
+            @Value("${INTERNAL_SERVICE_JWT_SECRET:${JWT_SECRET}}") String internalServiceSecret,
+            @Value("${spring.profiles.active:}") String activeProfiles) throws Exception {
         return http.sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/inventories/**").permitAll()
-                        .requestMatchers("/api/products/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
-                .addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class)
+                .addFilterBefore(new JwtValidator(jwtSecret, internalServiceSecret, activeProfiles), BasicAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 // .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .exceptionHandling(

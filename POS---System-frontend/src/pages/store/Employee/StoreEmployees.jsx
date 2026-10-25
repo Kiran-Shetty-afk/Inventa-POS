@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import {
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmployeeForm, EmployeeTable } from ".";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect } from "react";
+import { toast } from "sonner";
 import {
   createStoreEmployee,
   findStoreEmployees,
@@ -19,10 +19,19 @@ import {
 } from "@/Redux Toolkit/features/employee/employeeThunks";
 import { storeAdminRole } from "../../../utils/userRole";
 
+const EMPTY_EMPLOYEE_FORM_DATA = Object.freeze({
+  fullName: "",
+  email: "",
+  password: "",
+  phone: "",
+  role: "",
+  branchId: "",
+});
+
 export default function StoreEmployees() {
   const dispatch = useDispatch();
-  const { employees } = useSelector((state) => state.employee);
-  const {store}=useSelector(state=>state.store)
+  const employees = useSelector((state) => state.employee.employees);
+  const store = useSelector((state) => state.store.store);
   const jwt = typeof localStorage !== "undefined" ? localStorage.getItem("jwt") : null;
 
   useEffect(() => {
@@ -32,47 +41,100 @@ export default function StoreEmployees() {
           storeId: store?.id,
           token: jwt,
         })
-      );
+      ).unwrap().catch((error) => {
+        toast.error(typeof error === "string" ? error : "Could not load employees. Please try again.");
+      });
     }
   }, [dispatch, store?.id, jwt]);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState(null);
+  const editInitialData = useMemo(
+    () =>
+      currentEmployee
+        ? {
+            ...currentEmployee,
+            branchId: currentEmployee.branchId || "",
+          }
+        : null,
+    [currentEmployee]
+  );
 
-  const handleAddEmployee = (newEmployeeData) => {
-    if (store?.id && localStorage.getItem("jwt")) {
-      dispatch(
+  const handleAddEmployee = async (newEmployeeData) => {
+    const token = localStorage.getItem("jwt");
+    if (!store?.id) {
+      throw new Error("Store details are still loading. Refresh the page and try again.");
+    }
+    if (!token) {
+      throw new Error("Your session has expired. Sign in again and retry.");
+    }
+
+    try {
+      await dispatch(
         createStoreEmployee({
           employee: {
             ...newEmployeeData,
-            storeId: store?.id,
+            storeId: store.id,
+            branchId: newEmployeeData.branchId ? Number(newEmployeeData.branchId) : null,
             username: newEmployeeData.email.split("@")[0],
           },
-          storeId: store?.id,
-          token: localStorage.getItem("jwt"),
+          storeId: store.id,
+          token,
         })
-      );
+      ).unwrap();
+      toast.success("Employee created successfully.");
       setIsAddDialogOpen(false);
+    } catch (error) {
+      throw new Error(
+        typeof error === "string"
+          ? error
+          : error?.message || "Employee creation failed. Please try again."
+      );
     }
   };
 
-  const handleEditEmployee = (updatedEmployeeData) => {
-    if (currentEmployee?.id && localStorage.getItem("jwt")) {
-      dispatch(
+  const handleEditEmployee = async (updatedEmployeeData) => {
+    const token = localStorage.getItem("jwt");
+    if (!currentEmployee?.id || !token) {
+      throw new Error("Your session expired or the employee is no longer available. Refresh and retry.");
+    }
+
+    try {
+      await dispatch(
         updateEmployee({
           employeeId: currentEmployee.id,
           employeeDetails: updatedEmployeeData,
-          token: localStorage.getItem("jwt"),
+          token,
         })
-      );
+      ).unwrap();
+      toast.success("Employee updated successfully.");
       setIsEditDialogOpen(false);
+    } catch (error) {
+      throw new Error(
+        typeof error === "string"
+          ? error
+          : error?.message || "Employee update failed. Please try again."
+      );
     }
   };
 
-  const handleDeleteEmployee = (id) => {
-    if (localStorage.getItem("jwt")) {
-      dispatch(deleteEmployee({ employeeId: id, token: localStorage.getItem("jwt") }));
+  const handleDeleteEmployee = async (id) => {
+    const token = localStorage.getItem("jwt");
+    if (!token) {
+      toast.error("Your session has expired. Sign in again and retry.");
+      return;
+    }
+
+    try {
+      await dispatch(deleteEmployee({ employeeId: id, token })).unwrap();
+      toast.success("Employee deleted successfully.");
+    } catch (error) {
+      toast.error(
+        typeof error === "string"
+          ? error
+          : error?.message || "Employee could not be deleted. Please try again."
+      );
     }
   };
 
@@ -99,14 +161,7 @@ export default function StoreEmployees() {
             </DialogHeader>
             <EmployeeForm
               onSubmit={handleAddEmployee}
-              initialData={{
-                fullName: "",
-                email: "",
-                password: "",
-                phone: "",
-                role: "",
-                branchId: "",
-              }}
+              initialData={EMPTY_EMPLOYEE_FORM_DATA}
               roles={storeAdminRole}
             />
           </DialogContent>
@@ -120,14 +175,7 @@ export default function StoreEmployees() {
             <EmployeeForm
               onSubmit={handleEditEmployee}
               roles={storeAdminRole}
-              initialData={
-                currentEmployee
-                  ? {
-                      ...currentEmployee,
-                      branchId: currentEmployee.branchId || "",
-                    }
-                  : null
-              }
+              initialData={editInitialData}
             />
           </DialogContent>
         </Dialog>

@@ -8,12 +8,23 @@ const CustomerList = ({
   selectedCustomer,
   onSelectCustomer,
   loading = false,
+  error = null,
 }) => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
         <Loader2 className="animate-spin h-8 w-8 mb-4" />
         <p>Loading customers...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center text-destructive p-4" role="alert">
+        <UserIcon size={48} strokeWidth={1} />
+        <p className="mt-4 font-medium">Customers could not be loaded</p>
+        <p className="text-sm">{error}</p>
       </div>
     );
   }

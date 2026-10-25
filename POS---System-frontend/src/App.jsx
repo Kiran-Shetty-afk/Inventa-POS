@@ -1,27 +1,27 @@
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router";
 import { useDispatch, useSelector } from "react-redux";
 import { Loader2 } from "lucide-react";
 
 // Auth and Store Routes
-import AuthRoutes from "./routes/AuthRoutes";
-import StoreRoutes from "./routes/StoreRoutes";
-import BranchManagerRoutes from "./routes/BranchManagerRoutes";
+const AuthRoutes = lazy(() => import("./routes/AuthRoutes"));
+const StoreRoutes = lazy(() => import("./routes/StoreRoutes"));
+const BranchManagerRoutes = lazy(() => import("./routes/BranchManagerRoutes"));
 import { getUserProfile } from "./Redux Toolkit/features/user/userThunks";
 import { clearUserState } from "./Redux Toolkit/features/user/userSlice";
 import { logout as clearAuthSession } from "./Redux Toolkit/features/auth/authSlice";
 import { clearStoreState } from "./Redux Toolkit/features/store/storeSlice";
 import { clearBranchState } from "./Redux Toolkit/features/branch/branchSlice";
 import { clearCart } from "./Redux Toolkit/features/cart/cartSlice";
-import Landing from "./pages/common/Landing/Landing";
-import CashierRoutes from "./routes/CashierRoutes";
-import Onboarding from "./pages/onboarding/Onboarding";
+const Landing = lazy(() => import("./pages/common/Landing/Landing"));
+const CashierRoutes = lazy(() => import("./routes/CashierRoutes"));
+const Onboarding = lazy(() => import("./pages/onboarding/Onboarding"));
 import {
   getStoreByAdmin,
   getStoreByEmployee,
 } from "./Redux Toolkit/features/store/storeThunks";
-import SuperAdminRoutes from "./routes/SuperAdminRoutes";
-import PageNotFound from "./pages/common/PageNotFound";
+const SuperAdminRoutes = lazy(() => import("./routes/SuperAdminRoutes"));
+const PageNotFound = lazy(() => import("./pages/common/PageNotFound"));
 import { normalizeAppRole } from "./utils/userRole";
 import { useLogoutOnAuthHistoryBack } from "./hooks/useLogoutOnAuthHistoryBack";
 
@@ -182,8 +182,7 @@ const App = () => {
         );
       }
     } else if (
-      appRole === "ROLE_BRANCH_MANAGER" ||
-      appRole === "ROLE_BRANCH_ADMIN"
+      appRole === "ROLE_BRANCH_MANAGER"
     ) {
       content = (
         <Routes>
@@ -235,7 +234,7 @@ const App = () => {
     );
   }
 
-  return content;
+  return <Suspense fallback={<SessionRestoringScreen />}>{content}</Suspense>;
 };
 
 export default App;

@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret:your_key}")
+    @Value("${jwt.secret}")
     private String secret;
 
     private SecretKey getSigningKey() {

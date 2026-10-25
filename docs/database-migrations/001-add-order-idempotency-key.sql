@@ -1,0 +1,3 @@
+-- Superseded by the versioned Flyway migration:
+-- POS---Microservices/order-sales-service/src/main/resources/db/migration/V2__financial_precision_and_durable_order_workflows.sql
+-- Do not execute this file separately; Flyway owns schema changes after the V1 baseline.

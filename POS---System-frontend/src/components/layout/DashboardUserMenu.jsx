@@ -18,7 +18,6 @@ const ROLE_LABELS = {
   ROLE_STORE_ADMIN: "Store Admin",
   ROLE_STORE_MANAGER: "Store Manager",
   ROLE_BRANCH_MANAGER: "Branch Manager",
-  ROLE_BRANCH_ADMIN: "Branch Admin",
   ROLE_BRANCH_CASHIER: "Cashier",
 };
 

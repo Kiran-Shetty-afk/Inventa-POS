@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { branchAdminRole } from "../../../utils/userRole";
 
 import EmployeeStats from "./EmployeeStats";
 import EmployeeTable from "./EmployeeTable";
@@ -32,10 +31,18 @@ const BranchEmployees = () => {
   const {employees}=useSelector((state)=>state.employee)
   const { orders } = useSelector((state) => state.order);
   const { userProfile } = useSelector((state) => state.user);
+  const assignedBranchId = branch?.id ?? userProfile?.branchId ?? userProfile?.branch?.id;
+  const fixedBranch = useMemo(
+    () => ({
+      id: assignedBranchId,
+      name: branch?.name ?? branch?.branchName ?? userProfile?.branch?.name,
+    }),
+    [assignedBranchId, branch?.name, branch?.branchName, userProfile?.branch?.name]
+  );
 
 
   const handleAddEmployee = async (newEmployeeData) => {
-    const branchId = userProfile?.branchId ?? userProfile?.branch?.id;
+    const branchId = branch?.id ?? userProfile?.branchId ?? userProfile?.branch?.id;
     const token = localStorage.getItem("jwt");
 
     if (!branchId) {
@@ -234,6 +241,8 @@ const BranchEmployees = () => {
           setIsAddDialogOpen={setIsAddDialogOpen}
           handleAddEmployee={handleAddEmployee}
           roles={["ROLE_BRANCH_CASHIER"]}
+          fixedBranch={fixedBranch}
+          requireFixedBranch
         />
       </div>
       <EmployeeStats employees={employees} />
@@ -250,7 +259,6 @@ const BranchEmployees = () => {
         setIsEditDialogOpen={setIsEditDialogOpen}
         selectedEmployee={selectedEmployee}
         handleEditEmployee={handleEditEmployee}
-        roles={branchAdminRole}
       />
 
       <ResetPasswordDialog

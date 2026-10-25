@@ -273,6 +273,23 @@ export const getRefundById = createAsyncThunk(
   }
 );
 
+export const confirmPaymentRefund = createAsyncThunk(
+  'refund/confirmPaymentRefund',
+  async (refundId, { rejectWithValue }) => {
+    try {
+      const headers = getAuthHeaders();
+      const response = await api.put(
+        `/api/refunds/${refundId}/confirm-payment-refund`,
+        {},
+        { headers }
+      );
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Could not update the payment refund status');
+    }
+  }
+);
+
 // 🔹 Delete Refund
 export const deleteRefund = createAsyncThunk(
   'refund/delete',
@@ -297,4 +314,4 @@ export const deleteRefund = createAsyncThunk(
       return rejectWithValue(err.response?.data?.message || 'Failed to delete refund');
     }
   }
-); 
+);

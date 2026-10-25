@@ -15,6 +15,7 @@ Status: reviewed
 - Branch Manager fraud alerts display branch-scoped model alerts and allow resolution.
 - Store Admin dashboard, stores, alerts, fraud analytics, dynamic pricing, sales, and reports screens consume the service data available for their role; settings only edits persisted store profile fields.
 - Super Admin dashboard displays store counts, registration history, status distribution, and platform revenue. Super Admin settings supports profile and password updates; subscription plans display and persist activation status.
+- Cashier checkout labels CARD/UPI as unconfirmed external payment records; the return/refund screens distinguish inventory restoration from money refund and do not claim that the POS transferred funds.
 
 ## Important files inspected
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -35,6 +36,10 @@ public class Branch {
     private LocalTime openTime;
 
     private LocalTime closeTime;
+
+    @Builder.Default
+    @Column(name = "max_discount_percent", nullable = false, precision = 5, scale = 2)
+    private BigDecimal maxDiscountPercent = BigDecimal.ZERO.setScale(2);
 
     private LocalDateTime createdAt;
 

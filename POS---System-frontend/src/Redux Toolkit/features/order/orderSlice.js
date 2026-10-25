@@ -14,6 +14,8 @@ const initialState = {
   orders: [],
   todayOrders: [],
   customerOrders: [],
+  customerOrdersLoading: false,
+  customerOrdersError: null,
   selectedOrder: null,
   loading: false,
   error: null,
@@ -45,12 +47,16 @@ const orderSlice = createSlice({
       state.orders = [];
       state.todayOrders = [];
       state.customerOrders = [];
+      state.customerOrdersLoading = false;
+      state.customerOrdersError = null;
       state.selectedOrder = null;
       state.error = null;
       state.recentOrdersError = null;
     },
     clearCustomerOrders: (state) => {
       state.customerOrders = [];
+      state.customerOrdersLoading = false;
+      state.customerOrdersError = null;
     },
   },
   extraReducers: (builder) => {
@@ -74,6 +80,7 @@ const orderSlice = createSlice({
 
       .addCase(getOrdersByBranch.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(getOrdersByBranch.fulfilled, (state, action) => {
         state.loading = false;
@@ -82,6 +89,7 @@ const orderSlice = createSlice({
 
       .addCase(getOrdersByCashier.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(getOrdersByCashier.fulfilled, (state, action) => {
         state.loading = false;
@@ -93,8 +101,21 @@ const orderSlice = createSlice({
         state.todayOrders = action.payload;
       })
 
+      .addCase(getOrdersByCustomer.pending, (state) => {
+        state.customerOrders = [];
+        state.customerOrdersLoading = true;
+        state.customerOrdersError = null;
+        state.error = null;
+      })
       .addCase(getOrdersByCustomer.fulfilled, (state, action) => {
+        state.customerOrdersLoading = false;
+        state.customerOrdersError = null;
         state.customerOrders = action.payload;
+      })
+      .addCase(getOrdersByCustomer.rejected, (state, action) => {
+        state.customerOrders = [];
+        state.customerOrdersLoading = false;
+        state.customerOrdersError = action.payload || action.error.message || 'Failed to load purchase history';
       })
 
       .addCase(getRecentOrdersByBranch.pending, (state) => {

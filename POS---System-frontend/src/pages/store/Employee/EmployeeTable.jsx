@@ -2,7 +2,6 @@ import React from "react";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2, Mail, Phone, MapPin } from "lucide-react";
-import { toast } from "sonner";
 
 const EmployeeTable = ({ employees, onEdit, onDelete }) => {
   if (!employees || employees.length === 0) {
@@ -53,10 +52,7 @@ const EmployeeTable = ({ employees, onEdit, onDelete }) => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    onDelete(employee.id);
-                    toast.success("Employee deleted successfully!");
-                  }}
+                  onClick={() => onDelete(employee.id)}
                   className="text-red-600 hover:text-red-800"
                 >
                   <Trash2 className="h-4 w-4" />

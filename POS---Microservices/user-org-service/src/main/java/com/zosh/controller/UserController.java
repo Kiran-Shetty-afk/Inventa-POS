@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -58,6 +59,7 @@ public class UserController {
     }
 
     @GetMapping("/api/users/customer")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Set<UserDTO>> getCustomerList(
             @RequestHeader("Authorization") String jwt) throws UserException {
         Set<User> users = userService.getUserByRole(UserRole.ROLE_CUSTOMER);
@@ -66,6 +68,7 @@ public class UserController {
     }
 
     @GetMapping("/api/users/cashier")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Set<UserDTO>> getCashierList(
             @RequestHeader("Authorization") String jwt) throws UserException {
         Set<User> users = userService.getUserByRole(UserRole.ROLE_BRANCH_CASHIER);
@@ -74,6 +77,7 @@ public class UserController {
     }
 
     @GetMapping("/users/list")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<List<User>> getUsersListHandler(
             @RequestHeader("Authorization") String jwt) throws UserException {
         List<User> users = userService.getUsers();
@@ -81,6 +85,7 @@ public class UserController {
     }
 
     @GetMapping("/users/{userId}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<UserDTO> getUserByIdHandler(
             @PathVariable Long userId) throws UserException {
         User user = userService.getUserById(userId);

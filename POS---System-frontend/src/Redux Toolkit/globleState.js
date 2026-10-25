@@ -1,5 +1,5 @@
-import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "./features/auth/authSlice.js";
+import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import authReducer, { logout } from "./features/auth/authSlice.js";
 import storeReducer from "./features/store/storeSlice.js";
 import branchReducer from "./features/branch/branchSlice.js";
 import onboardingReducer from "./features/onboarding/onboardingSlice.js";
@@ -24,11 +24,8 @@ import paymentReducer from "./features/payment/paymentSlice.js";
 import fraudReducer from "./features/fraud/fraudSlice.js";
 import branchAdminReducer from "./features/branchadmin/adminSlice.js";
 import pricingReducer from "../customer/Redux/Admin/pricing/pricingSlice";
-import notificationReducer
-  from "./features/notification/notificationSlice";
 
-const globleState = configureStore({
-  reducer: {
+const appReducer = combineReducers({
     auth: authReducer,
     store: storeReducer,
     branch: branchReducer,
@@ -40,7 +37,6 @@ const globleState = configureStore({
     inventory: inventoryReducer,
     order: orderReducer,
     customer: customerReducer,
-     notification: notificationReducer,
     // supplier: supplierReducer,
     sale: saleReducer,
     transaction: transactionReducer,
@@ -56,7 +52,11 @@ const globleState = configureStore({
     fraud: fraudReducer,
     branchAdmin: branchAdminReducer,
     pricing: pricingReducer,
-  },
 });
+
+const rootReducer = (state, action) =>
+  appReducer(action.type === logout.type ? undefined : state, action);
+
+const globleState = configureStore({ reducer: rootReducer });
 
 export default globleState;

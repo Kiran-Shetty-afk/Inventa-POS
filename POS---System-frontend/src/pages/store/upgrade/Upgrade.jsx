@@ -21,6 +21,7 @@ const Upgrade = () => {
     : Array.isArray(plans?.data)
     ? plans.data
     : [];
+  const availablePlans = planList.filter((plan) => plan.active !== false);
   const subscriptionList = Array.isArray(subscriptions)
     ? subscriptions
     : Array.isArray(subscriptions?.content)
@@ -29,27 +30,36 @@ const Upgrade = () => {
     ? subscriptions.data
     : [];
 
-  // Get current active subscription for this store
-  const currentSubscription = subscriptionList.find(
-    (sub) => sub.store?.id === store?.id && sub.status === 'ACTIVE'
+  const storeSubscriptions = subscriptionList.filter(
+    (sub) => store?.id != null && String(sub.storeId ?? sub.store?.id) === String(store.id)
   );
+  const currentSubscription = storeSubscriptions.find((sub) => sub.status === 'ACTIVE')
+    || storeSubscriptions.find((sub) => sub.status === 'TRIAL')
+    || null;
 
   useEffect(() => {
     dispatch(getAllSubscriptionPlans());
     if (store?.id) {
-      dispatch(getStoreSubscriptions({ storeId: store.id , status:"ACTIVE"}));
+      dispatch(getStoreSubscriptions({ storeId: store.id }));
     }
   }, [dispatch, store?.id]);
 
   const handleSubscribe = async (planId) => {
-    if (!store?.id) return;
+    if (!store?.id) {
+      setActionError('Store details are still loading. Refresh the page and try again.');
+      return;
+    }
     setActionLoading(true);
     setActionError(null);
     setSuccessMsg(null);
     try {
-      if (currentSubscription) {
-        // Create a Razorpay payment link first. The subscription changes only after
-        // the server verifies the captured payment on the return route.
+      const selectedPlan = availablePlans.find((plan) => String(plan.id) === String(planId));
+      if (!selectedPlan) {
+        throw new Error('That subscription plan is no longer available. Refresh and try again.');
+      }
+
+      if (Number(selectedPlan.price) > 0) {
+        // Paid plans always go through verified Razorpay checkout, including first-time subscriptions.
         await dispatch(
           createPaymentLinkThunk({
             storeId: store.id,
@@ -58,14 +68,15 @@ const Upgrade = () => {
           })
         ).unwrap();
       } else {
-        // New subscription
+        if (currentSubscription) {
+          throw new Error('A free trial cannot replace an existing subscription. Choose a paid plan to upgrade.');
+        }
         await dispatch(subscribeToPlan({ storeId: store.id, planId })).unwrap();
-        setSuccessMsg('Subscribed successfully!');
+        setSuccessMsg('Free trial started successfully.');
       }
-      // Refresh subscriptions
-      dispatch(getStoreSubscriptions({ storeId: store.id, status:"ACTIVE" }));
+      dispatch(getStoreSubscriptions({ storeId: store.id }));
     } catch (err) {
-      setActionError((err && err.message) || 'Failed to subscribe/upgrade.');
+      setActionError(typeof err === 'string' ? err : err?.message || 'Failed to subscribe/upgrade.');
     } finally {
       setActionLoading(false);
     }
@@ -84,21 +95,27 @@ const Upgrade = () => {
             <div className="mb-8 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800 flex items-center gap-3">
               <CheckCircle className="w-6 h-6 text-green-500" />
               <div>
-                <div className="font-semibold">Current Plan: {currentSubscription.plan?.name}</div>
+                <div className="font-semibold">Current Plan: {currentSubscription.plan?.name || currentSubscription.planName || 'Subscription'}</div>
                 <div>Status: {currentSubscription.status}</div>
                 <div>Valid till: {currentSubscription.endDate}</div>
               </div>
             </div>
           )}
+          {availablePlans.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">No subscription plans are available right now.</div>
+          ) : null}
+          {!store?.id ? (
+            <div className="text-center py-4 text-amber-700">Store details are still loading. Refresh this page if the plans remain unavailable.</div>
+          ) : null}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {planList.map((plan) => (
+            {availablePlans.map((plan) => (
               <div
                 key={plan.id}
                 className={`bg-card rounded-2xl p-8 shadow-lg border relative flex flex-col ${
-                  currentSubscription?.plan?.id === plan.id ? 'ring-2 ring-primary' : ''
+                  String(currentSubscription?.plan?.id) === String(plan.id) ? 'ring-2 ring-primary' : ''
                 }`}
               >
-                {currentSubscription?.plan?.id === plan.id && (
+                {String(currentSubscription?.plan?.id) === String(plan.id) && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                     <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-medium">
                       Your Plan
@@ -164,14 +181,14 @@ const Upgrade = () => {
                   className="w-full mt-auto"
                   variant="default"
                   size="default"
-                  disabled={actionLoading || currentSubscription?.plan?.id === plan.id}
+                  disabled={actionLoading || !store?.id || (currentSubscription?.status === 'ACTIVE' && String(currentSubscription?.plan?.id) === String(plan.id)) || (Boolean(currentSubscription) && Number(plan.price) <= 0)}
                   onClick={() => handleSubscribe(plan.id)}
                 >
-                  {currentSubscription?.plan?.id === plan.id
+                  {currentSubscription?.status === 'ACTIVE' && String(currentSubscription?.plan?.id) === String(plan.id)
                     ? 'Current Plan'
-                    : currentSubscription
-                    ? 'Upgrade to this Plan'
-                    : 'Subscribe'}
+                    : Number(plan.price) > 0
+                      ? currentSubscription ? 'Upgrade with Razorpay' : 'Subscribe with Razorpay'
+                      : currentSubscription ? 'Free plan unavailable' : 'Start free trial'}
                 </Button>
               </div>
             ))}

@@ -22,19 +22,30 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     Optional<Customer> findByEmail(String email);
 
     @Query("""
-        SELECT DISTINCT o.customer
-        FROM Order o
-        WHERE o.branchId = :branchId
-        AND o.customer IS NOT NULL
-        ORDER BY o.customer.fullName
+        SELECT DISTINCT c
+        FROM Customer c
+        WHERE c.branchId = :branchId
+           OR c.id IN (
+               SELECT o.customer.id
+               FROM Order o
+               WHERE o.branchId = :branchId
+                 AND o.customer IS NOT NULL
+           )
+        ORDER BY c.fullName
     """)
     List<Customer> findDistinctByBranchId(@Param("branchId") Long branchId);
 
     @Query("""
-        SELECT DISTINCT o.customer
-        FROM Order o
-        WHERE o.customer IS NOT NULL AND o.customer.storeId = :storeId
-        ORDER BY o.customer.fullName
+        SELECT DISTINCT c
+        FROM Customer c
+        WHERE c.storeId = :storeId
+           OR c.id IN (
+               SELECT o.customer.id
+               FROM Order o
+               WHERE o.customer IS NOT NULL
+                 AND o.customer.storeId = :storeId
+           )
+        ORDER BY c.fullName
     """)
     List<Customer> findDistinctByStoreId(@Param("storeId") Long storeId);
 }

@@ -42,7 +42,6 @@ const ReturnItemsSection = ({ selectedOrder, setShowReceiptDialog, onRefundCompl
 
   const [returnReason, setReturnReason] = useState("");
   const [otherReason, setOtherReason] = useState("");
-  const [refundMethod, setRefundMethod] = useState("");
 
   const processRefund = async () => {
     if (!returnReason) {
@@ -61,15 +60,6 @@ const ReturnItemsSection = ({ selectedOrder, setShowReceiptDialog, onRefundCompl
       });
       return;
     }
-    if (!refundMethod) {
-      toast({
-        title: "Refund Method Required",
-        description: "Please select a refund method before processing.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     // Prepare refundDTO for API
     const refundDTO = {
       orderId: selectedOrder.id,
@@ -77,16 +67,16 @@ const ReturnItemsSection = ({ selectedOrder, setShowReceiptDialog, onRefundCompl
       cashierId: userProfile?.id,
 
       reason: returnReason === "Other" ? otherReason : returnReason,
-      paymentType:
-        refundMethod === "ORIGINAL" ? selectedOrder.paymentType : refundMethod,
     };
     try {
-      await dispatch(createRefund(refundDTO)).unwrap();
+      const refund = await dispatch(createRefund(refundDTO)).unwrap();
       setShowReceiptDialog(true);
       onRefundCompleted?.();
       toast({
-        title: "Refund Processed",
-        description: `Refund of ₹${Number(selectedOrder.totalAmount || 0).toFixed(2)} processed via ${refundDTO.paymentType}`,
+        title: "Return Recorded",
+        description: refund?.paymentRefundStatus === "MANUAL_REVIEW_REQUIRED"
+          ? "Stock restoration completed. The POS did not issue a payment refund; financial review is required."
+          : "The return request was recorded. Check its stock and payment refund statuses before closing it.",
       });
     } catch (error) {
       toast({
@@ -135,36 +125,17 @@ const ReturnItemsSection = ({ selectedOrder, setShowReceiptDialog, onRefundCompl
                 />
               </div>
             )}
-            <div>
-              <Label htmlFor="refund-method" className="mb-2 block">
-                Refund Method
-              </Label>
-              <Select value={refundMethod} onValueChange={setRefundMethod}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select refund method..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ORIGINAL">
-                    Original Payment Method ({selectedOrder.paymentType})
-                  </SelectItem>
-                  <SelectItem value="CASH">Cash</SelectItem>
-                  {selectedOrder.paymentType !== "CARD" && (
-                    <SelectItem value="CARD">Card</SelectItem>
-                  )}
-                  {selectedOrder.paymentType !== "UPI" && (
-                    <SelectItem value="UPI">UPI</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
             <div className="pt-4 border-t">
               <div className="flex justify-between text-lg font-semibold">
-                <span>Total Refund Amount:</span>
+                <span>Amount for financial review:</span>
                 <span>₹{Number(selectedOrder.totalAmount || 0).toFixed(2)}</span>
               </div>
+              <p className="mt-2 text-sm text-amber-700" role="status">
+                This action records the return and restores stock. It does not transfer money or confirm a payment refund.
+              </p>
             </div>
             <Button className="w-full" onClick={processRefund}>
-              Process Refund
+              Record Return &amp; Restore Stock
             </Button>
           </div>
         </CardContent>

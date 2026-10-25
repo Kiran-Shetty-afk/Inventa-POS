@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "order_items")
 @Getter
@@ -26,11 +28,13 @@ public class OrderItem {
 
     private String productImage;
 
-    private Double productPrice;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal productPrice;
 
     private Integer quantity;
 
-    private Double price;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal price;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")

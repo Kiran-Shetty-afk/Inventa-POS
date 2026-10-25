@@ -13,6 +13,11 @@ Status: reviewed
 - Prometheus scrapes Java Actuator Prometheus endpoints and the ML `/metrics` endpoint. Grafana provisions Prometheus as its data source.
 - `EUREKA_URL`, `EUREKA_SERVER`, `EUREKA_INSTANCE_HOSTNAME`, Billing service URLs, `FRONTEND_BASE_URL`, `CORS_ALLOWED_ORIGINS`, and `VITE_API_BASE_URL` make network locations configurable.
 - Billing receives the Docker-reachable ML API address through `ML_SERVICE_URL` for forecast and optional model-backed analytics calls.
+- Order/Sales and Inventory receive `INTERNAL_SERVICE_JWT_SECRET`; local Compose can fall back to `JWT_SECRET`, while production requires a distinct value.
+- Checkout tax rate is configurable through `ORDER_TAX_RATE_PERCENT` (default 18); tax is always calculated before discount. Discount limits are persisted per branch and are not Compose environment settings.
+- Local host-published application and monitoring ports are loopback-bound; the production Compose overlay exposes only the frontend and removes Gateway/Prometheus/Grafana host ports.
+- The production overlay configures the browser API base as same-origin `/` and proxies to Gateway over a private Docker edge network. Public hosting still needs a TLS-terminating load balancer or reverse proxy and cloud secret management.
+- The frontend runtime image uses unprivileged Nginx on port 8080.
 
 ## Important files inspected
 
@@ -28,7 +33,7 @@ Status: reviewed
 
 ## Unknowns / documentation gaps
 
-- Production TLS, reverse proxy, managed database, and cloud secret-store configuration remain to be designed.
+- AWS resources, public ingress/TLS, managed database, cloud secret-store integration, resource limits based on measurement, and private monitoring access policy remain to be designed.
 
 ## Maintenance notes
 

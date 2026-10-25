@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StarIcon, PlusIcon, Loader2, UserIcon } from 'lucide-react';
 
-const CustomerDetails = ({ customer, onAddPoints, loading = false }) => {
+const CustomerDetails = ({ customer, onAddPoints, loading = false, statsError = null }) => {
   if (!customer) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
@@ -59,7 +59,7 @@ const CustomerDetails = ({ customer, onAddPoints, loading = false }) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <span className="text-2xl font-bold">{customer.totalOrders || 0}</span>
+              <span className="text-2xl font-bold">{statsError ? '—' : customer.totalOrders || 0}</span>
           </CardContent>
         </Card>
 
@@ -70,10 +70,16 @@ const CustomerDetails = ({ customer, onAddPoints, loading = false }) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <span className="text-2xl font-bold">₹{(customer.totalSpent || 0).toFixed(2)}</span>
+              <span className="text-2xl font-bold">{statsError ? '—' : `₹${(customer.totalSpent || 0).toFixed(2)}`}</span>
           </CardContent>
         </Card>
       </div>
+
+      {statsError && (
+        <p className="mb-4 text-sm text-destructive" role="status">
+          Purchase totals are unavailable until the order history loads.
+        </p>
+      )}
 
       {customer.averageOrderValue && (
         <Card>
@@ -97,4 +103,4 @@ const CustomerDetails = ({ customer, onAddPoints, loading = false }) => {
   );
 };
 
-export default CustomerDetails; 
+export default CustomerDetails;

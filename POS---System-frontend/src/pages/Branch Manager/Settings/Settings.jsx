@@ -1,4 +1,5 @@
 import BranchInfo from "./BranchInfo";
+import DiscountPolicySettings from "./DiscountPolicySettings";
 
 const Settings = () => (
   <div className="mx-auto max-w-5xl space-y-6">
@@ -9,6 +10,7 @@ const Settings = () => (
       </p>
     </div>
 
+    <DiscountPolicySettings />
     <BranchInfo />
   </div>
 );

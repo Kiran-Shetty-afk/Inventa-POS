@@ -3,6 +3,8 @@ package com.zosh.modal;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -26,11 +28,11 @@ public class Product {
 
     private String description;
 
-    @Column(nullable = false)
-    private Double mrp; // Maximum Retail Price
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal mrp; // Maximum Retail Price
 
-    @Column(nullable = false)
-    private Double sellingPrice; // Actual sale price
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal sellingPrice; // Actual sale price
 
     private String brand;
 

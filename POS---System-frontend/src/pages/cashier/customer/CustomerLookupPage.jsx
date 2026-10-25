@@ -41,9 +41,12 @@ const CustomerLookupPage = () => {
   } = useSelector((state) => state.customer);
   const {
     customerOrders,
-    loading: orderLoading,
-    error: orderError,
+    customerOrdersLoading,
+    customerOrdersError,
   } = useSelector((state) => state.order);
+  const customerListError = customerError || (!branchId
+    ? "This cashier account is not assigned to a branch. Ask a manager to check the employee's branch assignment."
+    : null);
   // const { userProfile } = useSelector((state) => state.user);
 
   // Local state
@@ -73,26 +76,21 @@ const CustomerLookupPage = () => {
   }, [customerError, toast]);
 
   useEffect(() => {
-    if (orderError) {
+    if (customerOrdersError) {
       toast({
         title: "Error",
-        description: orderError,
+        description: customerOrdersError,
         variant: "destructive",
       });
     }
-  }, [orderError, toast]);
+  }, [customerOrdersError, toast]);
 
   // Filter customers based on search term
   const filteredCustomers = filterCustomers(customers, searchTerm);
 
-  const handleSelectCustomer = async (customer) => {
+  const handleSelectCustomer = (customer) => {
     setSelectedCustomer(customer);
-    // Clear previous customer orders
     dispatch(clearCustomerOrders());
-    // Fetch customer orders
-    if (customer.id) {
-      dispatch(getOrdersByCustomer(customer.id));
-    }
   };
 
   const handleAddPoints = async () => {
@@ -144,10 +142,10 @@ const CustomerLookupPage = () => {
 
 
   useEffect(() => {
-    if (selectedCustomer) {
+    if (selectedCustomer?.id) {
       dispatch(getOrdersByCustomer(selectedCustomer.id));
     }
-  }, [selectedCustomer, dispatch]);
+  }, [selectedCustomer?.id, dispatch]);
 
   // Calculate customer stats from orders
   const customerStats = selectedCustomer
@@ -182,6 +180,7 @@ const CustomerLookupPage = () => {
             selectedCustomer={selectedCustomer}
             onSelectCustomer={handleSelectCustomer}
             loading={customerLoading}
+            error={customerListError}
           />
         </div>
 
@@ -190,11 +189,16 @@ const CustomerLookupPage = () => {
           <CustomerDetails
             customer={displayCustomer}
             onAddPoints={() => setShowAddPointsDialog(true)}
-            loading={orderLoading}
+            loading={customerOrdersLoading}
+            statsError={customerOrdersError}
           />
 
           {selectedCustomer && (
-            <PurchaseHistory orders={customerOrders} loading={orderLoading} />
+            <PurchaseHistory
+              orders={customerOrders}
+              loading={customerOrdersLoading}
+              error={customerOrdersError}
+            />
           )}
         </div>
       </div>

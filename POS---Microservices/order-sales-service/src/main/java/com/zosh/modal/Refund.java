@@ -2,8 +2,11 @@ package com.zosh.modal;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.zosh.domain.PaymentType;
+import com.zosh.domain.PaymentRefundStatus;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.math.BigDecimal;
 
 import java.time.LocalDateTime;
 
@@ -26,7 +29,8 @@ public class Refund {
 
     private String reason;
 
-    private Double amount;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal amount;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "shift_report_id")
@@ -46,10 +50,30 @@ public class Refund {
     @Enumerated(EnumType.STRING)
     private PaymentType paymentType;
 
+    @Builder.Default
+    @Column(name = "processing_status", nullable = false, length = 16)
+    private String processingStatus = "COMPLETED";
+
+    @Column(name = "idempotency_key", unique = true, length = 64, updatable = false)
+    private String idempotencyKey;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(name = "payment_refund_status", nullable = false, length = 32)
+    private PaymentRefundStatus paymentRefundStatus = PaymentRefundStatus.NOT_ISSUED;
+
+    @Column(name = "payment_refund_confirmed_at")
+    private LocalDateTime paymentRefundConfirmedAt;
+
+    @Column(name = "payment_refund_confirmed_by")
+    private Long paymentRefundConfirmedBy;
+
     @PrePersist
     public void onCreate() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
+        if (processingStatus == null) processingStatus = "COMPLETED";
+        if (paymentRefundStatus == null) paymentRefundStatus = PaymentRefundStatus.NOT_ISSUED;
     }
 }

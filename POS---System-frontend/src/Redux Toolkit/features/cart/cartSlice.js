@@ -1,10 +1,12 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { calculatePercentDiscountMinor, calculateTaxMinor, fromMinorUnits, toMinorUnits } from "../../../utils/money";
 
 const initialState = {
   items: [],
   selectedCustomer: null,
   note: "",
   discount: { type: "percentage", value: 0 },
+  discountInputError: "",
   paymentMethod: "CASH",
   heldOrders: [],
   currentOrder: null,
@@ -51,6 +53,7 @@ const cartSlice = createSlice({
       state.selectedCustomer = null;
       state.note = "";
       state.discount = { type: "percentage", value: 0 };
+      state.discountInputError = "";
       state.paymentMethod = "CASH";
       state.currentOrder = null;
     },
@@ -65,6 +68,11 @@ const cartSlice = createSlice({
 
     setDiscount: (state, action) => {
       state.discount = action.payload;
+      state.discountInputError = "";
+    },
+
+    setDiscountInputError: (state, action) => {
+      state.discountInputError = action.payload || "";
     },
 
     setPaymentMethod: (state, action) => {
@@ -89,6 +97,7 @@ const cartSlice = createSlice({
         state.selectedCustomer = null;
         state.note = "";
         state.discount = { type: "percentage", value: 0 };
+        state.discountInputError = "";
       }
     },
 
@@ -98,6 +107,7 @@ const cartSlice = createSlice({
       state.selectedCustomer = order.customer;
       state.note = order.note;
       state.discount = order.discount;
+      state.discountInputError = "";
 
       // Remove from held orders
       state.heldOrders = state.heldOrders.filter((o) => o.id !== order.id);
@@ -112,6 +122,7 @@ const cartSlice = createSlice({
       state.selectedCustomer = null;
       state.note = "";
       state.discount = { type: "percentage", value: 0 };
+      state.discountInputError = "";
       state.paymentMethod = "CASH";
       state.currentOrder = null;
     },
@@ -124,39 +135,34 @@ export const selectCartItemCount = (state) => state.cart.items.length;
 export const selectSelectedCustomer = (state) => state.cart.selectedCustomer;
 export const selectNote = (state) => state.cart.note;
 export const selectDiscount = (state) => state.cart.discount;
+export const selectDiscountInputError = (state) => state.cart.discountInputError;
 export const selectPaymentMethod = (state) => state.cart.paymentMethod;
 export const selectHeldOrders = (state) => state.cart.heldOrders;
 export const selectCurrentOrder = (state) => state.cart.currentOrder;
 
 // Calculation selectors
 export const selectSubtotal = (state) => {
-  return state.cart.items.reduce(
-    (total, item) => total + item.sellingPrice * item.quantity,
-    0
-  );
+  const subtotalMinor = state.cart.items.reduce((total, item) =>
+    total + toMinorUnits(item.sellingPrice ?? item.price) * Math.max(0, Math.trunc(item.quantity ?? 0)), 0);
+  return fromMinorUnits(subtotalMinor);
 };
 
 export const selectTax = (state) => {
-  const subtotal = selectSubtotal(state);
-  return subtotal * 0.18; // 18% GST
+  const subtotalMinor = toMinorUnits(selectSubtotal(state));
+  return fromMinorUnits(calculateTaxMinor(subtotalMinor));
 };
 
 export const selectDiscountAmount = (state) => {
-  const subtotal = selectSubtotal(state);
+  const subtotalMinor = toMinorUnits(selectSubtotal(state));
   const discount = state.cart.discount;
-
-  if (discount.type === "percentage") {
-    return subtotal * (discount.value / 100);
-  } else {
-    return discount.value;
-  }
+  return fromMinorUnits(calculatePercentDiscountMinor(subtotalMinor, discount?.value ?? 0));
 };
 
 export const selectTotal = (state) => {
-  const subtotal = selectSubtotal(state);
-  const tax = selectTax(state);
-  const discountAmount = selectDiscountAmount(state);
-  return subtotal + tax - discountAmount;
+  const subtotalMinor = toMinorUnits(selectSubtotal(state));
+  const taxMinor = calculateTaxMinor(subtotalMinor);
+  const discountMinor = toMinorUnits(selectDiscountAmount(state));
+  return fromMinorUnits(subtotalMinor + taxMinor - discountMinor);
 };
 
 export const {
@@ -167,6 +173,7 @@ export const {
   setSelectedCustomer,
   setNote,
   setDiscount,
+  setDiscountInputError,
   setPaymentMethod,
   holdOrder,
   resumeOrder,

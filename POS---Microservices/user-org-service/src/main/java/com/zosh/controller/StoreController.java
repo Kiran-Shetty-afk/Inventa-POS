@@ -32,6 +32,7 @@ public class StoreController {
     private final UserService userService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('ROLE_STORE_ADMIN')")
     public ResponseEntity<StoreDTO> createStore(@Valid @RequestBody StoreDTO storeDto,
                                                 @RequestHeader("Authorization") String jwt) throws UserException {
         User user = userService.getUserFromJwtToken(jwt);
@@ -39,11 +40,12 @@ public class StoreController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<StoreDTO> getStoreById(@PathVariable Long id) throws ResourceNotFoundException {
+    public ResponseEntity<StoreDTO> getStoreById(@PathVariable Long id) throws ResourceNotFoundException, UserException {
         return ResponseEntity.ok(storeService.getStoreById(id));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_STORE_ADMIN')")
     public ResponseEntity<StoreDTO> updateStore(
             @PathVariable Long id,
             @RequestBody StoreDTO storeDto) throws ResourceNotFoundException, UserException {
@@ -51,21 +53,30 @@ public class StoreController {
     }
 
     @DeleteMapping()
+    @PreAuthorize("hasAuthority('ROLE_STORE_ADMIN')")
     public ResponseEntity<ApiResponse> deleteStore() throws ResourceNotFoundException, UserException {
         storeService.deleteStore();
         return ResponseEntity.ok(new ApiResponse("store deleted successfully"));
     }
 
     @GetMapping("/admin")
+    @PreAuthorize("hasAuthority('ROLE_STORE_ADMIN')")
     public ResponseEntity<StoreDTO> getStoresByAdminId() throws UserException {
         Store store = storeService.getStoreByAdminId();
         return ResponseEntity.ok(StoreMapper.toDto(store));
     }
 
     @GetMapping("/employee")
+    @PreAuthorize("hasAnyAuthority('ROLE_STORE_MANAGER', 'ROLE_BRANCH_MANAGER', 'ROLE_BRANCH_CASHIER', 'ROLE_CASHIER')")
     public ResponseEntity<StoreDTO> getStoresByEmployee() throws UserException {
         StoreDTO store = storeService.getStoreByEmployee();
         return ResponseEntity.ok(store);
+    }
+
+    @GetMapping("/{storeId}/access")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_MANAGER', 'ROLE_BRANCH_CASHIER', 'ROLE_CASHIER')")
+    public ResponseEntity<Boolean> checkCurrentUserStoreAccess(@PathVariable Long storeId) throws UserException {
+        return ResponseEntity.ok(storeService.currentUserCanAccessStore(storeId));
     }
 
     @GetMapping("/{storeId}/employee/list")
@@ -77,7 +88,7 @@ public class StoreController {
     }
 
     @PostMapping("/add/employee")
-    @PreAuthorize("hasAnyAuthority('STORE_MANAGER','STORE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_STORE_ADMIN')")
     public ResponseEntity<UserDTO> addEmployee(
             @RequestBody UserDTO userDTO) throws UserException {
         UserDTO user = storeService.addEmployee(null, userDTO);
@@ -85,18 +96,21 @@ public class StoreController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<List<StoreDTO>> getAllStores(
             @RequestParam(required = false) StoreStatus status) {
         return ResponseEntity.ok(storeService.getAllStores(status));
     }
 
     @GetMapping("/stats")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<StoreDashboardStatsDTO> getDashboardStats(Authentication authentication) {
         requireAdmin(authentication);
         return ResponseEntity.ok(storeService.getDashboardStats());
     }
 
     @GetMapping("/registration-stats")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<List<StoreRegistrationStatDTO>> getLast7DayRegistrationStats(
             Authentication authentication) {
         requireAdmin(authentication);
@@ -104,6 +118,7 @@ public class StoreController {
     }
 
     @PutMapping("/{storeId}/moderate")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public StoreDTO moderateStore(
             @PathVariable Long storeId,
             @RequestParam StoreStatus action) throws ResourceNotFoundException {

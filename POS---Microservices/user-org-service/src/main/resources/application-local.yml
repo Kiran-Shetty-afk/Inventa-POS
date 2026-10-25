@@ -1,0 +1,5 @@
+local:
+  bootstrap:
+    super-admin:
+      email: ${LOCAL_SUPER_ADMIN_EMAIL:}
+      password: "${LOCAL_SUPER_ADMIN_PASSWORD:}"

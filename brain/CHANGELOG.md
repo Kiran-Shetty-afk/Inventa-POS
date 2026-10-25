@@ -1,5 +1,11 @@
 # Brain Changelog
 
+## v2026.10.24-remediation
+- Updated the security, architecture, API, data, deployment, dependency, testing, and risk knowledge notes for the codebase remediation branch.
+- Documented signed JWT validation, tenant checks, idempotent orders, atomic inventory updates, Razorpay controls, disabled Stripe, production DB validation, and the remaining Saga/migration/decimal/discount risks.
+- Linked the repository security/data-integrity note and manual additive order idempotency migration.
+- Recorded isolated verification scope and clarified that the running Compose stack was not restarted with remediation changes.
+
 ## v2026.10.24-0422-kb-sync
 - KB: documented branch analytics and stock suggestions, store administration analytics, branch-scoped fraud alerts, and Super Admin dashboard/settings behavior.
 - KB: updated API, UI, auth, persistence, workflow, deployment, and risk notes for the corresponding code changes.
@@ -227,3 +233,8 @@
 - Added `003-qa-bugfix-sweep-apr-23.md` documenting backend and frontend QA fixes.
 - Fixed store analytics trends backend implementation and employee counting query for accurate dashboard data.
 - Fixed multiple frontend issues: store/branch charts, branch filters/name binding, cashier shift print/load behavior, order history filtering, and landing page links/anchors.
+
+## v2026.10.24-1744-kb-sync - Financial integrity and fresh migration rehearsal
+- Added KB feature 009 and decision 002 for configurable discount/tax defaults, explicit payment/refund states, and internal stock-operation authentication.
+- Updated architecture, data model, auth, API, UI, deployment, testing, and known-risk KB pages with Stage 9/10 findings.
+- Recorded the fresh isolated MySQL migration sequence and verification limits; the existing application database volume was preserved.

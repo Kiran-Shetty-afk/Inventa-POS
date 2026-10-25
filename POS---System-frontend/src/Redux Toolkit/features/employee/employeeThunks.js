@@ -1,6 +1,11 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/utils/api";
 
+const getRequestErrorMessage = (err, fallback) => {
+  const body = err.response?.data;
+  if (typeof body === "string") return body;
+  return body?.message || body?.detail || body?.error || fallback;
+};
 
 const getAuthToken = () => {
   const token = localStorage.getItem('jwt');
@@ -27,16 +32,9 @@ export const createStoreEmployee = createAsyncThunk(
       const res = await api.post(`/api/employees/store/${storeId}`, employee, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("createStoreEmployee fulfilled:", res.data);
       return res.data;
     } catch (err) {
-      console.error(
-        "createStoreEmployee rejected:",
-        err.response?.data?.message || "Failed to create store employee"
-      );
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to create store employee"
-      );
+      return rejectWithValue(getRequestErrorMessage(err, "Failed to create store employee"));
     }
   }
 );
@@ -141,16 +139,9 @@ export const findStoreEmployees = createAsyncThunk(
       const res = await api.get(`/api/employees/store/${storeId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("findStoreEmployees fulfilled:", res.data);
       return res.data;
     } catch (err) {
-      console.error(
-        "findStoreEmployees rejected:",
-        err.response?.data?.message || "Failed to fetch store employees"
-      );
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to fetch store employees"
-      );
+      return rejectWithValue(getRequestErrorMessage(err, "Failed to fetch store employees"));
     }
   }
 );

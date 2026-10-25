@@ -10,6 +10,8 @@ import com.zosh.payload.dto.ShiftReportDTO;
 import com.zosh.payload.dto.UserDTO;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,9 +26,9 @@ public class ShiftReportMapper {
         dto.setId(shiftReport.getId());
         dto.setShiftStart(shiftReport.getShiftStart());
         dto.setShiftEnd(shiftReport.getShiftEnd());
-        dto.setTotalSales(shiftReport.getTotalSales() != null ? shiftReport.getTotalSales() : 0.0);
-        dto.setTotalRefunds(shiftReport.getTotalRefunds() != null ? shiftReport.getTotalRefunds() : 0.0);
-        dto.setNetSales(shiftReport.getNetSales() != null ? shiftReport.getNetSales() : 0.0);
+        dto.setTotalSales(shiftReport.getTotalSales() != null ? shiftReport.getTotalSales() : BigDecimal.ZERO);
+        dto.setTotalRefunds(shiftReport.getTotalRefunds() != null ? shiftReport.getTotalRefunds() : BigDecimal.ZERO);
+        dto.setNetSales(shiftReport.getNetSales() != null ? shiftReport.getNetSales() : BigDecimal.ZERO);
         dto.setTotalOrders(shiftReport.getTotalOrders());
         
         dto.setCashierId(shiftReport.getCashierId());
@@ -62,21 +64,24 @@ public class ShiftReportMapper {
 
     private static List<PaymentSummary> buildPaymentSummariesFromShift(ShiftReport shift) {
         List<PaymentSummary> list = new ArrayList<>();
-        double totalSales = shift.getTotalSales() != null ? shift.getTotalSales() : 0.0;
+        BigDecimal totalSales = shift.getTotalSales() != null ? shift.getTotalSales() : BigDecimal.ZERO;
 
-        if (shift.getCashSales() != null && shift.getCashSales() > 0) {
-            double amount = shift.getCashSales();
-            double pct = totalSales > 0 ? (amount / totalSales) * 100 : 0.0;
+        if (shift.getCashSales() != null && shift.getCashSales().signum() > 0) {
+            BigDecimal amount = shift.getCashSales();
+            double pct = totalSales.signum() > 0 ? amount.multiply(BigDecimal.valueOf(100))
+                    .divide(totalSales, 4, RoundingMode.HALF_UP).doubleValue() : 0.0;
             list.add(new PaymentSummary(com.zosh.domain.PaymentType.CASH, amount, 1, pct));
         }
-        if (shift.getCardSales() != null && shift.getCardSales() > 0) {
-            double amount = shift.getCardSales();
-            double pct = totalSales > 0 ? (amount / totalSales) * 100 : 0.0;
+        if (shift.getCardSales() != null && shift.getCardSales().signum() > 0) {
+            BigDecimal amount = shift.getCardSales();
+            double pct = totalSales.signum() > 0 ? amount.multiply(BigDecimal.valueOf(100))
+                    .divide(totalSales, 4, RoundingMode.HALF_UP).doubleValue() : 0.0;
             list.add(new PaymentSummary(com.zosh.domain.PaymentType.CARD, amount, 1, pct));
         }
-        if (shift.getUpiSales() != null && shift.getUpiSales() > 0) {
-            double amount = shift.getUpiSales();
-            double pct = totalSales > 0 ? (amount / totalSales) * 100 : 0.0;
+        if (shift.getUpiSales() != null && shift.getUpiSales().signum() > 0) {
+            BigDecimal amount = shift.getUpiSales();
+            double pct = totalSales.signum() > 0 ? amount.multiply(BigDecimal.valueOf(100))
+                    .divide(totalSales, 4, RoundingMode.HALF_UP).doubleValue() : 0.0;
             list.add(new PaymentSummary(com.zosh.domain.PaymentType.UPI, amount, 1, pct));
         }
         return list;

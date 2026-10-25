@@ -19,6 +19,11 @@ public class RefundMapper {
         dto.setShiftReportId(refund.getShiftReport() != null ? refund.getShiftReport().getId() : null);
         dto.setCreatedAt(refund.getCreatedAt());
         dto.setPaymentType(refund.getPaymentType());
+        dto.setProcessingStatus(refund.getProcessingStatus());
+        dto.setStockRestorationStatus(refund.getProcessingStatus());
+        dto.setPaymentRefundStatus(refund.getPaymentRefundStatus());
+        dto.setPaymentRefundConfirmedAt(refund.getPaymentRefundConfirmedAt());
+        dto.setPaymentRefundConfirmedBy(refund.getPaymentRefundConfirmedBy());
         return dto;
     }
 }

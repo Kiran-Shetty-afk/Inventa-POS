@@ -31,16 +31,6 @@ public class CustomerServiceImpl implements CustomerService {
         customer.setFullName(customerData.getFullName());
         customer.setEmail(customerData.getEmail());
         customer.setPhone(customerData.getPhone());
-        if (customerData.getStoreId() != null) {
-            customer.setStoreId(customerData.getStoreId());
-        }
-        if (customerData.getBranchId() != null) {
-            customer.setBranchId(customerData.getBranchId());
-        }
-        if (customerData.getLoyaltyPoints() != null) {
-            customer.setLoyaltyPoints(customerData.getLoyaltyPoints());
-        }
-
         return customerRepository.save(customer);
     }
 

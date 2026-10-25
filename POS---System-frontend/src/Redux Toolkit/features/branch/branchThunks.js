@@ -29,6 +29,34 @@ export const getBranchById = createAsyncThunk('branch/getById', async ({ id, jwt
   }
 });
 
+export const getBranchDiscountPolicy = createAsyncThunk(
+  'branch/getDiscountPolicy',
+  async ({ id, jwt }, { rejectWithValue }) => {
+    try {
+      const res = await api.get(`/api/branches/${id}/discount-policy`, {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Could not load this branch discount limit');
+    }
+  },
+);
+
+export const updateBranchDiscountPolicy = createAsyncThunk(
+  'branch/updateDiscountPolicy',
+  async ({ id, maxDiscountPercent, jwt }, { rejectWithValue }) => {
+    try {
+      const res = await api.put(`/api/branches/${id}/discount-policy`, { maxDiscountPercent }, {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Could not save this branch discount limit');
+    }
+  },
+);
+
 // 🔹 Get All Branches by Store
 export const getAllBranchesByStore = createAsyncThunk('branch/getAllByStore', async ({ storeId, jwt }, { rejectWithValue }) => {
   try {

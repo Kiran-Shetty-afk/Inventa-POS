@@ -2,6 +2,7 @@ package com.zosh.payload.dto;
 
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -19,6 +20,7 @@ public class BranchDTO {
     private List<String> workingDays;
     private LocalTime openTime;
     private LocalTime closeTime;
+    private BigDecimal maxDiscountPercent;
     private Long storeId;
     private StoreDTO store;
     private LocalDateTime createdAt;

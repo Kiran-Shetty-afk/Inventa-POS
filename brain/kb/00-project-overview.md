@@ -9,6 +9,8 @@ Status: reviewed
 - The Java services cover service discovery, API routing, user/organization management, inventory/catalog, order/sales, and billing/analytics.
 - Root Docker Compose runs the application with MySQL, Prometheus, and Grafana.
 - The repository README documents local setup, environment variable names, Docker startup, and monitoring access.
+- `docs/SECURITY_AND_DATA_INTEGRITY.md` records the remediated identity, payment, checkout, deployment, and remaining risk decisions.
+- `REMEDIATION_CHANGELOG.md` and `CODEBASE_AUDIT_REPORT.md` track the audit finding statuses and verification outcomes for the current remediation branch.
 
 ## Important files inspected
 

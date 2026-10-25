@@ -22,6 +22,7 @@ import PaymentSuccess from "../pages/store/upgrade/PaymentSuccess";
 import Alerts from "../pages/store/Alerts/Alerts";
 import FraudAnalytics from "../pages/store/Fraud/FraudAnalytics";
 import DynamicPricing from "../pages/store/DynamicPricing/DynamicPricing";
+import Refunds from "../pages/Branch Manager/Refunds/Refunds";
 
 const StoreRoutes = () => {
   return (
@@ -33,6 +34,7 @@ const StoreRoutes = () => {
         <Route path="categories" element={<Categories />} />
         <Route path="employees" element={<StoreEmployees />} />
         <Route path="fraud-analytics" element={<FraudAnalytics />} />
+        <Route path="refunds" element={<Refunds />} />
         <Route path="products" element={<Products />} />
         <Route path="stores" element={<Stores />} />
 

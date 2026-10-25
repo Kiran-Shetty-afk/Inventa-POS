@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, ShoppingBagIcon, CalendarIcon, IndianRupeeIcon } from 'lucide-react';
 import { formatDate, getStatusColor } from '../../order/data';
 
-const PurchaseHistory = ({ orders, loading = false }) => {
+const PurchaseHistory = ({ orders, loading = false, error = null }) => {
 
 
   if (loading) {
@@ -12,6 +12,16 @@ const PurchaseHistory = ({ orders, loading = false }) => {
       <div className="flex flex-col items-center justify-center p-4 text-center text-muted-foreground">
         <Loader2 className="animate-spin h-8 w-8 mb-4" />
         <p>Loading purchase history...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-4 text-center text-destructive" role="alert">
+        <ShoppingBagIcon size={48} strokeWidth={1} />
+        <p className="mt-4 font-medium">Purchase history could not be loaded</p>
+        <p className="text-sm">{error}</p>
       </div>
     );
   }
@@ -93,4 +103,4 @@ const PurchaseHistory = ({ orders, loading = false }) => {
   );
 };
 
-export default PurchaseHistory; 
+export default PurchaseHistory;

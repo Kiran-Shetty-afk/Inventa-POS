@@ -1,5 +1,5 @@
 import React from "react";
-import { handleDownloadOrderPDF } from "../pdf/pdfUtils";
+import { downloadOrderPdf } from "../pdf/downloadOrderPdf";
 import { useToast } from "../../../../components/ui/use-toast";
 import {
   Dialog,
@@ -27,7 +27,7 @@ const InvoiceDialog = ({ showInvoiceDialog, setShowInvoiceDialog }) => {
     console.log("print invoice...");
   };
   const handleDownloadPDF = async () => {
-    await handleDownloadOrderPDF(selectedOrder, toast);
+    await downloadOrderPdf(selectedOrder, toast);
   };
 
   const finishOrder = () => {

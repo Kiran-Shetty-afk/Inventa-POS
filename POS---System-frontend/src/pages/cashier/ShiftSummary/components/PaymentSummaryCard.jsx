@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { getPaymentIcon } from '../../../../utils/getPaymentIcon';
 
 const PaymentSummaryCard = ({ shiftData }) => {
+  const totalSales = Number(shiftData.totalSales || 0);
   return (
     <Card>
       <CardContent className="p-6">
@@ -20,7 +21,7 @@ const PaymentSummaryCard = ({ shiftData }) => {
                 </div>
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>{payment.transactionCount} transactions</span>
-                  <span>{((payment.totalAmount / shiftData.totalSales) * 100)?.toFixed(1)}%</span>
+                  <span>{(totalSales > 0 ? (Number(payment.totalAmount || 0) / totalSales) * 100 : 0).toFixed(1)}%</span>
                 </div>
               </div>
             </div>
@@ -31,4 +32,4 @@ const PaymentSummaryCard = ({ shiftData }) => {
   );
 };
 
-export default PaymentSummaryCard; 
+export default PaymentSummaryCard;

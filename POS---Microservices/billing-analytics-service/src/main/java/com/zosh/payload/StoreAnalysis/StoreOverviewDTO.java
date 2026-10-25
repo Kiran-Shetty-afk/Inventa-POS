@@ -5,14 +5,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class StoreOverviewDTO {
     private Integer totalBranches;
-    private Double totalSales;
-    private Double previousPeriodSales;
+    private BigDecimal totalSales;
+    private BigDecimal previousPeriodSales;
     private Integer totalOrders;
     private Integer totalEmployees;
     private Integer totalCustomers;
@@ -21,7 +23,7 @@ public class StoreOverviewDTO {
     private Integer todayOrders;
     private Integer yesterdayOrders;
     private Integer activeCashiers;
-    private Double averageOrderValue;
-    private Double previousPeriodAverageOrderValue;
+    private BigDecimal averageOrderValue;
+    private BigDecimal previousPeriodAverageOrderValue;
     private String topBranchName;
 }

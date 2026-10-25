@@ -5,6 +5,7 @@ import com.zosh.payload.AdminAnalysis.StoreDashboardStatsDTO;
 import com.zosh.payload.AdminAnalysis.StoreRegistrationStatDTO;
 import com.zosh.payload.AdminAnalysis.StoreStatusDistributionDTO;
 import com.zosh.repository.SubscriptionRepository;
+import com.zosh.domain.PaymentStatus;
 import com.zosh.service.AdminDashboardService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.math.BigDecimal;
 
 @Slf4j
 @Service
@@ -33,11 +35,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     @Override
     public DashboardSummaryDTO getDashboardSummary(String authorization) {
-        Double totalRevenue = subscriptionRepository.findAll().stream()
-                .filter(s -> s.getPaymentStatus() != null &&
-                        s.getPaymentStatus().name().equals("PAID"))
-                .mapToDouble(s -> s.getPlan() != null ? s.getPlan().getPrice() : 0.0)
-                .sum();
+        BigDecimal totalRevenue = subscriptionRepository.sumPlanPricesByPaymentStatus(PaymentStatus.PAID);
 
         // Try to get total/active/pending stores from user-org-service
         Long totalStores = 0L, activeStores = 0L, pendingStores = 0L, blockedStores = 0L;
@@ -61,7 +59,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 .activeStores(activeStores)
                 .pendingStores(pendingStores)
                 .blockedStores(blockedStores)
-                .totalPlatformRevenue(totalRevenue)
+                .totalPlatformRevenue(totalRevenue == null ? BigDecimal.ZERO : totalRevenue)
                 .build();
     }
 

@@ -118,7 +118,7 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
                         .cashierId(entry.getKey())
                         .cashierName(cashierNames.getOrDefault(entry.getKey(), "Cashier " + entry.getKey()))
                         .totalOrders(entry.getValue().orders())
-                        .totalRevenue(entry.getValue().revenue().doubleValue())
+                        .totalRevenue(entry.getValue().revenue())
                         .build())
                 .toList();
     }
@@ -151,7 +151,7 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
                         Comparator.comparing(CategoryTotals::sales).reversed()))
                 .map(entry -> CategorySalesDTO.builder()
                         .categoryName(entry.getKey())
-                        .totalSales(entry.getValue().sales().doubleValue())
+                        .totalSales(entry.getValue().sales())
                         .quantitySold(entry.getValue().quantity())
                         .build())
                 .toList();
@@ -216,7 +216,8 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
                 dailyDemand.add(history.getOrDefault(day, 0.0));
             }
 
-            DemandPredictionResponse prediction = requestDemandPrediction(productId, dailyDemand, forecastDays, anchor, branchId);
+            DemandPredictionResponse prediction = requestDemandPrediction(
+                    productId, dailyDemand, forecastDays, anchor, branchId, authorization);
             double forecast7 = forecastTotal(prediction, 7);
             double forecast14 = forecastTotal(prediction, 14);
             double forecast30 = forecastTotal(prediction, 30);
@@ -262,10 +263,10 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
         int lowStockItems = (int) fetchInventory(request.getBranchId(), authorization).stream()
                 .filter(inventory -> inventory.getQuantity() != null && inventory.getQuantity() <= LOW_STOCK_THRESHOLD)
                 .count();
-        double growth = percentChange(sales.doubleValue(), previousSales.doubleValue());
+        double growth = percentChange(sales, previousSales);
 
         List<String> highlights = new ArrayList<>();
-        highlights.add(String.format(Locale.ROOT, "Completed sales: ₹%,.2f", sales.doubleValue()));
+        highlights.add(String.format(Locale.ROOT, "Completed sales: ₹%,.2f", sales));
         highlights.add(selectedOrders.size() + " completed orders from " + cashierIds.size() + " cashiers");
         highlights.add(lowStockItems + " inventory items are at or below " + LOW_STOCK_THRESHOLD + " units");
 
@@ -333,7 +334,7 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
 
         return BranchDashboardOverviewDTO.builder()
                 .totalSales(sales)
-                .salesGrowth(percentChange(sales.doubleValue(), previousSales.doubleValue()))
+                .salesGrowth(percentChange(sales, previousSales))
                 .ordersToday(selectedOrders.size())
                 .orderGrowth(percentChange(selectedOrders.size(), previousOrders.size()))
                 .activeCashiers(cashiers.size())
@@ -360,11 +361,14 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
                     }
                 });
 
-        double total = totalsByType.values().stream().mapToDouble(value -> value.amount().doubleValue()).sum();
+        BigDecimal total = totalsByType.values().stream().map(PaymentTotals::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         return totalsByType.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
-                .map(entry -> new PaymentSummary(entry.getKey(), entry.getValue().amount().doubleValue(),
-                        entry.getValue().count(), total == 0 ? 0 : entry.getValue().amount().doubleValue() * 100 / total))
+                .map(entry -> new PaymentSummary(entry.getKey(), entry.getValue().amount(),
+                        entry.getValue().count(), total.signum() == 0 ? 0
+                        : entry.getValue().amount().multiply(BigDecimal.valueOf(100))
+                                .divide(total, 4, java.math.RoundingMode.HALF_UP).doubleValue()))
                 .toList();
     }
 
@@ -424,12 +428,18 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
     }
 
     private DemandPredictionResponse requestDemandPrediction(Long productId, List<Double> dailyDemand,
-                                                              int horizon, LocalDate anchorDate, Long branchId) {
+                                                              int horizon, LocalDate anchorDate, Long branchId,
+                                                              String authorization) {
         String url = trimTrailingSlash(mlServiceUrl) + "/predict-demand";
         try {
             DemandPredictionRequest request = new DemandPredictionRequest(productId, dailyDemand, horizon,
                     anchorDate == null ? null : anchorDate.toString());
-            return restTemplate.postForObject(url, request, DemandPredictionResponse.class);
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.AUTHORIZATION, authorization);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            ResponseEntity<DemandPredictionResponse> response = restTemplate.exchange(
+                    url, HttpMethod.POST, new HttpEntity<>(request, headers), DemandPredictionResponse.class);
+            return response.getBody();
         } catch (Exception exception) {
             throw upstreamUnavailable("ML forecasting", branchId, exception);
         }
@@ -476,6 +486,11 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
         return orders.stream().map(OrderSnapshot::getCashierId).filter(Objects::nonNull).collect(Collectors.toSet());
     }
 
+    private double percentChange(BigDecimal current, BigDecimal previous) {
+        return previous.signum() <= 0 ? 0 : current.subtract(previous).multiply(BigDecimal.valueOf(100))
+                .divide(previous, 4, java.math.RoundingMode.HALF_UP).doubleValue();
+    }
+
     private double percentChange(double current, double previous) {
         return previous <= 0 ? 0 : (current - previous) * 100.0 / previous;
     }
@@ -492,13 +507,14 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
 
     private BigDecimal itemAmount(OrderItemSnapshot item) {
         if (item.getPrice() != null) return money(item.getPrice());
-        double unitPrice = item.getProduct() == null || item.getProduct().getSellingPrice() == null
-                ? 0 : item.getProduct().getSellingPrice();
-        return BigDecimal.valueOf(unitPrice * Optional.ofNullable(item.getQuantity()).orElse(0));
+        BigDecimal unitPrice = item.getProduct() == null || item.getProduct().getSellingPrice() == null
+                ? BigDecimal.ZERO : item.getProduct().getSellingPrice();
+        return unitPrice.multiply(BigDecimal.valueOf(Optional.ofNullable(item.getQuantity()).orElse(0)))
+                .setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
-    private BigDecimal money(Double amount) {
-        return amount == null || !Double.isFinite(amount) ? BigDecimal.ZERO : BigDecimal.valueOf(amount);
+    private BigDecimal money(BigDecimal amount) {
+        return amount == null ? BigDecimal.ZERO : amount;
     }
 
     private String trimTrailingSlash(String url) {
@@ -527,8 +543,8 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
         private BigDecimal revenue = BigDecimal.ZERO;
         private long orders;
 
-        void add(Double amount) {
-            revenue = revenue.add(amount == null ? BigDecimal.ZERO : BigDecimal.valueOf(amount));
+        void add(BigDecimal amount) {
+            revenue = revenue.add(amount == null ? BigDecimal.ZERO : amount);
             orders++;
         }
 
@@ -553,8 +569,8 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
         private BigDecimal amount = BigDecimal.ZERO;
         private int count;
 
-        void add(Double value) {
-            amount = amount.add(value == null ? BigDecimal.ZERO : BigDecimal.valueOf(value));
+        void add(BigDecimal value) {
+            amount = amount.add(value == null ? BigDecimal.ZERO : value);
             count++;
         }
 
@@ -573,7 +589,7 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class OrderSnapshot {
         private Long id;
-        private Double totalAmount;
+        private BigDecimal totalAmount;
         private Long cashierId;
         private LocalDateTime createdAt;
         private String paymentType;
@@ -585,7 +601,7 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
     public static class OrderItemSnapshot {
         private Long productId;
         private Integer quantity;
-        private Double price;
+        private BigDecimal price;
         private ProductSnapshot product;
     }
 
@@ -594,7 +610,7 @@ public class BranchAnalyticsServiceImpl implements BranchAnalyticsService {
         private Long id;
         private String name;
         private String category;
-        private Double sellingPrice;
+        private BigDecimal sellingPrice;
     }
 
     @Data @NoArgsConstructor @AllArgsConstructor

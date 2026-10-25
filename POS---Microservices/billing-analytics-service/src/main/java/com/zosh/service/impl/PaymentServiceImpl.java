@@ -5,10 +5,7 @@ import com.razorpay.PaymentLink;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 import com.razorpay.Utils;
-import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
-import com.stripe.model.checkout.Session;
-import com.stripe.param.checkout.SessionCreateParams;
 import com.zosh.domain.PaymentMethod;
 import com.zosh.domain.PaymentOrderStatus;
 import com.zosh.modal.PaymentOrder;
@@ -25,18 +22,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
-    @Value("${stripe.api.key:}")
-    private String stripeSecretKey;
-
-    @Value("${razorpay.api.key:rzp_test_placeholder}")
+    @Value("${razorpay.api.key}")
     private String razorpayApiKey;
 
-    @Value("${razorpay.api.secret:placeholder_secret}")
+    @Value("${razorpay.api.secret}")
     private String razorpayApiSecret;
 
     @Value("${app.frontend.base-url:http://localhost:5173}")
@@ -58,14 +53,17 @@ public class PaymentServiceImpl implements PaymentService {
             throw new IllegalArgumentException("A store is required for a subscription payment.");
         }
 
-        if (paymentMethod == PaymentMethod.STRIPE && !isStripeConfigured()) {
-            throw new IllegalStateException("Stripe payments are disabled because STRIPE_API_KEY is not configured");
+        if (paymentMethod == PaymentMethod.STRIPE) {
+            throw new IllegalStateException("Stripe payments are disabled until signed webhook reconciliation is implemented");
+        }
+        if (paymentMethod != PaymentMethod.RAZORPAY) {
+            throw new IllegalArgumentException("Unsupported payment method");
         }
 
         SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(planId)
                 .orElseThrow(() -> new Exception("Subscription plan not found with id: " + planId));
 
-        Double amount = subscriptionPlan.getPrice();
+        BigDecimal amount = subscriptionPlan.getPrice();
 
         PaymentOrder order = PaymentOrder.builder()
                 .userId(userId)
@@ -88,9 +86,6 @@ public class PaymentServiceImpl implements PaymentService {
             res.setPayment_link_url(paymentUrl);
             res.setPayment_link_id(paymentUrlId);
             paymentOrder.setPaymentLinkId(paymentUrlId);
-        } else {
-            String paymentLink = createStripePaymentLink(paymentOrder.getAmount(), paymentOrder.getPlanId());
-            res.setPayment_link_url(paymentLink);
         }
 
         paymentOrderRepository.save(paymentOrder);
@@ -150,7 +145,8 @@ public class PaymentServiceImpl implements PaymentService {
         Object amountValue = payment.get("amount");
         String status = payment.get("status");
         String currency = payment.get("currency");
-        long expectedAmount = BigDecimal.valueOf(paymentOrder.getAmount()).movePointRight(2).longValueExact();
+        long expectedAmount = paymentOrder.getAmount().setScale(2, RoundingMode.HALF_UP)
+                .movePointRight(2).longValueExact();
 
         if (!(amountValue instanceof Number amount)
                 || amount.longValue() != expectedAmount
@@ -173,9 +169,12 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public PaymentLink createRazorpayPaymentLink(String userEmail,
                                                   String userFullName,
-                                                  Double amount,
+                                                  BigDecimal amount,
                                                   Long orderId) throws RazorpayException {
-        long paise = BigDecimal.valueOf(amount).movePointRight(2).longValueExact();
+        if (amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("Payment amount must be positive");
+        }
+        long paise = amount.setScale(2, RoundingMode.HALF_UP).movePointRight(2).longValueExact();
         try {
             RazorpayClient razorpay = new RazorpayClient(razorpayApiKey, razorpayApiSecret);
 
@@ -204,35 +203,9 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public String createStripePaymentLink(Double amount, Long planId) throws StripeException {
-        if (!isStripeConfigured()) {
-            throw new IllegalStateException("Stripe payments are disabled because STRIPE_API_KEY is not configured");
-        }
-        Stripe.apiKey = stripeSecretKey;
-
-        SessionCreateParams params = SessionCreateParams.builder()
-                .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
-                .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(frontendUrl("/payment-success/" + planId))
-                .setCancelUrl(frontendUrl("/payment/cancel"))
-                .addLineItem(SessionCreateParams.LineItem.builder()
-                        .setQuantity(1L)
-                        .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
-                                .setCurrency("usd")
-                                .setUnitAmount((long) (amount * 100))
-                                .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                        .setName("Inventa POS Subscription")
-                                        .build())
-                                .build())
-                        .build())
-                .build();
-
-        Session session = Session.create(params);
-        return session.getUrl();
-    }
-
-    private boolean isStripeConfigured() {
-        return stripeSecretKey != null && !stripeSecretKey.isBlank();
+    public String createStripePaymentLink(BigDecimal amount, Long planId) throws StripeException {
+        throw new IllegalStateException(
+                "Stripe payments are disabled until signed webhook reconciliation is implemented");
     }
 
     private String frontendUrl(String path) {

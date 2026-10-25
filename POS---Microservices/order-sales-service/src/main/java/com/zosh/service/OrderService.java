@@ -11,6 +11,8 @@ public interface OrderService {
 
     OrderDTO createOrder(OrderDTO dto) throws UserException;
 
+    OrderDTO createOrder(OrderDTO dto, String idempotencyKey) throws UserException;
+
     OrderDTO getOrderById(Long id);
 
     List<OrderDTO> getOrdersByBranch(Long branchId,
@@ -22,6 +24,8 @@ public interface OrderService {
     List<OrderDTO> getOrdersByCashier(Long cashierId);
 
     void deleteOrder(Long id);
+
+    OrderDTO cancelOrder(Long id);
 
     List<OrderDTO> getTodayOrdersByBranch(Long branchId);
 

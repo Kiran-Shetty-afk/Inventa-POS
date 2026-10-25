@@ -3,6 +3,7 @@ package com.zosh.repository;
 import com.zosh.modal.Inventory;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +13,7 @@ import java.util.Optional;
 
 public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     Optional<Inventory> findFirstByProductIdOrderByIdAsc(Long productId);
+    List<Inventory> findAllByProductIdOrderByIdAsc(Long productId);
     List<Inventory> findByBranchIdOrderByIdAsc(Long branchId);
 
     List<Inventory> findAllByBranchIdAndProductIdOrderByIdAsc(Long branchId, Long productId);
@@ -25,6 +27,28 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     """)
     List<Inventory> findAllByBranchIdAndProductIdForUpdate(@Param("branchId") Long branchId,
                                                            @Param("productId") Long productId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        UPDATE Inventory i
+        SET i.quantity = i.quantity - :quantity, i.lastUpdated = CURRENT_TIMESTAMP
+        WHERE i.branchId = :branchId AND i.product.id = :productId AND i.quantity >= :quantity
+    """)
+    int decrementStockIfAvailable(@Param("branchId") Long branchId,
+                                  @Param("productId") Long productId,
+                                  @Param("quantity") Integer quantity);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        UPDATE Inventory i
+        SET i.quantity = i.quantity + :quantity, i.lastUpdated = CURRENT_TIMESTAMP
+        WHERE i.branchId = :branchId AND i.product.id = :productId
+        AND i.quantity <= :maxQuantityBeforeIncrement
+    """)
+    int incrementStock(@Param("branchId") Long branchId,
+                       @Param("productId") Long productId,
+                       @Param("quantity") Integer quantity,
+                       @Param("maxQuantityBeforeIncrement") Integer maxQuantityBeforeIncrement);
 
     @Query("""
         SELECT COUNT(i)

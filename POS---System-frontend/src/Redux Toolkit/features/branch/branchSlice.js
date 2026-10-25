@@ -5,6 +5,8 @@ import {
   getAllBranchesByStore,
   updateBranch,
   deleteBranch,
+  getBranchDiscountPolicy,
+  updateBranchDiscountPolicy,
   // addEmployeeToBranch,
   // getEmployeesByBranch
 } from './branchThunks';
@@ -15,6 +17,9 @@ const initialState = {
   employees: [],
   loading: false,
   error: null,
+  discountPolicy: null,
+  discountPolicyLoading: false,
+  discountPolicyError: null,
 };
 
 const branchSlice = createSlice({
@@ -26,6 +31,9 @@ const branchSlice = createSlice({
       state.branches = [];
       state.employees = [];
       state.error = null;
+      state.discountPolicy = null;
+      state.discountPolicyLoading = false;
+      state.discountPolicyError = null;
     },
   },
   extraReducers: (builder) => {
@@ -61,6 +69,28 @@ const branchSlice = createSlice({
 
       .addCase(updateBranch.fulfilled, (state, action) => {
         state.branch = action.payload;
+      })
+
+      .addCase(getBranchDiscountPolicy.pending, (state) => {
+        state.discountPolicyLoading = true;
+        state.discountPolicyError = null;
+      })
+      .addCase(getBranchDiscountPolicy.fulfilled, (state, action) => {
+        state.discountPolicyLoading = false;
+        state.discountPolicy = action.payload;
+        if (state.branch?.id === action.payload.branchId) {
+          state.branch.maxDiscountPercent = action.payload.maxDiscountPercent;
+        }
+      })
+      .addCase(getBranchDiscountPolicy.rejected, (state, action) => {
+        state.discountPolicyLoading = false;
+        state.discountPolicyError = action.payload;
+      })
+      .addCase(updateBranchDiscountPolicy.fulfilled, (state, action) => {
+        state.discountPolicy = action.payload;
+        if (state.branch?.id === action.payload.branchId) {
+          state.branch.maxDiscountPercent = action.payload.maxDiscountPercent;
+        }
       })
 
       .addCase(deleteBranch.fulfilled, (state, action) => {

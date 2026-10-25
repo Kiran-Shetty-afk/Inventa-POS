@@ -69,7 +69,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .plan(plan)
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusMonths(1))
-                .status(SubscriptionStatus.ACTIVE)
+                .status(SubscriptionStatus.TRIAL)
                 .paymentStatus(PaymentStatus.PENDING)
                 .paymentGateway(gateway)
                 .transactionId(transactionId)
@@ -103,15 +103,6 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
-    public Subscription activateSubscription(Long subscriptionId) {
-        Subscription sub = subscriptionRepository.findById(subscriptionId)
-                .orElseThrow(() -> new RuntimeException("Subscription not found"));
-        sub.setStatus(SubscriptionStatus.ACTIVE);
-        sub.setPaymentStatus(PaymentStatus.PAID);
-        return subscriptionRepository.save(sub);
-    }
-
-    @Override
     public Subscription cancelSubscription(Long subscriptionId) {
         Subscription sub = subscriptionRepository.findById(subscriptionId)
                 .orElseThrow(() -> new RuntimeException("Subscription not found"));
@@ -120,21 +111,10 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
+    @Transactional
     public void expirePastSubscriptions() {
-        subscriptionRepository.findAll().stream()
-                .filter(s -> s.getEndDate().isBefore(LocalDate.now()) && s.getStatus() != SubscriptionStatus.EXPIRED)
-                .forEach(s -> {
-                    s.setStatus(SubscriptionStatus.EXPIRED);
-                    subscriptionRepository.save(s);
-                });
-    }
-
-    @Override
-    public Subscription updatePaymentStatus(Long subscriptionId, PaymentStatus status) {
-        Subscription sub = subscriptionRepository.findById(subscriptionId)
-                .orElseThrow(() -> new RuntimeException("Subscription not found"));
-        sub.setPaymentStatus(status);
-        return subscriptionRepository.save(sub);
+        subscriptionRepository.expireEndedSubscriptions(
+                LocalDate.now(), java.time.LocalDateTime.now(), SubscriptionStatus.EXPIRED);
     }
 
     @Override

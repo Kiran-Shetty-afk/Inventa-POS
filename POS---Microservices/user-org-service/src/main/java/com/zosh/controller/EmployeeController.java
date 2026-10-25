@@ -20,7 +20,7 @@ public class EmployeeController {
     private final EmployeeService employeeService;
 
     @PostMapping("/store/{storeId}")
-    @PreAuthorize("hasAnyRole('ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER')")
     public ResponseEntity<UserDTO> createStoreEmployee(
             @RequestBody UserDTO employee, @PathVariable Long storeId) throws Exception {
         UserDTO createdEmployee = employeeService.createStoreEmployee(employee, storeId);
@@ -28,7 +28,7 @@ public class EmployeeController {
     }
 
     @PostMapping("/branch/{branchId}")
-    @PreAuthorize("hasAnyRole('ROLE_BRANCH_ADMIN', 'ROLE_BRANCH_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_MANAGER')")
     public ResponseEntity<User> createBranchEmployee(
             @RequestBody User employee, @PathVariable Long branchId) throws Exception {
         User createdEmployee = employeeService.createBranchEmployee(employee, branchId);
@@ -36,7 +36,7 @@ public class EmployeeController {
     }
 
     @PutMapping("/{employeeId}")
-    @PreAuthorize("hasAnyRole('ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_ADMIN', 'ROLE_BRANCH_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_MANAGER')")
     public ResponseEntity<User> updateEmployee(
             @PathVariable Long employeeId, @RequestBody User employeeDetails) throws Exception {
         User updatedEmployee = employeeService.updateEmployee(employeeId, employeeDetails);
@@ -44,28 +44,28 @@ public class EmployeeController {
     }
 
     @DeleteMapping("/{employeeId}")
-    @PreAuthorize("hasAnyRole('ROLE_STORE_ADMIN', 'ROLE_BRANCH_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_MANAGER')")
     public ResponseEntity<Void> deleteEmployee(@PathVariable Long employeeId) throws Exception {
         employeeService.deleteEmployee(employeeId);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     @GetMapping("/{employeeId}")
-    @PreAuthorize("hasAnyRole('ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_ADMIN', 'ROLE_BRANCH_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_MANAGER')")
     public ResponseEntity<User> findEmployeeById(@PathVariable Long employeeId) throws Exception {
         User employee = employeeService.findEmployeeById(employeeId);
         return new ResponseEntity<>(employee, HttpStatus.OK);
     }
 
     @GetMapping("/store/{storeId}")
-    @PreAuthorize("hasAnyRole('ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER')")
     public ResponseEntity<List<UserDTO>> findStoreEmployees(@PathVariable Long storeId) throws Exception {
         List<UserDTO> employees = employeeService.findStoreEmployees(storeId, null);
         return new ResponseEntity<>(employees, HttpStatus.OK);
     }
 
     @GetMapping("/branch/{branchId}")
-    @PreAuthorize("hasAnyRole('ROLE_BRANCH_ADMIN', 'ROLE_BRANCH_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_MANAGER')")
     public ResponseEntity<List<UserDTO>> findBranchEmployees(
             @PathVariable Long branchId,
             @RequestParam(required = false) UserRole role) throws Exception {

@@ -81,15 +81,18 @@ const ReturnReceiptDialog = ({
         </Table>
         <div className="space-y-1 text-sm mb-4">
           <div className="flex justify-between font-bold border-t pt-1">
-            <span>Total Refund</span>
+            <span>Amount for financial review</span>
             <span>₹{selectedOrder.totalAmount}</span>
           </div>
           <div className="flex justify-between pt-1">
-            <span>Refund Method</span>
+            <span>Recorded payment method</span>
             <span>
               {selectedOrder.paymentType}
             </span>
           </div>
+          <p className="pt-2 text-amber-700">
+            Stock restoration is separate from a money refund. No payment refund was issued by this POS.
+          </p>
           <div className="flex justify-between pt-1">
             <span>Return Reason</span>
             {/* <span>{returnReason === "Other" ? otherReason : returnReason}</span> */}

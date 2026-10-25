@@ -17,7 +17,7 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_STORE_MANAGER', 'ROLE_STORE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_STORE_ADMIN')")
     public ResponseEntity<CategoryDTO> createCategory(@RequestBody CategoryDTO dto) throws Exception {
         return ResponseEntity.ok(categoryService.createCategory(dto));
     }
@@ -28,14 +28,14 @@ public class CategoryController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_STORE_MANAGER', 'ROLE_STORE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_STORE_ADMIN')")
     public ResponseEntity<CategoryDTO> updateCategory(@PathVariable Long id,
                                                       @RequestBody CategoryDTO dto) throws Exception {
         return ResponseEntity.ok(categoryService.updateCategory(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_STORE_MANAGER', 'ROLE_STORE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_STORE_ADMIN')")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) throws Exception {
         categoryService.deleteCategory(id);
         return ResponseEntity.noContent().build();

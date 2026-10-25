@@ -125,6 +125,7 @@ const customerSlice = createSlice({
       })
       .addCase(getScopedCustomers.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(getScopedCustomers.fulfilled, (state, action) => {
         state.loading = false;

@@ -36,10 +36,12 @@ const subscriptionSlice = createSlice({
     builder
       .addCase(subscribeToPlan.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(subscribeToPlan.fulfilled, (state, action) => {
         state.loading = false;
         state.subscriptions.push(action.payload);
+        state.error = null;
       })
       .addCase(subscribeToPlan.rejected, (state, action) => {
         state.loading = false;
@@ -49,9 +51,11 @@ const subscriptionSlice = createSlice({
       .addCase(upgradeSubscription.fulfilled, (state, action) => {
         state.loading = false;
         state.subscriptions = state.subscriptions.map(sub => sub.id === action.payload.id ? action.payload : sub);
+        state.error = null;
       })
       .addCase(upgradeSubscription.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(upgradeSubscription.rejected, (state, action) => {
         state.loading = false;
@@ -96,10 +100,12 @@ const subscriptionSlice = createSlice({
 
       .addCase(getStoreSubscriptions.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(getStoreSubscriptions.fulfilled, (state, action) => {
         state.loading = false;
         state.subscriptions = action.payload;
+        state.error = null;
       })
       .addCase(getStoreSubscriptions.rejected, (state, action) => {
         state.loading = false;
@@ -142,4 +148,4 @@ const subscriptionSlice = createSlice({
 });
 
 export const { clearSubscriptionState } = subscriptionSlice.actions;
-export default subscriptionSlice.reducer; 
+export default subscriptionSlice.reducer;

@@ -22,27 +22,20 @@ const getAuthHeaders = () => {
 // 🔹 Create Order
 export const createOrder = createAsyncThunk(
   'order/create',
-  async (dto, { rejectWithValue }) => {
+  async ({ data: dto, idempotencyKey }, { rejectWithValue }) => {
     try {
-      console.log('🔄 Creating order...', { dto });
-      
-      const headers = getAuthHeaders();
+      const headers = { ...getAuthHeaders(), 'Idempotency-Key': idempotencyKey };
       const res = await api.post('/api/orders', dto, { headers });
       
       console.log('✅ Order created successfully:', {
         orderId: res.data.id,
-        totalAmount: res.data.totalAmount,
-        customer: res.data.customer,
-        response: res.data
+        totalAmount: res.data.totalAmount
       });
       
       return res.data;
     } catch (err) {
       console.error('❌ Failed to create order:', {
-        error: err.response?.data || err.message,
-        status: err.response?.status,
-        statusText: err.response?.statusText,
-        requestData: dto
+        status: err.response?.status || 'network-error'
       });
       
       return rejectWithValue(err.response?.data?.message || 'Failed to create order');

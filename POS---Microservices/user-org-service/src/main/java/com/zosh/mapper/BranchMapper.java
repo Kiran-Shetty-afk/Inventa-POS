@@ -15,6 +15,7 @@ public class BranchMapper {
                 .phone(branch.getPhone())
                 .email(branch.getEmail())
                 .closeTime(branch.getCloseTime())
+                .maxDiscountPercent(branch.getMaxDiscountPercent())
                 .openTime(branch.getOpenTime())
                 .workingDays(branch.getWorkingDays())
                 .storeId(branch.getStore() != null ? branch.getStore().getId() : null)
@@ -36,6 +37,8 @@ public class BranchMapper {
                 .closeTime(dto.getCloseTime())
                 .openTime(dto.getOpenTime())
                 .workingDays(dto.getWorkingDays())
+                // A branch discount limit is changed only through its dedicated policy endpoint.
+                // Branch profile create/update requests cannot set this field.
                 .createdAt(dto.getCreatedAt())
                 .updatedAt(dto.getUpdatedAt())
                 .build();

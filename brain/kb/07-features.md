@@ -15,6 +15,7 @@ Status: reviewed
 | 006 | Store administration analytics | [features/006-store-administration-analytics.md](features/006-store-administration-analytics.md) |
 | 007 | Branch-scoped fraud alerts | [features/007-branch-scoped-fraud-alerts.md](features/007-branch-scoped-fraud-alerts.md) |
 | 008 | Super Admin dashboard and account settings | [features/008-super-admin-console.md](features/008-super-admin-console.md) |
+| 009 | Financial checkout and refund review states | [features/009-financial-checkout-and-refund-review.md](features/009-financial-checkout-and-refund-review.md) |
 
 ## Important files inspected
 

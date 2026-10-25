@@ -15,12 +15,13 @@ public class RouteValidator {
             "/auth/signin",
             "/auth/reset-password",
             "/auth/forgot-password",
-            "/eureka",
-            "/actuator"
+            "/eureka"
     );
 
     public Predicate<ServerHttpRequest> isSecured =
-            request -> OPEN_API_ENDPOINTS
-                    .stream()
-                    .noneMatch(uri -> request.getURI().getPath().contains(uri));
+            request -> {
+                String path = request.getURI().normalize().getPath();
+                return OPEN_API_ENDPOINTS.stream().noneMatch(prefix ->
+                        path.equals(prefix) || path.startsWith(prefix + "/"));
+            };
 }

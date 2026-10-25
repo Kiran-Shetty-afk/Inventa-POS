@@ -58,9 +58,6 @@ export default function FraudAlerts() {
             </div>
         );
     }
-    const formatText = (text) =>
-        text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
-
     const sortedAlerts = [...alerts].sort((a, b) => {
 
         // Open alerts first

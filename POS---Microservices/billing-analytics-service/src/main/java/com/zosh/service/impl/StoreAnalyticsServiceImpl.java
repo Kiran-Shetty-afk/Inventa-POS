@@ -16,6 +16,8 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -61,12 +63,12 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
                 .filter(order -> isInPeriod(order, previousPeriod, year != null && month == null))
                 .toList();
 
-        double sales = sumSales(currentOrders);
-        double previousSales = sumSales(previousOrders);
+        BigDecimal sales = sumSales(currentOrders);
+        BigDecimal previousSales = sumSales(previousOrders);
         long today = context.orders.stream().filter(order -> isOnDate(order, LocalDate.now())).count();
         long yesterday = context.orders.stream().filter(order -> isOnDate(order, LocalDate.now().minusDays(1))).count();
-        Map<String, Double> salesByBranch = aggregate(currentOrders, OrderRecord::branchName,
-                order -> number(order.data, "totalAmount"));
+        Map<String, BigDecimal> salesByBranch = aggregate(currentOrders, OrderRecord::branchName,
+                order -> money(order.data, "totalAmount"));
         String topBranch = salesByBranch.entrySet().stream()
                 .max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse("N/A");
         long cashiers = context.employees.stream()
@@ -85,9 +87,10 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
                 .todayOrders(Math.toIntExact(today))
                 .yesterdayOrders(Math.toIntExact(yesterday))
                 .activeCashiers(Math.toIntExact(cashiers))
-                .averageOrderValue(currentOrders.isEmpty() ? 0.0 : sales / currentOrders.size())
-                .previousPeriodAverageOrderValue(previousOrders.isEmpty()
-                        ? 0.0 : previousSales / previousOrders.size())
+                .averageOrderValue(currentOrders.isEmpty() ? BigDecimal.ZERO
+                        : sales.divide(BigDecimal.valueOf(currentOrders.size()), 2, RoundingMode.HALF_UP))
+                .previousPeriodAverageOrderValue(previousOrders.isEmpty() ? BigDecimal.ZERO
+                        : previousSales.divide(BigDecimal.valueOf(previousOrders.size()), 2, RoundingMode.HALF_UP))
                 .topBranchName(topBranch)
                 .build();
     }
@@ -129,7 +132,7 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
                         product -> product.path("id").asLong(),
                         product -> product.path("category").asText("Uncategorized"),
                         (first, ignored) -> first));
-        Map<String, Double> totals = new HashMap<>();
+        Map<String, BigDecimal> totals = new HashMap<>();
         for (OrderRecord order : selectPeriod(context.orders, year, month)) {
             JsonNode items = order.data.path("items");
             if (!items.isArray()) continue;
@@ -139,14 +142,14 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
                         item.path("productId").asLong(), "Uncategorized");
                 if (category.isBlank()) category = "Uncategorized";
                 int quantity = item.path("quantity").asInt(0);
-                double itemTotal = item.hasNonNull("price")
-                        ? item.path("price").asDouble(0.0)
-                        : item.path("product").path("sellingPrice").asDouble(0.0) * quantity;
-                totals.merge(category, itemTotal, Double::sum);
+                BigDecimal itemTotal = item.hasNonNull("price")
+                        ? money(item, "price")
+                        : money(item.path("product"), "sellingPrice").multiply(BigDecimal.valueOf(quantity));
+                totals.merge(category, itemTotal, BigDecimal::add);
             }
         }
         return totals.entrySet().stream()
-                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
                 .map(entry -> CategorySalesDTO.builder()
                         .categoryName(entry.getKey()).totalSales(entry.getValue()).build())
                 .toList();
@@ -156,11 +159,11 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
     public List<PaymentInsightDTO> getSalesByPaymentMethod(Long storeAdminId, String authorization,
                                                            Long branchId, Integer year, Integer month) {
         AnalyticsContext context = loadContext(storeAdminId, authorization, branchId, false);
-        Map<PaymentType, Double> totals = new HashMap<>();
+        Map<PaymentType, BigDecimal> totals = new HashMap<>();
         for (OrderRecord order : selectPeriod(context.orders, year, month)) {
             PaymentType paymentType = paymentType(order.data.path("paymentType").asText());
             if (paymentType != null) {
-                totals.merge(paymentType, number(order.data, "totalAmount"), Double::sum);
+                totals.merge(paymentType, money(order.data, "totalAmount"), BigDecimal::add);
             }
         }
         return totals.entrySet().stream()
@@ -175,8 +178,8 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
                                                  Long branchId, Integer year, Integer month) {
         AnalyticsContext context = loadContext(storeAdminId, authorization, branchId, false);
         return aggregate(selectPeriod(context.orders, year, month), OrderRecord::branchName,
-                order -> number(order.data, "totalAmount")).entrySet().stream()
-                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                order -> money(order.data, "totalAmount")).entrySet().stream()
+                .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
                 .map(entry -> BranchSalesDTO.builder()
                         .branchName(entry.getKey()).totalSales(entry.getValue()).build())
                 .toList();
@@ -194,7 +197,8 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
         List<OrderRecord> orders = selectPeriod(context.orders, null, null);
         return BranchPerformanceDTO.builder()
                 .branchName(branchSales.isEmpty() ? "N/A" : branchSales.get(0).getBranchName())
-                .totalSales(branchSales.stream().mapToDouble(row -> safe(row.getTotalSales())).sum())
+                .totalSales(branchSales.stream().map(BranchSalesDTO::getTotalSales)
+                        .filter(java.util.Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add))
                 .totalOrders(orders.size())
                 .build();
     }
@@ -216,13 +220,31 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
 
     private AnalyticsContext loadContext(Long storeAdminId, String authorization,
                                          Long branchId, boolean includeCounts) {
-        JsonNode store = getJson(userOrgServiceUrl + "/api/stores/admin", authorization);
+        JsonNode currentUser = getJson(userOrgServiceUrl + "/api/users/profile", authorization);
+        long authenticatedUserId = currentUser == null ? -1 : currentUser.path("id").asLong(-1);
+        if (authenticatedUserId < 1 || !java.util.Objects.equals(storeAdminId, authenticatedUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Store analytics are only available for the authenticated account");
+        }
+
+        String role = currentUser.path("role").asText("");
+        String storeEndpoint;
+        if ("ROLE_STORE_ADMIN".equals(role)) {
+            storeEndpoint = "/api/stores/admin";
+        } else if ("ROLE_STORE_MANAGER".equals(role)) {
+            storeEndpoint = "/api/stores/employee";
+        } else {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Store analytics are only available to store administrators and managers");
+        }
+
+        JsonNode store = getJson(userOrgServiceUrl + storeEndpoint, authorization);
         if (store == null || store.isNull()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No store is associated with this account");
         }
         long authenticatedAdminId = store.path("storeAdminId").asLong(-1);
         long storeId = store.path("id").asLong(-1);
-        if (storeId < 1 || authenticatedAdminId != storeAdminId) {
+        if (storeId < 1 || ("ROLE_STORE_ADMIN".equals(role) && authenticatedAdminId != authenticatedUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Store analytics are not available for this account");
         }
 
@@ -319,13 +341,13 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
             end = LocalDate.now();
             start = end.minusDays(6);
         }
-        Map<LocalDate, Double> totals = new LinkedHashMap<>();
-        for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) totals.put(day, 0.0);
+        Map<LocalDate, BigDecimal> totals = new LinkedHashMap<>();
+        for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) totals.put(day, BigDecimal.ZERO);
         orders.stream().filter(order -> createdAt(order.data) != null)
                 .filter(order -> !createdAt(order.data).toLocalDate().isBefore(start)
                         && !createdAt(order.data).toLocalDate().isAfter(end))
                 .forEach(order -> totals.merge(createdAt(order.data).toLocalDate(),
-                        number(order.data, "totalAmount"), Double::sum));
+                        money(order.data, "totalAmount"), BigDecimal::add));
         return totals.entrySet().stream()
                 .map(entry -> point(entry.getKey().atStartOfDay(), entry.getValue())).toList();
     }
@@ -333,12 +355,12 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
     private List<TimeSeriesPointDTO> buildWeeklyPoints(List<OrderRecord> orders) {
         LocalDate currentMonday = LocalDate.now().with(DayOfWeek.MONDAY);
         LocalDate start = currentMonday.minusWeeks(11);
-        Map<LocalDate, Double> totals = new LinkedHashMap<>();
-        for (int week = 0; week < 12; week++) totals.put(start.plusWeeks(week), 0.0);
+        Map<LocalDate, BigDecimal> totals = new LinkedHashMap<>();
+        for (int week = 0; week < 12; week++) totals.put(start.plusWeeks(week), BigDecimal.ZERO);
         orders.stream().filter(order -> createdAt(order.data) != null)
                 .forEach(order -> {
                     LocalDate week = createdAt(order.data).toLocalDate().with(DayOfWeek.MONDAY);
-                    if (totals.containsKey(week)) totals.merge(week, number(order.data, "totalAmount"), Double::sum);
+                    if (totals.containsKey(week)) totals.merge(week, money(order.data, "totalAmount"), BigDecimal::add);
                 });
         return totals.entrySet().stream()
                 .map(entry -> point(entry.getKey().atStartOfDay(), entry.getValue())).toList();
@@ -350,38 +372,36 @@ public class StoreAnalyticsServiceImpl implements StoreAnalyticsService {
                 : year != null ? YearMonth.of(year, 12) : YearMonth.now();
         int numberOfMonths = year != null && month != null ? 1 : 12;
         YearMonth start = current.minusMonths(numberOfMonths - 1L);
-        Map<YearMonth, Double> totals = new LinkedHashMap<>();
-        for (int i = 0; i < numberOfMonths; i++) totals.put(start.plusMonths(i), 0.0);
+        Map<YearMonth, BigDecimal> totals = new LinkedHashMap<>();
+        for (int i = 0; i < numberOfMonths; i++) totals.put(start.plusMonths(i), BigDecimal.ZERO);
         orders.stream().filter(order -> createdAt(order.data) != null)
                 .forEach(order -> {
                     YearMonth key = YearMonth.from(createdAt(order.data));
-                    if (totals.containsKey(key)) totals.merge(key, number(order.data, "totalAmount"), Double::sum);
+                    if (totals.containsKey(key)) totals.merge(key, money(order.data, "totalAmount"), BigDecimal::add);
                 });
         return totals.entrySet().stream()
                 .map(entry -> point(entry.getKey().atDay(1).atStartOfDay(), entry.getValue())).toList();
     }
 
-    private TimeSeriesPointDTO point(LocalDateTime date, double amount) {
+    private TimeSeriesPointDTO point(LocalDateTime date, BigDecimal amount) {
         return TimeSeriesPointDTO.builder().date(date).totalAmount(amount).build();
     }
 
-    private <K> Map<K, Double> aggregate(List<OrderRecord> orders,
-                                         Function<OrderRecord, K> keyMapper,
-                                         Function<OrderRecord, Double> amountMapper) {
+    private <K> Map<K, BigDecimal> aggregate(List<OrderRecord> orders,
+                                             Function<OrderRecord, K> keyMapper,
+                                             Function<OrderRecord, BigDecimal> amountMapper) {
         return orders.stream().collect(Collectors.groupingBy(keyMapper, HashMap::new,
-                Collectors.summingDouble(order -> safe(amountMapper.apply(order)))));
+                Collectors.reducing(BigDecimal.ZERO, amountMapper, BigDecimal::add)));
     }
 
-    private double sumSales(List<OrderRecord> orders) {
-        return orders.stream().mapToDouble(order -> number(order.data, "totalAmount")).sum();
+    private BigDecimal sumSales(List<OrderRecord> orders) {
+        return orders.stream().map(order -> money(order.data, "totalAmount"))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    private double number(JsonNode node, String field) {
-        return node.path(field).asDouble(0.0);
-    }
-
-    private double safe(Double value) {
-        return value == null ? 0.0 : value;
+    private BigDecimal money(JsonNode node, String field) {
+        JsonNode value = node == null ? null : node.get(field);
+        return value == null || !value.isNumber() ? BigDecimal.ZERO : value.decimalValue();
     }
 
     private LocalDateTime createdAt(JsonNode order) {

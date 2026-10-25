@@ -57,6 +57,11 @@ const navLinks = [
     icon: <Truck className="w-5 h-5" />,
   },
   {
+    name: "Refund Review",
+    path: "/store/refunds",
+    icon: <CreditCard className="w-5 h-5" />,
+  },
+  {
   name: "Fraud Analytics",
   path: "/store/fraud-analytics",
   icon: <ShieldAlert className="w-5 h-5" />,

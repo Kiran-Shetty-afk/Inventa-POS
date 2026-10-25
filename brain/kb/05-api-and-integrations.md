@@ -17,6 +17,13 @@ Status: reviewed
 - User/Org profile routes include `GET` and `PUT /api/users/profile` and `PUT /api/users/password`; profile and password mutations are restricted to system administrators.
 - Inventory/catalog integrates with Cloudinary for image storage. Browser requests use the gateway's public/local URL; container-to-container requests use Compose DNS.
 - ML prediction routes include `/predict-fraud`, `/predict-price`, and `/predict-demand`; its health endpoint is `/health`.
+- Order creation uses a required UUID `Idempotency-Key`; Order/Sales retrieves current product data from Inventory, computes the total on the server, and calls Inventory's internal conditional stock mutation routes.
+- Branch discount policy uses `GET` and `PUT /api/branches/{id}/discount-policy`; User/Org persists the 0–15% value on the branch, and only the assigned Branch Manager may update it.
+- Checkout tax remains server-calculated at 18% by default on the original subtotal before discount. `ORDER_TAX_RATE_PERCENT` can override the rate; no taxable-after-discount switch is exposed.
+- `CASH` checkout records `CASH_RECORDED`; CARD/UPI checkout records `EXTERNAL_CONFIRMATION_REQUIRED`. These states do not claim provider confirmation or settlement.
+- Refund processing restores stock idempotently and returns distinct stock-restoration and `paymentRefundStatus` states. It does not issue an external money refund; completed stock restoration can require manual payment review.
+- ML inference endpoints require a valid signed bearer token with an allowed business role and apply input, request-size, and process-local request-rate bounds.
+- Stripe is rejected by the API until a signed webhook and reconciliation workflow exist; Razorpay remains the enabled payment path.
 
 ## Important files inspected
 
@@ -36,7 +43,7 @@ Status: reviewed
 
 ## Unknowns / documentation gaps
 
-- No live payment, email delivery, or third-party account call was performed during this KB update.
+- No live payment, email delivery, Cloudinary account setting, or third-party account call was performed during remediation verification.
 
 ## Maintenance notes
 

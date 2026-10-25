@@ -1,12 +1,13 @@
 import React from "react";
 import { Navigate, Route, Routes } from "react-router";
 import CashierDashboardLayout from "../pages/cashier/CashierDashboardLayout";
-import CreateOrderPage from "../pages/cashier/CreateOrderPage";
-import ReturnOrderPage from "../pages/cashier/return/ReturnOrderPage";
-import OrderHistoryPage from "../pages/cashier/order/OrderHistoryPage";
-import CustomerLookupPage from "../pages/cashier/customer/CustomerLookupPage";
-import ShiftSummaryPage from "../pages/cashier/ShiftSummary/ShiftSummaryPage";
-import PageNotFound from "../pages/common/PageNotFound";
+
+const CreateOrderPage = React.lazy(() => import("../pages/cashier/CreateOrderPage"));
+const ReturnOrderPage = React.lazy(() => import("../pages/cashier/return/ReturnOrderPage"));
+const OrderHistoryPage = React.lazy(() => import("../pages/cashier/order/OrderHistoryPage"));
+const CustomerLookupPage = React.lazy(() => import("../pages/cashier/customer/CustomerLookupPage"));
+const ShiftSummaryPage = React.lazy(() => import("../pages/cashier/ShiftSummary/ShiftSummaryPage"));
+const PageNotFound = React.lazy(() => import("../pages/common/PageNotFound"));
 
 const CashierRoutes = () => {
   return (

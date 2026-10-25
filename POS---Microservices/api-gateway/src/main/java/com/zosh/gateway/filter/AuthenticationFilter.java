@@ -40,13 +40,19 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
 
                 String token = authHeader.substring(7);
                 try {
-                    String email = jwtUtil.extractEmail(token);
-                    String authorities = jwtUtil.extractAuthorities(token);
+                    var claims = jwtUtil.validateAndGetClaims(token);
+                    String email = claims.get("email", String.class);
+                    String authorities = claims.get("authorities", String.class);
+                    if (email == null || email.isBlank() || authorities == null || authorities.isBlank()) {
+                        throw new IllegalArgumentException("Required identity claims are missing");
+                    }
 
-                    // Mutate request with user context headers for downstream microservices
+                    // Downstream services validate the signed JWT directly; discard caller-supplied identity headers.
                     ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
-                            .header("X-User-Email", email != null ? email : "")
-                            .header("X-User-Role", authorities != null ? authorities : "")
+                            .headers(headers -> {
+                                headers.remove("X-User-Email");
+                                headers.remove("X-User-Role");
+                            })
                             .build();
 
                     return chain.filter(exchange.mutate().request(mutatedRequest).build());

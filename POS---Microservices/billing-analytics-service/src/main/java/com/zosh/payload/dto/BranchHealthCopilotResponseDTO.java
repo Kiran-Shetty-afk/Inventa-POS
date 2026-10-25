@@ -35,12 +35,12 @@ public class BranchHealthCopilotResponseDTO {
         private int orderCount;
         private int activeCashiers;
         private String topCashierName;
-        private double topCashierRevenue;
+        private BigDecimal topCashierRevenue;
         private String topCategoryName;
-        private double topCategorySales;
+        private BigDecimal topCategorySales;
         private int lowStockItems;
         private int refundCount;
-        private double refundAmount;
+        private BigDecimal refundAmount;
         private Integer refundSpikeHour;
         private int refundSpikeCount;
     }

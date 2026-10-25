@@ -17,16 +17,9 @@ public class FeignConfig {
             if (attributes != null) {
                 HttpServletRequest request = attributes.getRequest();
                 String authHeader = request.getHeader("Authorization");
-                if (authHeader != null && !authHeader.isBlank()) {
+                if (authHeader != null && !authHeader.isBlank()
+                        && !requestTemplate.headers().containsKey("Authorization")) {
                     requestTemplate.header("Authorization", authHeader);
-                }
-                String emailHeader = request.getHeader("X-User-Email");
-                if (emailHeader != null && !emailHeader.isBlank()) {
-                    requestTemplate.header("X-User-Email", emailHeader);
-                }
-                String roleHeader = request.getHeader("X-User-Role");
-                if (roleHeader != null && !roleHeader.isBlank()) {
-                    requestTemplate.header("X-User-Role", roleHeader);
                 }
             }
         };

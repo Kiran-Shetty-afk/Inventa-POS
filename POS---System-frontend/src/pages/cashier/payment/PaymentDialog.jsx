@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,8 +13,12 @@ import {
   selectNote,
   selectPaymentMethod,
   selectSelectedCustomer,
+  selectSubtotal,
+  selectTax,
   selectTotal,
   selectDiscount,
+  selectDiscountAmount,
+  selectDiscountInputError,
   setCurrentOrder,
   setPaymentMethod,
 } from "../../../Redux Toolkit/features/cart/cartSlice";
@@ -41,6 +45,7 @@ const PaymentDialog = ({
   setShowReceiptDialog,
 }) => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const orderRequestRef = useRef(null);
   const paymentMethod = useSelector(selectPaymentMethod);
   const {toast} = useToast();
   const cart = useSelector(selectCartItems);
@@ -51,6 +56,11 @@ const PaymentDialog = ({
   const selectedCustomer = useSelector(selectSelectedCustomer);
 
   const total = useSelector(selectTotal);
+  const subtotal = useSelector(selectSubtotal);
+  const tax = useSelector(selectTax);
+  const discountAmount = useSelector(selectDiscountAmount);
+  const discountInputError = useSelector(selectDiscountInputError);
+  const discountPolicy = useSelector((state) => state.branch.discountPolicy);
 
   const note = useSelector(selectNote);
   const discount = useSelector(selectDiscount);
@@ -80,43 +90,61 @@ const PaymentDialog = ({
       return;
     }
 
+    if (discountInputError) {
+      toast({
+        title: "Check the discount percentage",
+        description: discountInputError,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsProcessingPayment(true);
       const resolvedBranchId = branch?.id ?? userProfile?.branchId;
       const normalizedPaymentType = normalizePaymentType(paymentMethod);
+      const requestedDiscountPercent = Number(discount?.value || 0);
+      const currentBranchLimit = discountPolicy?.branchId === resolvedBranchId
+        ? Number(discountPolicy.maxDiscountPercent)
+        : null;
+      if (requestedDiscountPercent > 0 && (currentBranchLimit === null || requestedDiscountPercent > currentBranchLimit)) {
+        toast({
+          title: "Discount limit unavailable",
+          description: "Reload the branch discount limit and enter a percentage within the allowed maximum.",
+          variant: "destructive",
+        });
+        return;
+      }
       // Prepare order data according to OrderDTO structure
-     const orderData = {
-    totalAmount: Number(total.toFixed(2)),
+      const orderData = {
     branchId: resolvedBranchId,
-    cashierId: userProfile.id,
     customer: selectedCustomer || null,
 
     items: cart.map((item) => ({
         productId: item.id,
         quantity: item.quantity,
-        price: Number(item.price),
-        total: Number((item.price * item.quantity).toFixed(2)),
     })),
 
     paymentType: normalizedPaymentType,
     note: note || "",
 
     // Discount
-    discountPercent:
-        discount?.type === "percentage"
-            ? Number(discount.value || 0)
-            : 0,
-
-    discountAmount:
-        discount?.type === "fixed"
-            ? Number(discount.value || 0)
-            : 0,
+    discountPercent: requestedDiscountPercent,
 };
 
-      console.log("Creating order:", orderData);
-
       // Create order
-      const createdOrder = await dispatch(createOrder(orderData)).unwrap();
+      const fingerprint = JSON.stringify(orderData);
+      if (!orderRequestRef.current || orderRequestRef.current.fingerprint !== fingerprint) {
+        orderRequestRef.current = {
+          fingerprint,
+          idempotencyKey: globalThis.crypto.randomUUID(),
+        };
+      }
+      const createdOrder = await dispatch(createOrder({
+        data: orderData,
+        idempotencyKey: orderRequestRef.current.idempotencyKey,
+      })).unwrap();
+      orderRequestRef.current = null;
       dispatch(setCurrentOrder(createdOrder));
 
       // Keep cashier Orders and Returns views immediately in sync after checkout.
@@ -136,10 +164,11 @@ const PaymentDialog = ({
 
       toast({
         title: "Order Created Successfully",
-        description: `Order #${createdOrder.id} created and payment processed`,
+        description: createdOrder.paymentSettlementStatus === "EXTERNAL_CONFIRMATION_REQUIRED"
+          ? `Order #${createdOrder.id} recorded. ${normalizedPaymentType} settlement is unverified and must be confirmed outside this POS.`
+          : `Order #${createdOrder.id} recorded. Cash is recorded by the POS but is not independently verified.`,
       });
     } catch (error) {
-      console.error("Failed to create order:", error);
       toast({
         title: "Order Creation Failed",
         description: error || "Failed to create order. Please try again.",
@@ -160,11 +189,11 @@ const PaymentDialog = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-600">
-              ₹{total.toFixed(2)}
-            </div>
-            <p className="text-sm text-gray-600">Amount to be paid</p>
+          <div className="space-y-2 rounded-md border p-4 text-sm">
+            <div className="flex justify-between"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>Tax (18% before discount)</span><span>₹{tax.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>Discount ({Number(discount?.value || 0)}%)</span><span className="text-destructive">− ₹{discountAmount.toFixed(2)}</span></div>
+            <div className="flex justify-between border-t pt-2 text-xl font-bold"><span>Amount to be paid</span><span className="text-green-600">₹{total.toFixed(2)}</span></div>
           </div>
 
           <div className="space-y-2">
@@ -179,6 +208,11 @@ const PaymentDialog = ({
               </Button>
             ))}
           </div>
+          {paymentMethod === "CARD" || paymentMethod === "UPI" ? (
+            <p className="text-sm text-amber-700" role="status">
+              Card and UPI are recorded as payment methods only. This POS does not confirm order settlement through a payment provider.
+            </p>
+          ) : null}
         </div>
 
         <DialogFooter>
@@ -189,7 +223,7 @@ const PaymentDialog = ({
           >
             Cancel
           </Button>
-          <Button onClick={processPayment} disabled={isProcessingPayment}>
+          <Button onClick={processPayment} disabled={isProcessingPayment || Boolean(discountInputError)}>
             {isProcessingPayment ? "Processing..." : "Complete Payment"}
           </Button>
         </DialogFooter>

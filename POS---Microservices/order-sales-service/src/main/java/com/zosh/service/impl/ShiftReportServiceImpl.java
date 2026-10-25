@@ -14,12 +14,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ShiftReportServiceImpl implements ShiftReportService {
+
+    private static final BigDecimal ZERO_MONEY = new BigDecimal("0.00");
 
     private final ShiftReportRepository shiftReportRepository;
     private final OrderRepository orderRepository;
@@ -54,13 +58,13 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 .branchId(branchId)
                 .branchName(branchName)
                 .shiftStart(shiftStart)
-                .totalSales(0.0)
-                .totalRefunds(0.0)
-                .netSales(0.0)
+                .totalSales(ZERO_MONEY)
+                .totalRefunds(ZERO_MONEY)
+                .netSales(ZERO_MONEY)
                 .totalOrders(0)
-                .cashSales(0.0)
-                .cardSales(0.0)
-                .upiSales(0.0)
+                .cashSales(ZERO_MONEY)
+                .cardSales(ZERO_MONEY)
+                .upiSales(ZERO_MONEY)
                 .build();
 
         return shiftReportRepository.save(shift);
@@ -87,31 +91,18 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 cashierId, shift.getShiftStart(), shiftEnd
         );
 
-        double totalRefunds = refunds.stream()
-                .mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0)
-                .sum();
-
-        double totalSales = orders.stream()
-                .mapToDouble(o -> o.getTotalAmount() != null ? o.getTotalAmount() : 0.0)
-                .sum();
+        BigDecimal totalRefunds = sumRefundAmounts(refunds);
+        BigDecimal totalSales = sumOrderAmounts(orders);
 
         int totalOrders = orders.size();
-        double netSales = totalSales - totalRefunds;
+        BigDecimal netSales = totalSales.subtract(totalRefunds);
 
-        double cashSales = orders.stream()
-                .filter(o -> o.getPaymentType() == PaymentType.CASH)
-                .mapToDouble(o -> o.getTotalAmount() != null ? o.getTotalAmount() : 0.0)
-                .sum();
-
-        double cardSales = orders.stream()
-                .filter(o -> o.getPaymentType() == PaymentType.CARD)
-                .mapToDouble(o -> o.getTotalAmount() != null ? o.getTotalAmount() : 0.0)
-                .sum();
-
-        double upiSales = orders.stream()
-                .filter(o -> o.getPaymentType() == PaymentType.UPI)
-                .mapToDouble(o -> o.getTotalAmount() != null ? o.getTotalAmount() : 0.0)
-                .sum();
+        BigDecimal cashSales = sumOrderAmounts(orders.stream()
+                .filter(o -> o.getPaymentType() == PaymentType.CASH).toList());
+        BigDecimal cardSales = sumOrderAmounts(orders.stream()
+                .filter(o -> o.getPaymentType() == PaymentType.CARD).toList());
+        BigDecimal upiSales = sumOrderAmounts(orders.stream()
+                .filter(o -> o.getPaymentType() == PaymentType.UPI).toList());
 
         shift.setTotalSales(totalSales);
         shift.setTotalOrders(totalOrders);
@@ -139,7 +130,8 @@ public class ShiftReportServiceImpl implements ShiftReportService {
             List<Order> orders = orderRepository.findByCashierIdAndCreatedAtBetween(
                     shift.getCashierId(), shift.getShiftStart(), end
             );
-            shift.setPaymentSummaries(getPaymentSummaries(orders, shift.getTotalSales() != null ? shift.getTotalSales() : 0.0));
+            shift.setPaymentSummaries(getPaymentSummaries(orders,
+                    shift.getTotalSales() != null ? shift.getTotalSales() : ZERO_MONEY));
             shift.setRecentOrders(getRecentOrders(orders));
             shift.setTopSellingProducts(getTopSellingProducts(orders));
         }
@@ -178,31 +170,18 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 cashierId, shift.getShiftStart(), now
         );
 
-        double totalRefunds = refunds.stream()
-                .mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0)
-                .sum();
-
-        double totalSales = orders.stream()
-                .mapToDouble(o -> o.getTotalAmount() != null ? o.getTotalAmount() : 0.0)
-                .sum();
+        BigDecimal totalRefunds = sumRefundAmounts(refunds);
+        BigDecimal totalSales = sumOrderAmounts(orders);
 
         int totalOrders = orders.size();
-        double netSales = totalSales - totalRefunds;
+        BigDecimal netSales = totalSales.subtract(totalRefunds);
 
-        double cashSales = orders.stream()
-                .filter(o -> o.getPaymentType() == PaymentType.CASH)
-                .mapToDouble(o -> o.getTotalAmount() != null ? o.getTotalAmount() : 0.0)
-                .sum();
-
-        double cardSales = orders.stream()
-                .filter(o -> o.getPaymentType() == PaymentType.CARD)
-                .mapToDouble(o -> o.getTotalAmount() != null ? o.getTotalAmount() : 0.0)
-                .sum();
-
-        double upiSales = orders.stream()
-                .filter(o -> o.getPaymentType() == PaymentType.UPI)
-                .mapToDouble(o -> o.getTotalAmount() != null ? o.getTotalAmount() : 0.0)
-                .sum();
+        BigDecimal cashSales = sumOrderAmounts(orders.stream()
+                .filter(o -> o.getPaymentType() == PaymentType.CASH).toList());
+        BigDecimal cardSales = sumOrderAmounts(orders.stream()
+                .filter(o -> o.getPaymentType() == PaymentType.CARD).toList());
+        BigDecimal upiSales = sumOrderAmounts(orders.stream()
+                .filter(o -> o.getPaymentType() == PaymentType.UPI).toList());
 
         shift.setTotalSales(totalSales);
         shift.setTotalOrders(totalOrders);
@@ -232,7 +211,8 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         List<Order> orders = orderRepository.findByCashierIdAndCreatedAtBetween(
                 cashierId, shift.getShiftStart(), shiftEnd
         );
-        shift.setPaymentSummaries(getPaymentSummaries(orders, shift.getTotalSales() != null ? shift.getTotalSales() : 0.0));
+        shift.setPaymentSummaries(getPaymentSummaries(orders,
+                shift.getTotalSales() != null ? shift.getTotalSales() : ZERO_MONEY));
         shift.setRecentOrders(getRecentOrders(orders));
         shift.setTopSellingProducts(getTopSellingProducts(orders));
 
@@ -249,7 +229,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
 
     // ----------------- HELPER METHODS -----------------
 
-    private List<PaymentSummary> getPaymentSummaries(List<Order> orders, double totalSales) {
+    private List<PaymentSummary> getPaymentSummaries(List<Order> orders, BigDecimal totalSales) {
         if (orders == null || orders.isEmpty()) {
             return new ArrayList<>();
         }
@@ -263,12 +243,12 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         List<PaymentSummary> summaries = new ArrayList<>();
 
         for (Map.Entry<PaymentType, List<Order>> entry : grouped.entrySet()) {
-            double amount = entry.getValue()
-                    .stream()
-                    .mapToDouble(o -> o.getTotalAmount() != null ? o.getTotalAmount() : 0.0)
-                    .sum();
+            BigDecimal amount = sumOrderAmounts(entry.getValue());
             int transactions = entry.getValue().size();
-            double percent = totalSales > 0 ? (amount / totalSales) * 100 : 0.0;
+            double percent = totalSales.signum() > 0
+                    ? amount.multiply(BigDecimal.valueOf(100))
+                            .divide(totalSales, 4, RoundingMode.HALF_UP).doubleValue()
+                    : 0.0;
 
             PaymentSummary ps = new PaymentSummary();
             ps.setType(entry.getKey());
@@ -306,9 +286,11 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                     continue;
                 }
 
-                double lineRevenue = item.getPrice() != null
+                BigDecimal lineRevenue = item.getPrice() != null
                         ? item.getPrice()
-                        : (item.getProductPrice() != null ? item.getProductPrice() * item.getQuantity() : 0.0);
+                        : (item.getProductPrice() != null
+                                ? item.getProductPrice().multiply(BigDecimal.valueOf(item.getQuantity()))
+                                : ZERO_MONEY);
                 salesByProduct.computeIfAbsent(item.getProductId(), id -> new ProductSales(
                                 id,
                                 item.getProductName() != null && !item.getProductName().isBlank()
@@ -327,8 +309,9 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                         .name(product.getName())
                         .quantity(product.getQuantity())
                         .sellingPrice(product.getQuantity() > 0
-                                ? product.getRevenue() / product.getQuantity()
-                                : 0.0)
+                                ? product.getRevenue().divide(BigDecimal.valueOf(product.getQuantity()),
+                                        2, RoundingMode.HALF_UP)
+                                : ZERO_MONEY)
                         .build())
                 .collect(Collectors.toList());
     }
@@ -337,16 +320,16 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         private final Long id;
         private final String name;
         private int quantity;
-        private double revenue;
+        private BigDecimal revenue = ZERO_MONEY;
 
         private ProductSales(Long id, String name) {
             this.id = id;
             this.name = name;
         }
 
-        private void add(int soldQuantity, double lineRevenue) {
+        private void add(int soldQuantity, BigDecimal lineRevenue) {
             quantity += soldQuantity;
-            revenue += lineRevenue;
+            revenue = revenue.add(lineRevenue);
         }
 
         private Long getId() {
@@ -361,8 +344,20 @@ public class ShiftReportServiceImpl implements ShiftReportService {
             return quantity;
         }
 
-        private double getRevenue() {
+        private BigDecimal getRevenue() {
             return revenue;
         }
+    }
+
+    private BigDecimal sumOrderAmounts(List<Order> orders) {
+        return orders.stream()
+                .map(order -> order.getTotalAmount() == null ? ZERO_MONEY : order.getTotalAmount())
+                .reduce(ZERO_MONEY, BigDecimal::add);
+    }
+
+    private BigDecimal sumRefundAmounts(List<Refund> refunds) {
+        return refunds.stream()
+                .map(refund -> refund.getAmount() == null ? ZERO_MONEY : refund.getAmount())
+                .reduce(ZERO_MONEY, BigDecimal::add);
     }
 }

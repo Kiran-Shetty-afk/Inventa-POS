@@ -107,7 +107,7 @@ const ShiftSummaryPage = () => {
     try {
       await dispatch(endShift(userProfile?.id)).unwrap();
       setShowLogoutConfirmDialog(false);
-      await dispatch(logout()).unwrap();
+      dispatch(logout());
       navigate("/", { replace: true });
       toast({
         title: 'Shift Ended',

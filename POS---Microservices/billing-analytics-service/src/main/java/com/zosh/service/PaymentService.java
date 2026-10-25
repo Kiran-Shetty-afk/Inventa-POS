@@ -7,6 +7,8 @@ import com.zosh.domain.PaymentMethod;
 import com.zosh.modal.PaymentOrder;
 import com.zosh.payload.response.PaymentLinkResponse;
 
+import java.math.BigDecimal;
+
 public interface PaymentService {
 
     PaymentLinkResponse createOrder(Long userId,
@@ -26,8 +28,8 @@ public interface PaymentService {
 
     PaymentLink createRazorpayPaymentLink(String userEmail,
                                           String userFullName,
-                                          Double amount,
+                                          BigDecimal amount,
                                           Long orderId) throws RazorpayException;
 
-    String createStripePaymentLink(Double amount, Long planId) throws StripeException;
+    String createStripePaymentLink(BigDecimal amount, Long planId) throws StripeException;
 }

@@ -26,5 +26,6 @@ public interface RefundService {
 
     Refund getRefundById(Long id) throws ResourceNotFoundException;
 
-    void deleteRefund(Long refundId) throws ResourceNotFoundException;
+    Refund confirmPaymentRefund(Long id);
+
 }

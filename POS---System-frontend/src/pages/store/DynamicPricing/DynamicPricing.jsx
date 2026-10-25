@@ -5,8 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Download, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { useSelector } from "react-redux";
 import api from "@/utils/api";
 import { buildCsv, downloadCsvFile } from "@/utils/csvExport";
+import { normalizeAppRole } from "@/utils/userRole";
 
 const authConfig = (token) => ({ headers: { Authorization: `Bearer ${token}` } });
 
@@ -14,6 +16,8 @@ const inventoryProductId = (row) => row.productId ?? row.product?.id;
 
 export default function DynamicPricing() {
   const { toast } = useToast();
+  const userProfile = useSelector((state) => state.user.userProfile);
+  const role = normalizeAppRole(userProfile?.role);
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [applyingId, setApplyingId] = useState(null);
@@ -31,7 +35,13 @@ export default function DynamicPricing() {
     setError("");
     try {
       const config = authConfig(token);
-      const store = (await api.get("/api/stores/admin", config)).data;
+      if (role !== "ROLE_STORE_ADMIN" && role !== "ROLE_STORE_MANAGER") {
+        throw new Error("This account cannot access store pricing.");
+      }
+      const storeEndpoint = role === "ROLE_STORE_MANAGER"
+        ? "/api/stores/employee"
+        : "/api/stores/admin";
+      const store = (await api.get(storeEndpoint, config)).data;
       if (!store?.id) throw new Error("The signed-in account has no store profile.");
 
       const [branchResponse, productResponse] = await Promise.all([
@@ -115,7 +125,7 @@ export default function DynamicPricing() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     loadRecommendations();

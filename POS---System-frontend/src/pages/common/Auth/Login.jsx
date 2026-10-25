@@ -133,8 +133,7 @@ const Login = () => {
             navigate("/auth/onboarding", { replace: true })
           }
         } else if (
-          userRole === "ROLE_BRANCH_MANAGER" ||
-          userRole === "ROLE_BRANCH_ADMIN"
+          userRole === "ROLE_BRANCH_MANAGER"
         ) {
           navigate("/branch", { replace: true })
         } else if (userRole === "ROLE_ADMIN") {

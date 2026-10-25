@@ -35,7 +35,7 @@ export const getPricingRecommendations = createAsyncThunk(
 export const applyRecommendation = createAsyncThunk(
     "pricing/applyRecommendation",
 
-    async ({ productId, price }, { dispatch, rejectWithValue }) => {
+    async ({ productId, price }, { rejectWithValue }) => {
 
         try {
 

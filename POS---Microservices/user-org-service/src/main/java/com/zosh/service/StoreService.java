@@ -13,13 +13,14 @@ import com.zosh.payload.dto.UserDTO;
 import java.util.List;
 
 public interface StoreService {
-    StoreDTO createStore(StoreDTO storeDto, User user);
-    StoreDTO getStoreById(Long id) throws ResourceNotFoundException;
+    StoreDTO createStore(StoreDTO storeDto, User user) throws UserException;
+    StoreDTO getStoreById(Long id) throws ResourceNotFoundException, UserException;
     List<StoreDTO> getAllStores(StoreStatus status);
     StoreDashboardStatsDTO getDashboardStats();
     List<StoreRegistrationStatDTO> getLast7DayRegistrationStats();
     Store getStoreByAdminId() throws UserException;
     StoreDTO getStoreByEmployee() throws UserException;
+    boolean currentUserCanAccessStore(Long storeId) throws UserException;
     StoreDTO updateStore(Long id, StoreDTO storeDto) throws ResourceNotFoundException, UserException;
     void deleteStore() throws ResourceNotFoundException, UserException;
     UserDTO addEmployee(Long id, UserDTO userDto) throws UserException;

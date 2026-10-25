@@ -20,6 +20,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,11 +29,18 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
+
+    private static final Set<UserRole> PUBLIC_SIGNUP_ROLES = Set.of(
+            UserRole.ROLE_STORE_ADMIN,
+            UserRole.ROLE_CUSTOMER,
+            UserRole.ROLE_USER
+    );
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -50,8 +58,8 @@ public class AuthServiceImpl implements AuthService {
         if(user != null) {
             throw new UserException("Email id already registered ");
         }
-        if(req.getRole().equals(UserRole.ROLE_ADMIN)){
-            throw new UserException("Role admin is not allowed");
+        if (req.getRole() == null || !PUBLIC_SIGNUP_ROLES.contains(req.getRole())) {
+            throw new UserException("The requested role cannot be assigned during public signup");
         }
 
         User createdUser = new User();
@@ -65,7 +73,10 @@ public class AuthServiceImpl implements AuthService {
 
         User savedUser = userRepository.save(createdUser);
 
-        Authentication authentication = new UsernamePasswordAuthenticationToken(savedUser.getEmail(), savedUser.getPassword());
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                savedUser.getEmail(),
+                null,
+                Set.of(new SimpleGrantedAuthority(savedUser.getRole().name())));
         SecurityContextHolder.getContext().setAuthentication(authentication);
         Long branchId = savedUser.getBranch() == null ? null : savedUser.getBranch().getId();
         String jwt = jwtProvider.generateToken(authentication, branchId);

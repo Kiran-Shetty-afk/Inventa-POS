@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Activity, AlertTriangle, RefreshCw, ShieldCheck } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useSelector } from "react-redux";
+import { normalizeAppRole } from "@/utils/userRole";
 
 const riskLabel = (probability) => {
   if (probability >= 0.8) return "Critical";
@@ -47,6 +49,8 @@ const assessOrder = async (order, branchName, config) => {
 };
 
 export default function FraudAnalytics() {
+  const userProfile = useSelector((state) => state.user.userProfile);
+  const role = normalizeAppRole(userProfile?.role);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -63,7 +67,13 @@ export default function FraudAnalytics() {
     setLoading(true);
     setError("");
     try {
-      const store = (await api.get("/api/stores/admin", config)).data;
+      if (role !== "ROLE_STORE_ADMIN" && role !== "ROLE_STORE_MANAGER") {
+        throw new Error("This account cannot access store fraud analytics.");
+      }
+      const storeEndpoint = role === "ROLE_STORE_MANAGER"
+        ? "/api/stores/employee"
+        : "/api/stores/admin";
+      const store = (await api.get(storeEndpoint, config)).data;
       if (!store?.id) throw new Error("The signed-in account has no store profile.");
       const branchResponse = await api.get(`/api/branches/store/${store.id}`, config);
       const branches = Array.isArray(branchResponse.data) ? branchResponse.data : [];
@@ -97,7 +107,7 @@ export default function FraudAnalytics() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [role]);
 
   useEffect(() => { refresh(); }, [refresh]);
 

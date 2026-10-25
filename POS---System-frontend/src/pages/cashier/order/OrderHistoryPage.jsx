@@ -27,7 +27,7 @@ import { getOrdersByCashier } from "@/Redux Toolkit/features/order/orderThunks";
 import OrderDetails from "./OrderDetails/OrderDetails";
 
 import OrderTable from "./OrderTable";
-import { handleDownloadOrderPDF } from "./pdf/pdfUtils";
+import { downloadOrderPdf } from "./pdf/downloadOrderPdf";
 import { parseOrderDate } from "./data";
 
 const OrderHistoryPage = () => {
@@ -192,7 +192,7 @@ const OrderHistoryPage = () => {
 
   
   const handleDownloadPDF = async () => {
-    await handleDownloadOrderPDF(selectedOrder, toast);
+    await downloadOrderPdf(selectedOrder, toast);
   };
 
   const handleRefreshOrders = () => {
@@ -310,6 +310,14 @@ const OrderHistoryPage = () => {
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
             <Loader2 className="animate-spin h-16 w-16 text-primary" />
             <p className="mt-4">Loading orders...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center h-full text-center text-destructive">
+            <p className="font-medium">Orders could not be loaded</p>
+            <p className="mt-2 text-sm">{error}</p>
+            <Button className="mt-4" variant="outline" onClick={handleRefreshOrders}>
+              Try again
+            </Button>
           </div>
         ) : filteredOrders.length > 0 ? (
           <OrderTable

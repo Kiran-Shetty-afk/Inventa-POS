@@ -19,6 +19,8 @@ export const AddEmployeeDialog = ({
   setIsAddDialogOpen,
   handleAddEmployee,
   roles,
+  fixedBranch,
+  requireFixedBranch = false,
 }) => (
   <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
     <DialogTrigger asChild>
@@ -34,6 +36,8 @@ export const AddEmployeeDialog = ({
         initialData={null}
         onSubmit={handleAddEmployee}
         roles={roles}
+        fixedBranch={fixedBranch}
+        requireFixedBranch={requireFixedBranch}
       />
     </DialogContent>
   </Dialog>

@@ -6,6 +6,14 @@ const ShiftInformationCard = ({ shiftData }) => {
   const cashierName = shiftData?.cashier?.fullName || 'Unknown cashier';
   const shiftStart = shiftData?.shiftStart ? formatDateTime(shiftData.shiftStart) : 'Not available';
   const shiftEnd = shiftData?.shiftEnd ? formatDateTime(shiftData.shiftEnd) : 'Ongoing';
+  const startTime = shiftData?.shiftStart ? new Date(shiftData.shiftStart).getTime() : NaN;
+  const endTime = shiftData?.shiftEnd ? new Date(shiftData.shiftEnd).getTime() : Date.now();
+  const elapsedMinutes = Number.isFinite(startTime) && endTime >= startTime
+    ? Math.floor((endTime - startTime) / 60_000)
+    : null;
+  const duration = elapsedMinutes == null
+    ? 'Not available'
+    : `${Math.floor(elapsedMinutes / 60)}h ${elapsedMinutes % 60}m`;
 
   return (
     <Card>
@@ -26,7 +34,7 @@ const ShiftInformationCard = ({ shiftData }) => {
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Duration:</span>
-            <span>8 hours</span>
+            <span>{duration}</span>
           </div>
         </div>
       </CardContent>
@@ -34,4 +42,4 @@ const ShiftInformationCard = ({ shiftData }) => {
   );
 };
 
-export default ShiftInformationCard; 
+export default ShiftInformationCard;

@@ -5,6 +5,7 @@ import com.zosh.modal.SubscriptionPlan;
 import com.zosh.service.SubscriptionPlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,11 +18,13 @@ public class SubscriptionPlanController {
     private final SubscriptionPlanService subscriptionPlanService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<SubscriptionPlan> createPlan(@RequestBody SubscriptionPlan plan) {
         return ResponseEntity.ok(subscriptionPlanService.createPlan(plan));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<SubscriptionPlan> updatePlan(
             @PathVariable Long id,
             @RequestBody SubscriptionPlan plan) throws ResourceNotFoundException {
@@ -39,6 +42,7 @@ public class SubscriptionPlanController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deletePlan(@PathVariable Long id) throws ResourceNotFoundException {
         subscriptionPlanService.deletePlan(id);
         return ResponseEntity.noContent().build();

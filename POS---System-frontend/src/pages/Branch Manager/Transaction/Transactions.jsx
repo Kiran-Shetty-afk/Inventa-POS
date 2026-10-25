@@ -102,7 +102,7 @@ export default function Transactions() {
         customerName: refund.customerName ?? "",
         amount,
         paymentMethod: refund.paymentType ?? "Refund",
-        status: refund.status ?? "REFUNDED",
+        status: refund.paymentRefundStatus ?? "NOT_ISSUED",
         type: "REFUND",
       };
     });

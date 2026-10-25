@@ -35,6 +35,6 @@ describe("BranchHealthCopilotCard", () => {
       />
     );
 
-    expect(html).toContain("Generate an AI narrative");
+    expect(html).toContain("Generate a summary from completed orders and current inventory for the selected period.");
   });
 });

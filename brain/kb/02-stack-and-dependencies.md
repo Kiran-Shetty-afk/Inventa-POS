@@ -6,7 +6,7 @@ Status: reviewed
 ## Confirmed facts
 
 - Java backend: Java 17, Maven, Spring Boot 3.4.3, Spring Cloud 2024.0.0, Spring Data JPA, MySQL Connector/J, Eureka, Gateway, and Actuator.
-- Frontend: React 19, Vite 7, Redux Toolkit, React Router, Axios, Tailwind CSS, and npm scripts.
+- Frontend: React 19, Vite 7, Redux Toolkit, React Router, Axios, Tailwind CSS, and npm 11.6.2 using `package-lock.json`.
 - ML API: Python 3.11, FastAPI, Uvicorn, scikit-learn, joblib, pandas, NumPy, and `py-eureka-client`.
 - Container images use multi-stage builds for Java and frontend, and the ML image includes the checked-in model directory.
 
@@ -23,7 +23,7 @@ Status: reviewed
 
 ## Unknowns / documentation gaps
 
-- Dependency vulnerability status was not re-audited during this update.
+- `npm audit` reports no known vulnerabilities for the current lockfile as of 2026-10-24; rerun before release because advisories change over time.
 
 ## Maintenance notes
 

@@ -5,20 +5,22 @@ import { Edit } from "lucide-react";
 import BasicInformation from "./BasicInformation";
 import ContactInformation from "./ContactInformation";
 
-const StoreInfoCard = ({ storeData, onEditClick }) => {
+const StoreInfoCard = ({ storeData, onEditClick, canEdit = true }) => {
   return (
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle>Store Information</CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onEditClick}
-            className="flex items-center gap-2"
-          >
-            <Edit className="h-4 w-4" /> Edit Details
-          </Button>
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onEditClick}
+              className="flex items-center gap-2"
+            >
+              <Edit className="h-4 w-4" /> Edit Details
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="grid gap-6">

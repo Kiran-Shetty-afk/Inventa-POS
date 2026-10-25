@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import com.zosh.payload.dto.TopSellingProductDTO;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,25 +26,31 @@ public class ShiftReport {
     private LocalDateTime shiftEnd;
 
     @Builder.Default
-    private Double totalSales = 0.0;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal totalSales = BigDecimal.ZERO;
 
     @Builder.Default
-    private Double totalRefunds = 0.0;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal totalRefunds = BigDecimal.ZERO;
 
     @Builder.Default
-    private Double netSales = 0.0;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal netSales = BigDecimal.ZERO;
 
     @Builder.Default
     private int totalOrders = 0;
 
     @Builder.Default
-    private Double cashSales = 0.0;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal cashSales = BigDecimal.ZERO;
 
     @Builder.Default
-    private Double cardSales = 0.0;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal cardSales = BigDecimal.ZERO;
 
     @Builder.Default
-    private Double upiSales = 0.0;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal upiSales = BigDecimal.ZERO;
 
     @Column(name = "cashier_id")
     private Long cashierId;

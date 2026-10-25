@@ -3,13 +3,21 @@ package com.zosh.repository;
 import com.zosh.modal.Refund;
 import com.zosh.payload.dto.RefundDTO;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface RefundRepository extends JpaRepository<Refund, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from Refund r where r.id = :id")
+    Optional<Refund> findByIdForUpdate(@Param("id") Long id);
 
     List<Refund> findByCashierIdAndCreatedAtBetween(Long cashierId,
                                                    LocalDateTime start,
@@ -22,6 +30,13 @@ public interface RefundRepository extends JpaRepository<Refund, Long> {
     List<Refund> findByBranchId(Long branchId);
 
     boolean existsByOrderId(Long orderId);
+
+    Optional<Refund> findFirstByOrderIdOrderByIdAsc(Long orderId);
+
+    List<Refund> findByProcessingStatus(String processingStatus);
+
+    @EntityGraph(attributePaths = {"order", "order.items"})
+    Optional<Refund> findWithOrderItemsById(Long id);
 
     @Query("""
         SELECT COUNT(r), COALESCE(SUM(r.amount), 0.0)

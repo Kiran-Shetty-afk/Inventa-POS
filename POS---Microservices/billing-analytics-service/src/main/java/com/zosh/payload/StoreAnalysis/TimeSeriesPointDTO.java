@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Data
 @Builder
@@ -13,5 +14,5 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class TimeSeriesPointDTO {
     private LocalDateTime date;
-    private Double totalAmount;
+    private BigDecimal totalAmount;
 }

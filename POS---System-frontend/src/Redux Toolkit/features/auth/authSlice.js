@@ -22,6 +22,7 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.isAuthenticated = false;
+      localStorage.removeItem('jwt');
       localStorage.removeItem('token');
     },
     clearForgotPasswordState: (state) => {

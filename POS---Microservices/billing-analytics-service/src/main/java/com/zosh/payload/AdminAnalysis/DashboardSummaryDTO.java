@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -14,5 +16,5 @@ public class DashboardSummaryDTO {
     private Long activeStores;
     private Long pendingStores;
     private Long blockedStores;
-    private Double totalPlatformRevenue;
+    private BigDecimal totalPlatformRevenue;
 }

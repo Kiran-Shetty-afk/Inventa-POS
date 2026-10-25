@@ -9,7 +9,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,38 +23,29 @@ public class JwtValidator extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-
-        // First check for gateway-forwarded headers (preferred in microservice architecture)
-        String gatewayEmail = request.getHeader("X-User-Email");
-        String gatewayRole = request.getHeader("X-User-Role");
-
-        if (gatewayEmail != null && !gatewayEmail.isEmpty()) {
-            List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(
-                    gatewayRole != null ? gatewayRole : "");
-            Authentication authentication = new UsernamePasswordAuthenticationToken(gatewayEmail, null, auths);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        } else {
-            // Fallback: validate JWT directly
-            String jwt = request.getHeader(JwtConstant.JWT_HEADER);
-            if (jwt != null) {
-                jwt = jwt.substring(7);
-                try {
-                    SecretKey key = Keys.hmacShaKeyFor(JwtConstant.SECRET_KEY.getBytes());
-                    Claims claims = Jwts.parser().verifyWith(key).build()
-                            .parseSignedClaims(jwt).getPayload();
-
-                    String email = String.valueOf(claims.get("email"));
-                    String authorities = String.valueOf(claims.get("authorities"));
-
-                    List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(authorities);
-                    Authentication authentication = new UsernamePasswordAuthenticationToken(email, null, auths);
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                } catch (Exception e) {
-                    throw new BadCredentialsException("Invalid token....");
+        String authorization = request.getHeader(JwtConstant.JWT_HEADER);
+        if (authorization != null) {
+            if (!authorization.startsWith("Bearer ")) {
+                throw new BadCredentialsException("Invalid authorization header format");
+            }
+            try {
+                SecretKey key = Keys.hmacShaKeyFor(JwtConstant.SECRET_KEY.getBytes());
+                Claims claims = Jwts.parser().verifyWith(key).build()
+                        .parseSignedClaims(authorization.substring(7)).getPayload();
+                String email = claims.get("email", String.class);
+                String authorities = claims.get("authorities", String.class);
+                if (email == null || email.isBlank() || authorities == null) {
+                    throw new BadCredentialsException("Invalid token claims");
                 }
+                List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(authorities);
+                SecurityContextHolder.getContext().setAuthentication(
+                        new UsernamePasswordAuthenticationToken(email, null, auths));
+            } catch (BadCredentialsException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new BadCredentialsException("Invalid token");
             }
         }
-
         filterChain.doFilter(request, response);
     }
 }

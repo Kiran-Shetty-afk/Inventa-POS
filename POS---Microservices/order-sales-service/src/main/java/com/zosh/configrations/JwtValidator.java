@@ -9,7 +9,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,50 +23,31 @@ public class JwtValidator extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-
-        // First check for gateway-forwarded headers (preferred in microservice architecture)
-        String gatewayEmail = request.getHeader("X-User-Email");
-        String gatewayRole = request.getHeader("X-User-Role");
-        String authorizationHeader = request.getHeader(JwtConstant.JWT_HEADER);
-        Claims claims = null;
-
-        if (authorizationHeader != null) {
-            if (!authorizationHeader.startsWith("Bearer ")) {
+        String authorization = request.getHeader(JwtConstant.JWT_HEADER);
+        if (authorization != null) {
+            if (!authorization.startsWith("Bearer ")) {
                 throw new BadCredentialsException("Invalid authorization header format");
             }
             try {
                 SecretKey key = Keys.hmacShaKeyFor(JwtConstant.SECRET_KEY.getBytes());
-                claims = Jwts.parser().verifyWith(key).build()
-                        .parseSignedClaims(authorizationHeader.substring(7)).getPayload();
-            } catch (Exception e) {
-                throw new BadCredentialsException("Invalid token....");
-            }
-        }
-
-        Long branchId = toLong(claims == null ? null : claims.get("branchId"));
-
-        if (gatewayEmail != null && !gatewayEmail.isEmpty()) {
-            // Trust the gateway's pre-validated headers
-            List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(
-                    gatewayRole != null ? gatewayRole : "");
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(gatewayEmail, null, auths);
-            authentication.setDetails(branchId);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        } else {
-            // Fallback: validate JWT directly (for direct access without gateway)
-            if (claims != null) {
-                String email = String.valueOf(claims.get("email"));
-                String authorities = String.valueOf(claims.get("authorities"));
-
+                Claims claims = Jwts.parser().verifyWith(key).build()
+                        .parseSignedClaims(authorization.substring(7)).getPayload();
+                String email = claims.get("email", String.class);
+                String authorities = claims.get("authorities", String.class);
+                if (email == null || email.isBlank() || authorities == null) {
+                    throw new BadCredentialsException("Invalid token claims");
+                }
                 List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(authorities);
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(email, null, auths);
-                authentication.setDetails(branchId);
+                authentication.setDetails(toLong(claims.get("branchId")));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+            } catch (BadCredentialsException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new BadCredentialsException("Invalid token");
             }
         }
-
         filterChain.doFilter(request, response);
     }
 
