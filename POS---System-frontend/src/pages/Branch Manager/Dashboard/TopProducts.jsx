@@ -60,7 +60,7 @@ const TopProducts = ({ selectedMonth, selectedDate, viewMode }) => {
                 innerRadius={48}
                 outerRadius={88}
                 labelLine={false}
-                label={({ name, percent = 0 }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label={false}
               >
                 {data.map((entry, index) => <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />)}
               </Pie>

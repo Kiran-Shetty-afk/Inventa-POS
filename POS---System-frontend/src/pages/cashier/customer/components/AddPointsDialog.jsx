@@ -23,6 +23,11 @@ const AddPointsDialog = ({
           <div className="space-y-2">
             <p><span className="font-medium">Customer:</span> {customer?.name}</p>
             <p><span className="font-medium">Current Points:</span> {customer?.loyaltyPoints}</p>
+            {Number(customer?.loyaltyPointsDebt || 0) > 0 && (
+              <p className="text-sm text-amber-700">
+                Refund adjustment: {customer.loyaltyPointsDebt} points. New points clear this balance first.
+              </p>
+            )}
           </div>
           
           <div className="space-y-2">

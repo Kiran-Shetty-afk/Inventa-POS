@@ -69,8 +69,8 @@ export const OrderPDF = ({ order }) => (
           {order.items?.map((item, index) => (
             <View key={item.id || index} style={styles.tableRow}>
               <View style={styles.tableCellImage}>
-                {item.product?.image ? (
-                  <Image src={item.product.image} style={styles.productImage} />
+                {(item.productImage || item.product?.image) ? (
+                  <Image src={item.productImage || item.product.image} style={styles.productImage} />
                 ) : (
                   <View style={styles.imagePlaceholder}>
                     <Text style={styles.placeholderText}>
@@ -90,10 +90,10 @@ export const OrderPDF = ({ order }) => (
               </View>
               <Text style={styles.tableCellCenter}>{item.quantity}</Text>
               <Text style={styles.tableCellRight}>
-                ₹{item.product?.sellingPrice?.toFixed(2) || "0.00"}
+                ₹{Number(item.productPrice ?? item.product?.sellingPrice ?? 0).toFixed(2)}
               </Text>
               <Text style={styles.tableCellRight}>
-                ₹{(item.product?.sellingPrice * item.quantity)?.toFixed(2) || "0.00"}
+                ₹{Number(item.price ?? item.total ?? Number(item.productPrice ?? item.product?.sellingPrice ?? 0) * Number(item.quantity ?? 0)).toFixed(2)}
               </Text>
             </View>
           ))}

@@ -6,7 +6,7 @@ import StoreDetailsForm from './StoreDetailsForm';
 import { signup } from '../../Redux Toolkit/features/auth/authThunk';
 import { createStore, getStoreByAdmin } from '../../Redux Toolkit/features/store/storeThunks';
 import { getUserProfile } from '../../Redux Toolkit/features/user/userThunks';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 // import { completeOnboarding, resetOnboarding } from '../../Redux Toolkit/features/onboarding/onboardingSlice';
 
 const Onboarding = () => {
@@ -305,9 +305,9 @@ const Onboarding = () => {
             <div className="mt-8 text-center">
               <p className="text-sm text-gray-500">
                 Already have an account?{' '}
-                <a href="/login" className="text-primary hover:text-green-900 font-medium">
+                <Link to="/auth/login" className="text-primary hover:text-green-900 font-medium">
                   Sign in here
-                </a>
+                </Link>
               </p>
             </div>
           </div>
@@ -317,4 +317,4 @@ const Onboarding = () => {
   );
 };
 
-export default Onboarding; 
+export default Onboarding;

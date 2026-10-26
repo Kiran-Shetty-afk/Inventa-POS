@@ -31,7 +31,8 @@ export default function StoreTable({ onViewDetails, onBlockStore, onActivateStor
 
   useEffect(() => {
     // Fetch stores, optionally filtered by status
-    dispatch(getAllStores(statusFilter === "all" ? undefined : statusFilter));
+    const apiStatus = statusFilter === "blocked" ? "SUSPENDED" : statusFilter.toUpperCase();
+    dispatch(getAllStores(statusFilter === "all" ? undefined : apiStatus));
   }, [dispatch, statusFilter]);
 
   // Filtering by search term (client-side)
@@ -46,10 +47,10 @@ export default function StoreTable({ onViewDetails, onBlockStore, onActivateStor
   const handleStatusChange = async (storeId, newStatus) => {
     setUpdatingId(storeId);
     try {
-      await dispatch(moderateStore({ storeId, action: newStatus })).unwrap();
-      // Optionally, you can show a toast here for success
+      const action = newStatus === "BLOCKED" ? "SUSPENDED" : newStatus;
+      await dispatch(moderateStore({ storeId, action })).unwrap();
     } catch {
-      // Optionally, you can show a toast here for error
+      // The store slice exposes the request error in the table.
     } finally {
       setUpdatingId(null);
     }
@@ -112,7 +113,7 @@ export default function StoreTable({ onViewDetails, onBlockStore, onActivateStor
                   </TableCell>
                   <TableCell>
                     <Select
-                      value={store.status?.toUpperCase()}
+                      value={store.status?.toUpperCase() === "SUSPENDED" ? "BLOCKED" : store.status?.toUpperCase()}
                       onValueChange={(val) => handleStatusChange(store.id, val)}
                       disabled={updatingId === store.id}
                     >
@@ -183,4 +184,4 @@ export default function StoreTable({ onViewDetails, onBlockStore, onActivateStor
       )}
     </div>
   );
-} 
+}

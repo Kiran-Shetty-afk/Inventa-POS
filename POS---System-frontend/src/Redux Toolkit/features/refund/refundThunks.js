@@ -160,6 +160,18 @@ export const getRefundsByBranch = createAsyncThunk(
   }
 );
 
+export const getRefundsByOrder = createAsyncThunk(
+  'refund/getByOrder',
+  async (orderId, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/api/refunds/order/${orderId}`, { headers: getAuthHeaders() });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Could not load refund history');
+    }
+  }
+);
+
 // 🔹 Get Refunds by Shift Report
 export const getRefundsByShift = createAsyncThunk(
   'refund/getByShift',

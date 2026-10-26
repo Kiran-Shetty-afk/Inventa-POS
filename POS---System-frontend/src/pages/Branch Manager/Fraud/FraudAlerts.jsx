@@ -24,11 +24,13 @@ import {
 import FraudDetailsDrawer from "./FraudDetailsDrawer";
 import { Download } from "lucide-react";
 import { downloadFraudReport } from "@/utils/fraudReport";
+import { useToast } from "@/components/ui/use-toast";
 
 
 
 export default function FraudAlerts() {
     const dispatch = useDispatch();
+    const { toast } = useToast();
 
     const {
         alerts,
@@ -45,6 +47,14 @@ export default function FraudAlerts() {
 
 
     const [selectedAlert, setSelectedAlert] = useState(null);
+    const handleDownloadReport = (alert) => {
+        try {
+            downloadFraudReport(alert);
+            toast({ title: "Report downloaded", description: `Investigation report for order ${alert.orderId ?? ""} is ready.` });
+        } catch {
+            toast({ title: "Download failed", description: "The investigation report could not be generated. Please try again.", variant: "destructive" });
+        }
+    };
     useEffect(() => {
         dispatch(getFraudAlerts());
         dispatch(getFraudDashboard());
@@ -417,7 +427,7 @@ export default function FraudAlerts() {
 
                                                 <Button
                                                     variant="outline"
-                                                    onClick={() => downloadFraudReport(alert)}
+                                                    onClick={() => handleDownloadReport(alert)}
                                                 >
                                                     <Download className="mr-0 h-3 w-3" />
 
