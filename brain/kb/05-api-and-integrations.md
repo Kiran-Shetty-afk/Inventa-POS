@@ -1,6 +1,6 @@
 # APIs and integrations
 
-Last updated: 2026-10-24
+Last updated: 2026-10-26
 Status: reviewed
 
 ## Confirmed facts
@@ -22,7 +22,9 @@ Status: reviewed
 - Checkout tax remains server-calculated at 18% by default on the original subtotal before discount. `ORDER_TAX_RATE_PERCENT` can override the rate; no taxable-after-discount switch is exposed.
 - `CASH` checkout records `CASH_RECORDED`; CARD/UPI checkout records `EXTERNAL_CONFIRMATION_REQUIRED`. These states do not claim provider confirmation or settlement.
 - Refund processing restores stock idempotently and returns distinct stock-restoration and `paymentRefundStatus` states. It does not issue an external money refund; completed stock restoration can require manual payment review.
+- Refund requests support line-item allocations and preserve partial versus full refund state; loyalty point adjustments are recorded as transactions to avoid repeating side effects.
 - ML inference endpoints require a valid signed bearer token with an allowed business role and apply input, request-size, and process-local request-rate bounds.
+- Order/Sales attaches service credentials for fraud inference; ML-dependent store analytics tolerate intermittent inference failures and can retry transient failures without treating missing suggestions as successful predictions.
 - Stripe is rejected by the API until a signed webhook and reconciliation workflow exist; Razorpay remains the enabled payment path.
 
 ## Important files inspected

@@ -1,6 +1,6 @@
 # Data model and persistence
 
-Last updated: 2026-10-24
+Last updated: 2026-10-26
 Status: reviewed
 
 ## Confirmed facts
@@ -13,6 +13,7 @@ Status: reviewed
 - Subscription plans persist an `active` status; older rows with a null value are presented as active until explicitly changed.
 - Order records include fraud score, flag, status, and reason fields used to retain model alerts and their resolution state.
 - Order records include a nullable unique `idempotency_key`, payment settlement state, and refund review state. Refunds have a nullable unique idempotency key for legacy-compatible migration and a separate payment refund status.
+- Partial refunds persist item allocations and customer loyalty point changes have an append-only transaction ledger (salesdb Flyway V5); applied only when the service starts against an existing database and not executed manually during this task.
 - Order/Sales money columns and product/subscription prices are `DECIMAL(19,2)` / Java `BigDecimal`; sales average item price is `DECIMAL(19,6)`. Percentages and ML/reporting measures may remain floating point.
 - Flyway migrations are: `userdb` V1; `inventorydb` V1–V2; `salesdb` V1–V3; `billingdb` V1–V2. A fresh isolated MySQL rehearsal applied them and Hibernate validated all four service mappings.
 - The four database-backed services have a production profile that requires explicit database variables, verifies MySQL TLS identity by default, and uses Hibernate schema validation.
@@ -24,6 +25,7 @@ Status: reviewed
 - `POS---Microservices/*/src/main/resources/application.yml` — datasource configuration.
 - `POS---Microservices/order-sales-service/src/main/java/com/zosh/modal/ShiftReport.java` — persisted shift totals and transient summary fields.
 - `POS---Microservices/order-sales-service/src/main/java/com/zosh/modal/Order.java` — order-level fraud metadata.
+- `POS---Microservices/order-sales-service/src/main/resources/db/migration/V5__partial_refunds_and_loyalty_ledger.sql` — partial refund allocation and loyalty ledger schema.
 - `POS---Microservices/billing-analytics-service/src/main/java/com/zosh/modal/SubscriptionPlan.java` — subscription plan status.
 
 ## Assumptions

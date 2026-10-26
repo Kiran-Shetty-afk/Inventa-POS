@@ -1,6 +1,6 @@
 # UI and routes
 
-Last updated: 2026-10-24
+Last updated: 2026-10-26
 Status: reviewed
 
 ## Confirmed facts
@@ -16,6 +16,7 @@ Status: reviewed
 - Store Admin dashboard, stores, alerts, fraud analytics, dynamic pricing, sales, and reports screens consume the service data available for their role; settings only edits persisted store profile fields.
 - Super Admin dashboard displays store counts, registration history, status distribution, and platform revenue. Super Admin settings supports profile and password updates; subscription plans display and persist activation status.
 - Cashier checkout labels CARD/UPI as unconfirmed external payment records; the return/refund screens distinguish inventory restoration from money refund and do not claim that the POS transferred funds.
+- Cashier customer selection uses a compact searchable picker with readable responsive customer details; refund and invoice views show item-level refund status and allocation details.
 
 ## Important files inspected
 

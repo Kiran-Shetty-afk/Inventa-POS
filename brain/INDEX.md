@@ -20,6 +20,7 @@ This folder is the workspace knowledge base.
 - `013-store-reports-sales-filters-apr-23.md`: Adds branch/month filters and analytics tables on store reports and sales pages.
 - `014-store-sales-kpi-and-reports-export-apr-23.md`: Fixes store sales KPI counts and adds `/store/reports` CSV export action.
 - `015-role-features-superadmin-storeadmin-branchmanager-cashier-apr-23.md`: Consolidated role-feature reference for super admin, store admin, branch manager, and cashier.
+- `016-pos-workflow-remediation-oct-26.md`: Refund and loyalty persistence, branch assignment/access, ML resilience, and cashier workflow remediation.
 - `CHANGELOG.md`: Versioned log of important changes and fixes.
 
 ## Current Knowledge Base
