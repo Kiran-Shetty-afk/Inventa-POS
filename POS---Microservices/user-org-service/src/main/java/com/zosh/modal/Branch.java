@@ -49,7 +49,7 @@ public class Branch {
     @JoinColumn(name = "store_id")
     private Store store;
 
-    @OneToOne(cascade = CascadeType.REMOVE)
+    @OneToOne
     @JsonIgnore
     private User manager;
 

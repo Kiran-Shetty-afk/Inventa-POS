@@ -16,6 +16,7 @@ public class CustomerMapper {
                 .storeId(customer.getStoreId())
                 .branchId(customer.getBranchId())
                 .loyaltyPoints(customer.getLoyaltyPoints())
+                .loyaltyPointsDebt(customer.getLoyaltyPointsDebt())
                 .loyaltyStatus(customer.getLoyaltyStatus())
                 .createdAt(customer.getCreatedAt())
                 .updatedAt(customer.getUpdatedAt())

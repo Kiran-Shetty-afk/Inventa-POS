@@ -7,6 +7,7 @@ public enum OrderStatus {
     REFUNDED,
     REFUNDING,
     REFUND_PENDING_REVIEW,
+    PARTIALLY_REFUNDED,
     REFUND_FAILED,
     FAILED,
     CANCELLED

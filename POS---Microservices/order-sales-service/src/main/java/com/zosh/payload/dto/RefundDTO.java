@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -33,6 +34,8 @@ public class RefundDTO {
     private PaymentRefundStatus paymentRefundStatus;
     private LocalDateTime paymentRefundConfirmedAt;
     private Long paymentRefundConfirmedBy;
+    private String idempotencyKey;
+    private List<RefundItemDTO> items;
 
     public RefundDTO(
             Long id,

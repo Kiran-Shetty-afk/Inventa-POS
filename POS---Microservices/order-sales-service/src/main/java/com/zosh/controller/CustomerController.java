@@ -5,6 +5,8 @@ import com.zosh.exception.ResourceNotFoundException;
 import com.zosh.modal.Customer;
 import com.zosh.payload.dto.CurrentUserDTO;
 import com.zosh.payload.dto.LoyaltyPointsUpdateRequest;
+import com.zosh.payload.dto.LoyaltyTransactionDTO;
+import com.zosh.service.LoyaltyPointsService;
 import com.zosh.service.CustomerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +24,7 @@ public class CustomerController {
 
     private final CustomerService customerService;
     private final UserOrgClient userOrgClient;
+    private final LoyaltyPointsService loyaltyPointsService;
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_MANAGER', 'ROLE_BRANCH_CASHIER', 'ROLE_CASHIER')")
@@ -98,6 +101,15 @@ public class CustomerController {
         Customer customer = customerService.getCustomerById(id);
         requireBranchAccess(customer.getBranchId(), customer.getStoreId(), "READ");
         return ResponseEntity.ok(customerService.addLoyaltyPoints(id, request.getPoints()));
+    }
+
+    @GetMapping("/{id}/loyalty-transactions")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_MANAGER', 'ROLE_BRANCH_CASHIER', 'ROLE_CASHIER')")
+    public ResponseEntity<List<LoyaltyTransactionDTO>> loyaltyHistory(@PathVariable Long id)
+            throws ResourceNotFoundException {
+        Customer customer = customerService.getCustomerById(id);
+        requireBranchAccess(customer.getBranchId(), customer.getStoreId(), "READ");
+        return ResponseEntity.ok(loyaltyPointsService.history(id));
     }
 
     private void requireBranchAccess(Long branchId, Long storeId, String permission) {

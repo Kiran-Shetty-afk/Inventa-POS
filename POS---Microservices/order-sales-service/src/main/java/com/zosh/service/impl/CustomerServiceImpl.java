@@ -4,6 +4,7 @@ import com.zosh.exception.ResourceNotFoundException;
 import com.zosh.modal.Customer;
 import com.zosh.repository.CustomerRepository;
 import com.zosh.service.CustomerService;
+import com.zosh.service.LoyaltyPointsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,12 +15,12 @@ import java.util.List;
 public class CustomerServiceImpl implements CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final LoyaltyPointsService loyaltyPointsService;
 
     @Override
     public Customer createCustomer(Customer customer) {
-        if (customer.getLoyaltyPoints() == null) {
-            customer.setLoyaltyPoints(0);
-        }
+        customer.setLoyaltyPoints(0);
+        customer.setLoyaltyPointsDebt(0);
         return customerRepository.save(customer);
     }
 
@@ -69,14 +70,10 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public Customer addLoyaltyPoints(Long id, Integer points) throws ResourceNotFoundException {
-        if (points == null || points <= 0) {
-            throw new IllegalArgumentException("Points must be greater than zero");
+        if (points == null || points <= 0) throw new IllegalArgumentException("Points must be greater than zero");
+        if (!customerRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Customer not found with id: " + id);
         }
-
-        Customer customer = customerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + id));
-
-        customer.setLoyaltyPoints((customer.getLoyaltyPoints() == null ? 0 : customer.getLoyaltyPoints()) + points);
-        return customerRepository.save(customer);
+        return loyaltyPointsService.addManualPoints(id, points);
     }
 }

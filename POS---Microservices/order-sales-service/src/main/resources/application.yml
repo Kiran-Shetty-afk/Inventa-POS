@@ -5,6 +5,10 @@ spring:
   application:
     name: order-sales-service
 
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
   cloud:
     openfeign:
       client:

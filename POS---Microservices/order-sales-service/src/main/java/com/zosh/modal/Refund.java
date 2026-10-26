@@ -9,6 +9,8 @@ import lombok.*;
 import java.math.BigDecimal;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "refunds")
@@ -67,6 +69,15 @@ public class Refund {
 
     @Column(name = "payment_refund_confirmed_by")
     private Long paymentRefundConfirmedBy;
+
+    @OneToMany(mappedBy = "refund", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<RefundItem> items = new ArrayList<>();
+
+    public void addItem(RefundItem item) {
+        items.add(item);
+        item.setRefund(this);
+    }
 
     @PrePersist
     public void onCreate() {

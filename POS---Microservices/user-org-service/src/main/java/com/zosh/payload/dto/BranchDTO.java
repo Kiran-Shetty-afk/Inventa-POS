@@ -26,6 +26,8 @@ public class BranchDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String manager;
+    private Long managerId;
+    private Boolean managerAssignmentProvided;
 
     public BranchDTO(Long id, String name, String address) {
         this.id = id;

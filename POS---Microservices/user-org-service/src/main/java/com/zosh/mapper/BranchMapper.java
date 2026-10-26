@@ -23,6 +23,7 @@ public class BranchMapper {
                 .createdAt(branch.getCreatedAt())
                 .updatedAt(branch.getUpdatedAt())
                 .manager(branch.getManager() != null ? branch.getManager().getFullName() : null)
+                .managerId(branch.getManager() != null ? branch.getManager().getId() : null)
                 .build();
     }
 

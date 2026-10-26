@@ -12,6 +12,8 @@ import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.math.BigDecimal;
+import com.zosh.domain.PaymentRefundStatus;
 
 public interface RefundRepository extends JpaRepository<Refund, Long> {
 
@@ -33,9 +35,21 @@ public interface RefundRepository extends JpaRepository<Refund, Long> {
 
     Optional<Refund> findFirstByOrderIdOrderByIdAsc(Long orderId);
 
+    @EntityGraph(attributePaths = {"order", "items", "items.orderItem"})
+    List<Refund> findByOrderIdOrderByIdAsc(Long orderId);
+
+    Optional<Refund> findByIdempotencyKey(String idempotencyKey);
+
+    @Query("select coalesce(sum(r.amount), 0) from Refund r where r.order.id = :orderId and r.paymentRefundStatus = :status")
+    BigDecimal sumAmountByOrderIdAndPaymentRefundStatus(@Param("orderId") Long orderId,
+            @Param("status") PaymentRefundStatus status);
+
     List<Refund> findByProcessingStatus(String processingStatus);
 
-    @EntityGraph(attributePaths = {"order", "order.items"})
+    // Refund processing needs the refund lines, not both order.items and refund.items.
+    // Fetching two List collections in one graph causes Hibernate's bag-fetch
+    // planner to fail for existing refunds before inventory restoration starts.
+    @EntityGraph(attributePaths = {"order", "items", "items.orderItem"})
     Optional<Refund> findWithOrderItemsById(Long id);
 
     @Query("""

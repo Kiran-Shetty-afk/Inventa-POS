@@ -10,6 +10,7 @@ import com.zosh.payload.dto.BranchDTO;
 import com.zosh.payload.dto.BranchDiscountPolicyDTO;
 import com.zosh.repository.BranchRepository;
 import com.zosh.repository.StoreRepository;
+import com.zosh.repository.UserRepository;
 import com.zosh.service.BranchService;
 import com.zosh.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
@@ -29,14 +30,19 @@ public class BranchServiceImpl implements BranchService {
     private final BranchRepository branchRepository;
     private final StoreRepository storeRepository;
     private final UserService userService;
+    private final UserRepository userRepository;
 
     @Override
+    @Transactional
     public BranchDTO createBranch(BranchDTO branchDto, User user) throws UserException {
         Store store = storeRepository.findByStoreAdminId(user.getId());
         if (store == null) {
             throw new UserException("A store must be registered before branches can be created");
         }
         Branch branch = BranchMapper.toEntity(branchDto, store);
+        if (branchDto.getManagerId() != null) {
+            applyManagerAssignment(branch, branchDto.getManagerId(), user);
+        }
         return BranchMapper.toDto(branchRepository.save(branch));
     }
 
@@ -62,8 +68,9 @@ public class BranchServiceImpl implements BranchService {
         boolean isStoreAdmin = currentUser.getRole() == UserRole.ROLE_STORE_ADMIN &&
                 store.getStoreAdmin() != null &&
                 store.getStoreAdmin().getId().equals(currentUser.getId());
+        boolean isPlatformAdmin = currentUser.getRole() == UserRole.ROLE_ADMIN;
 
-        if (!isStoreManager && !isStoreAdmin) {
+        if (!isPlatformAdmin && !isStoreManager && !isStoreAdmin) {
             throw new UserException("You are not authorized to access this store's branches");
         }
 
@@ -108,6 +115,7 @@ public class BranchServiceImpl implements BranchService {
     }
 
     @Override
+    @Transactional
     public BranchDTO updateBranch(Long id, BranchDTO branchDto, User user) throws Exception {
         Branch existing = branchRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Branch not found"));
@@ -117,11 +125,13 @@ public class BranchServiceImpl implements BranchService {
                 && user.getRole() == UserRole.ROLE_BRANCH_MANAGER
                 && user.getBranch() != null
                 && user.getBranch().getId().equals(existing.getId());
-        boolean isOwningStoreUser = user != null
-                && (user.getRole() == UserRole.ROLE_STORE_ADMIN || user.getRole() == UserRole.ROLE_STORE_MANAGER)
-                && user.getStore() != null
-                && existing.getStore() != null
+        boolean isOwningStoreAdmin = user != null && user.getRole() == UserRole.ROLE_STORE_ADMIN
+                && existing.getStore() != null && existing.getStore().getStoreAdmin() != null
+                && user.getId().equals(existing.getStore().getStoreAdmin().getId());
+        boolean isOwningStoreManager = user != null && user.getRole() == UserRole.ROLE_STORE_MANAGER
+                && user.getStore() != null && existing.getStore() != null
                 && user.getStore().getId().equals(existing.getStore().getId());
+        boolean isOwningStoreUser = isOwningStoreAdmin || isOwningStoreManager;
         if (!isSystemAdmin && !isAssignedBranchManager && !isOwningStoreUser) {
             throw new UserException("You are not authorized to update this branch");
         }
@@ -133,8 +143,72 @@ public class BranchServiceImpl implements BranchService {
         existing.setCloseTime(branchDto.getCloseTime());
         existing.setOpenTime(branchDto.getOpenTime());
         existing.setWorkingDays(branchDto.getWorkingDays());
+        if (Boolean.TRUE.equals(branchDto.getManagerAssignmentProvided())) {
+            applyManagerAssignment(existing, branchDto.getManagerId(), user);
+        }
 
         return BranchMapper.toDto(branchRepository.save(existing));
+    }
+
+    private void applyManagerAssignment(Branch branch, Long managerId, User actor) {
+        boolean platformAdmin = actor != null && actor.getRole() == UserRole.ROLE_ADMIN;
+        boolean owningStoreAdmin = actor != null && actor.getRole() == UserRole.ROLE_STORE_ADMIN
+                && branch.getStore() != null && branch.getStore().getStoreAdmin() != null
+                && actor.getId().equals(branch.getStore().getStoreAdmin().getId());
+        boolean owningStoreManager = actor != null && actor.getRole() == UserRole.ROLE_STORE_MANAGER
+                && actor.getStore() != null && branch.getStore() != null
+                && actor.getStore().getId().equals(branch.getStore().getId());
+        boolean owningStoreUser = owningStoreAdmin || owningStoreManager;
+        if (!platformAdmin && !owningStoreUser) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Only an authorized organization administrator can assign a branch manager");
+        }
+
+        User previous = branch.getManager();
+        if (managerId == null) {
+            if (previous != null && previous.getBranch() != null
+                    && branch.getId() != null && branch.getId().equals(previous.getBranch().getId())) {
+                previous.setBranch(null);
+                userRepository.save(previous);
+            }
+            branch.setManager(null);
+            return;
+        }
+
+        User manager = userRepository.findById(managerId)
+                .orElseThrow(() -> new EntityNotFoundException("Branch manager not found"));
+        if (manager.getRole() != UserRole.ROLE_BRANCH_MANAGER || !Boolean.TRUE.equals(manager.getVerified())) {
+            throw new IllegalArgumentException("Select an enabled Branch Manager account");
+        }
+        if (branch.getStore() == null || manager.getStore() == null
+                || !branch.getStore().getId().equals(manager.getStore().getId())) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "The selected manager does not belong to this organization");
+        }
+        if (manager.getBranch() != null && (branch.getId() == null
+                || !branch.getId().equals(manager.getBranch().getId()))) {
+            Branch previousBranch = manager.getBranch();
+            if (previousBranch.getStore() == null
+                    || !branch.getStore().getId().equals(previousBranch.getStore().getId())) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "The selected manager is assigned outside this organization");
+            }
+            if (previousBranch.getManager() != null
+                    && manager.getId().equals(previousBranch.getManager().getId())) {
+                previousBranch.setManager(null);
+                branchRepository.save(previousBranch);
+            }
+        }
+        if (previous != null && !java.util.Objects.equals(previous.getId(), manager.getId())
+                && previous.getBranch() != null && branch.getId() != null
+                && branch.getId().equals(previous.getBranch().getId())) {
+            previous.setBranch(null);
+            userRepository.save(previous);
+        }
+        manager.setStore(branch.getStore());
+        manager.setBranch(branch);
+        branch.setManager(manager);
+        userRepository.save(manager);
     }
 
     @Override
