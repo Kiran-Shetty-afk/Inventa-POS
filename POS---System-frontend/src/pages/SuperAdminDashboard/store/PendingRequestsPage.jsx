@@ -77,7 +77,7 @@ export default function PendingRequestsPage() {
     if (selectedRequest && rejectionReason.trim()) {
       setUpdatingId(selectedRequest.id);
       try {
-        await dispatch(moderateStore({ storeId: selectedRequest.id, action: "BLOCKED" })).unwrap();
+        await dispatch(moderateStore({ storeId: selectedRequest.id, action: "SUSPENDED" })).unwrap();
         toast({
           title: "Store Rejected",
           description: `${selectedRequest.brand} has been rejected.`,
@@ -246,4 +246,4 @@ export default function PendingRequestsPage() {
       </Dialog>
     </div>
   );
-} 
+}

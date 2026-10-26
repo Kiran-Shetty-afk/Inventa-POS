@@ -68,6 +68,14 @@ public class RefundController {
         return ResponseEntity.ok(refunds);
     }
 
+    @GetMapping("/order/{orderId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_MANAGER', 'ROLE_BRANCH_CASHIER', 'ROLE_CASHIER')")
+    public ResponseEntity<List<RefundDTO>> getRefundsByOrder(@PathVariable Long orderId)
+            throws ResourceNotFoundException {
+        return ResponseEntity.ok(refundService.getRefundsByOrder(orderId).stream()
+                .map(RefundMapper::toDTO).collect(Collectors.toList()));
+    }
+
     @GetMapping("/shift/{shiftReportId}")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_MANAGER')")
     public ResponseEntity<List<RefundDTO>> getRefundsByShift(@PathVariable Long shiftReportId) {
@@ -106,10 +114,21 @@ public class RefundController {
     }
 
     @PutMapping("/{id}/confirm-payment-refund")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_MANAGER')")
-    public ResponseEntity<RefundDTO> confirmPaymentRefund(@PathVariable Long id) throws ResourceNotFoundException {
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER', 'ROLE_BRANCH_MANAGER', 'ROLE_BRANCH_CASHIER', 'ROLE_CASHIER')")
+    public ResponseEntity<RefundDTO> confirmPaymentRefund(@PathVariable Long id, Authentication authentication) throws ResourceNotFoundException {
         Refund existingRefund = refundService.getRefundById(id);
-        requireBranchAccess(existingRefund.getBranchId());
+        boolean cashier = hasAuthority(authentication, "ROLE_BRANCH_CASHIER") || hasAuthority(authentication, "ROLE_CASHIER");
+        if (cashier) {
+            var currentUser = userOrgClient.getCurrentUserProfile();
+            if (existingRefund.getPaymentType() != com.zosh.domain.PaymentType.CASH
+                    || currentUser == null || !java.util.Objects.equals(existingRefund.getCashierId(), currentUser.id())
+                    || existingRefund.getBranchId() == null || !Boolean.TRUE.equals(userOrgClient.canCurrentUserAccessBranch(
+                            existingRefund.getBranchId(), null, "ORDER_CREATE"))) {
+                throw new AccessDeniedException("Only the original cashier can confirm an in-branch cash refund");
+            }
+        } else {
+            requireBranchAccess(existingRefund.getBranchId());
+        }
         return ResponseEntity.ok(RefundMapper.toDTO(refundService.confirmPaymentRefund(id)));
     }
 

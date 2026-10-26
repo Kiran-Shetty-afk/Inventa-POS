@@ -218,6 +218,7 @@ services:
       dockerfile: Dockerfile
     environment:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the private .env file}
+      INTERNAL_SERVICE_JWT_SECRET: ${INTERNAL_SERVICE_JWT_SECRET:-${JWT_SECRET}}
       EUREKA_SERVER: http://eureka-server:8761/eureka/
       EUREKA_INSTANCE_HOSTNAME: ml-intelligence-service
       APP_NAME: ml-intelligence-service

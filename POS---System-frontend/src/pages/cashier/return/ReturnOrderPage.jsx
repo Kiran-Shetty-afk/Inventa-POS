@@ -8,6 +8,8 @@ import {
   ReturnReceiptDialog,
 } from "./components";
 import { useDispatch, useSelector } from "react-redux";
+import { useToast } from "@/components/ui/use-toast";
+import { confirmPaymentRefund, getRefundsByOrder } from "../../../Redux Toolkit/features/refund/refundThunks";
 import {
   getOrdersByBranch,
   getOrdersByCashier,
@@ -19,8 +21,10 @@ import OrderTable from "./components/OrderTable";
 const ReturnOrderPage = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [latestRefund, setLatestRefund] = useState(null);
 
   const dispatch = useDispatch();
+  const { toast } = useToast();
   const location = useLocation();
   const { branch } = useSelector((state) => state.branch);
   const { userProfile } = useSelector((state) => state.user);
@@ -29,7 +33,7 @@ const ReturnOrderPage = () => {
 
   const loadRefundableOrders = React.useCallback(() => {
     if (branchId) {
-      dispatch(getOrdersByBranch({ branchId, status: "COMPLETED" }));
+      dispatch(getOrdersByBranch({ branchId }));
       return;
     }
     if (userProfile?.id) {
@@ -60,6 +64,18 @@ const ReturnOrderPage = () => {
     setSelectedOrder(null);
   };
 
+  const handleConfirmCashRefund = async () => {
+    if (!latestRefund?.id) return;
+    try {
+      const updated = await dispatch(confirmPaymentRefund(latestRefund.id)).unwrap();
+      setLatestRefund(updated);
+      dispatch(getRefundsByOrder(updated.orderId));
+      toast({ title: "Cash refund confirmed", description: "The audit record and customer loyalty balance have been updated." });
+    } catch (error) {
+      toast({ title: "Could not confirm refund", description: error || "Please retry or ask a manager for help.", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="p-4 bg-card border-b">
@@ -79,7 +95,11 @@ const ReturnOrderPage = () => {
             <ReturnItemsSection
               setShowReceiptDialog={setShowReceiptDialog}
               selectedOrder={selectedOrder}
-              onRefundCompleted={loadRefundableOrders}
+              onRefundCompleted={(refund) => {
+                setLatestRefund(refund);
+                loadRefundableOrders();
+                dispatch(getRefundsByOrder(refund.orderId));
+              }}
             />
           </>
         )}
@@ -90,6 +110,8 @@ const ReturnOrderPage = () => {
           showReceiptDialog={showReceiptDialog}
           setShowReceiptDialog={setShowReceiptDialog}
           selectedOrder={selectedOrder}
+          refund={latestRefund}
+          onConfirmCashRefund={handleConfirmCashRefund}
           onPrintAndComplete={handlePrintAndComplete}
         />
       )}

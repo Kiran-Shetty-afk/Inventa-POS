@@ -49,6 +49,11 @@ const CustomerDetails = ({ customer, onAddPoints, loading = false, statsError = 
               <StarIcon className="h-5 w-5 text-yellow-500" />
               <span className="text-2xl font-bold">{customer.loyaltyPoints || 0}</span>
             </div>
+            {Number(customer.loyaltyPointsDebt || 0) > 0 && (
+              <p className="mt-2 text-sm text-amber-700" role="status">
+                {customer.loyaltyPointsDebt} points from refund reversals remain to be recovered. New points are applied to this balance first.
+              </p>
+            )}
           </CardContent>
         </Card>
 

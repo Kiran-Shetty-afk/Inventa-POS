@@ -4,6 +4,7 @@ import {
   getAllRefunds,
   getRefundsByCashier,
   getRefundsByBranch,
+  getRefundsByOrder,
   getRefundsByShift,
   getRefundsByCashierAndDateRange,
   getRefundById,
@@ -14,6 +15,8 @@ const initialState = {
   refunds: [],
   refundsByCashier: [],
   refundsByBranch: [],
+  refundsByOrder: [],
+  refundsByOrderLoading: false,
   refundsByShift: [],
   refundsByDateRange: [],
   selectedRefund: null,
@@ -29,6 +32,7 @@ const refundSlice = createSlice({
       state.refunds = [];
       state.refundsByCashier = [];
       state.refundsByBranch = [];
+      state.refundsByOrder = [];
       state.refundsByShift = [];
       state.refundsByDateRange = [];
       state.selectedRefund = null;
@@ -111,6 +115,18 @@ const refundSlice = createSlice({
       })
       .addCase(getRefundsByBranch.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload;
+      })
+
+      .addCase(getRefundsByOrder.pending, (state) => {
+        state.refundsByOrderLoading = true;
+      })
+      .addCase(getRefundsByOrder.fulfilled, (state, action) => {
+        state.refundsByOrderLoading = false;
+        state.refundsByOrder = action.payload;
+      })
+      .addCase(getRefundsByOrder.rejected, (state, action) => {
+        state.refundsByOrderLoading = false;
         state.error = action.payload;
       })
 
@@ -199,4 +215,4 @@ export const {
   clearRefundsByDateRange 
 } = refundSlice.actions;
 
-export default refundSlice.reducer; 
+export default refundSlice.reducer;

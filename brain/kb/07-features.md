@@ -1,6 +1,6 @@
 # Feature index
 
-Last updated: 2026-10-24
+Last updated: 2026-10-26
 Status: reviewed
 
 ## Confirmed facts
@@ -16,6 +16,7 @@ Status: reviewed
 | 007 | Branch-scoped fraud alerts | [features/007-branch-scoped-fraud-alerts.md](features/007-branch-scoped-fraud-alerts.md) |
 | 008 | Super Admin dashboard and account settings | [features/008-super-admin-console.md](features/008-super-admin-console.md) |
 | 009 | Financial checkout and refund review states | [features/009-financial-checkout-and-refund-review.md](features/009-financial-checkout-and-refund-review.md) |
+| 010 | Partial refunds, loyalty ledger, and resilient cashier workflows | [features/010-partial-refunds-loyalty-and-cashier-workflows.md](features/010-partial-refunds-loyalty-and-cashier-workflows.md) |
 
 ## Important files inspected
 

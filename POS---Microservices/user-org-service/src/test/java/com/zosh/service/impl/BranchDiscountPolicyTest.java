@@ -7,6 +7,7 @@ import com.zosh.modal.User;
 import com.zosh.payload.dto.BranchDiscountPolicyDTO;
 import com.zosh.repository.BranchRepository;
 import com.zosh.repository.StoreRepository;
+import com.zosh.repository.UserRepository;
 import com.zosh.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +29,7 @@ class BranchDiscountPolicyTest {
     @Mock private BranchRepository branchRepository;
     @Mock private StoreRepository storeRepository;
     @Mock private UserService userService;
+    @Mock private UserRepository userRepository;
 
     @Test
     void assignedBranchManagerCanSetAValueUpToTheSystemMaximum() throws Exception {
@@ -76,7 +78,7 @@ class BranchDiscountPolicyTest {
     }
 
     private BranchServiceImpl service() {
-        return new BranchServiceImpl(branchRepository, storeRepository, userService);
+        return new BranchServiceImpl(branchRepository, storeRepository, userService, userRepository);
     }
 
     private Branch branch(Long id) {

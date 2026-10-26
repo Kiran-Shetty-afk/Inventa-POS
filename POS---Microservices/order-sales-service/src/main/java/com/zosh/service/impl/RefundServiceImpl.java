@@ -9,6 +9,7 @@ import com.zosh.exception.UserException;
 import com.zosh.modal.Order;
 import com.zosh.modal.OrderItem;
 import com.zosh.modal.Refund;
+import com.zosh.modal.RefundItem;
 import com.zosh.modal.ShiftReport;
 import com.zosh.payload.dto.RefundDTO;
 import com.zosh.payload.dto.StockOperationClientRequest;
@@ -18,6 +19,7 @@ import com.zosh.repository.RefundRepository;
 import com.zosh.repository.ShiftReportRepository;
 import com.zosh.service.RefundService;
 import com.zosh.service.OrderWorkflowCoordinator;
+import com.zosh.service.LoyaltyPointsService;
 import com.zosh.service.ServiceTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.Objects;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -46,6 +49,7 @@ public class RefundServiceImpl implements RefundService {
     private final ServiceTokenProvider serviceTokenProvider;
     private final UserOrgClient userOrgClient;
     private final OrderWorkflowCoordinator workflowCoordinator;
+    private final LoyaltyPointsService loyaltyPointsService;
 
     @Override
     public Refund createRefund(RefundDTO refundDTO) throws UserException, ResourceNotFoundException {
@@ -55,6 +59,10 @@ public class RefundServiceImpl implements RefundService {
         String requestedReason = refundDTO.getReason() == null ? "" : refundDTO.getReason().trim();
         if (requestedReason.isBlank() || requestedReason.length() > 255) {
             throw new IllegalArgumentException("A refund reason between 1 and 255 characters is required");
+        }
+        String requestedKey = refundDTO.getIdempotencyKey() == null ? "" : refundDTO.getIdempotencyKey().trim();
+        if (!requestedKey.matches("[A-Za-z0-9._:-]{8,56}")) {
+            throw new IllegalArgumentException("A valid refund idempotency key is required");
         }
 
         Order order = orderRepository.findWithItemsAndCustomerById(refundDTO.getOrderId())
@@ -71,11 +79,10 @@ public class RefundServiceImpl implements RefundService {
             throw new AccessDeniedException("You are not authorized to refund this order");
         }
 
-        Refund existingRefund = refundRepository.findFirstByOrderIdOrderByIdAsc(order.getId()).orElse(null);
+        Refund existingRefund = refundRepository.findByIdempotencyKey("refund:" + requestedKey).orElse(null);
         if (existingRefund != null) {
-            if (!Objects.equals(existingRefund.getReason(), requestedReason)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "A refund request already exists for this order");
+            if (!Objects.equals(existingRefund.getOrder().getId(), order.getId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "This refund request key is already in use");
             }
             if ("PENDING".equals(existingRefund.getProcessingStatus())) {
                 return processRefund(existingRefund.getId());
@@ -87,8 +94,8 @@ public class RefundServiceImpl implements RefundService {
                     "The existing refund requires manual inventory reconciliation");
         }
 
-        if (order.getStatus() != OrderStatus.COMPLETED) {
-            throw new UserException("Only a completed order can be refunded");
+        if (order.getStatus() != OrderStatus.COMPLETED && order.getStatus() != OrderStatus.PARTIALLY_REFUNDED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This order is not currently eligible for a refund");
         }
 
         Long branchId = order.getBranchId();
@@ -107,8 +114,8 @@ public class RefundServiceImpl implements RefundService {
         Refund refund = Refund.builder()
                 .order(order)
                 .reason(requestedReason)
-                .amount(order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO)
-                .idempotencyKey("order-refund:" + order.getId())
+                .amount(BigDecimal.ZERO.setScale(2))
+                .idempotencyKey("refund:" + requestedKey)
                 .cashierId(cashierId)
                 .cashierName(cashierName)
                 .branchId(branchId)
@@ -121,13 +128,10 @@ public class RefundServiceImpl implements RefundService {
                 .build();
         Refund savedRefund;
         try {
-            savedRefund = workflowCoordinator.startPendingRefund(order.getId(), refund);
+            savedRefund = workflowCoordinator.startPendingRefund(order.getId(), refund, refundDTO.getItems());
         } catch (DataIntegrityViolationException duplicateRequest) {
-            // A unique persisted key makes simultaneous retries safe; the winning request owns the workflow.
-            Refund winner = refundRepository.findFirstByOrderIdOrderByIdAsc(order.getId()).orElse(null);
-            if (winner == null || !Objects.equals(winner.getReason(), requestedReason)) {
-                throw duplicateRequest;
-            }
+            Refund winner = refundRepository.findByIdempotencyKey("refund:" + requestedKey).orElse(null);
+            if (winner == null || !Objects.equals(winner.getOrder().getId(), order.getId())) throw duplicateRequest;
             if ("PENDING".equals(winner.getProcessingStatus())) {
                 return processRefund(winner.getId());
             }
@@ -136,10 +140,6 @@ public class RefundServiceImpl implements RefundService {
             }
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "The existing refund requires manual inventory reconciliation");
-        }
-        if (!Objects.equals(savedRefund.getReason(), requestedReason)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "A refund request already exists for this order");
         }
         return processRefund(savedRefund.getId());
     }
@@ -153,9 +153,9 @@ public class RefundServiceImpl implements RefundService {
         }
 
         Map<Long, Integer> quantities = new TreeMap<>();
-        List<OrderItem> items = refund.getOrder() == null ? List.of() : refund.getOrder().getItems();
+        List<RefundItem> items = refund.getItems() == null ? List.of() : refund.getItems();
         if (items != null) {
-            for (OrderItem item : items) {
+            for (RefundItem item : items) {
                 if (item.getProductId() == null || item.getQuantity() == null || item.getQuantity() <= 0) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,
                             "Refund order contains an invalid item and requires manual review");
@@ -239,6 +239,22 @@ public class RefundServiceImpl implements RefundService {
     }
 
     @Override
+    public List<Refund> getRefundsByOrder(Long orderId) throws ResourceNotFoundException {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        boolean mayManageBranch = order.getBranchId() != null && Boolean.TRUE.equals(
+                userOrgClient.canCurrentUserAccessBranch(order.getBranchId(), null, "ORDER_MANAGE"));
+        var currentUser = userOrgClient.getCurrentUserProfile();
+        boolean isOriginalCashier = order.getCashierId() != null && currentUser != null
+                && order.getCashierId().equals(currentUser.id()) && order.getBranchId() != null
+                && Boolean.TRUE.equals(userOrgClient.canCurrentUserAccessBranch(order.getBranchId(), null, "ORDER_CREATE"));
+        if (!mayManageBranch && !isOriginalCashier) {
+            throw new AccessDeniedException("You are not authorized to view refunds for this order");
+        }
+        return refundRepository.findByOrderIdOrderByIdAsc(orderId);
+    }
+
+    @Override
     public Refund getRefundById(Long id) throws ResourceNotFoundException {
         return refundRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Refund not found with id: " + id));
@@ -252,8 +268,7 @@ public class RefundServiceImpl implements RefundService {
         Order order = orderRepository.findByIdForUpdate(refund.getOrder().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
-        if (refund.getPaymentRefundStatus() == PaymentRefundStatus.SUCCEEDED
-                && order.getStatus() == OrderStatus.REFUNDED) {
+        if (refund.getPaymentRefundStatus() == PaymentRefundStatus.SUCCEEDED) {
             return refund;
         }
         if (!"COMPLETED".equals(refund.getProcessingStatus())
@@ -272,9 +287,19 @@ public class RefundServiceImpl implements RefundService {
         refund.setPaymentRefundStatus(PaymentRefundStatus.SUCCEEDED);
         refund.setPaymentRefundConfirmedAt(LocalDateTime.now());
         refund.setPaymentRefundConfirmedBy(currentUser.id());
-        order.setStatus(OrderStatus.REFUNDED);
+        Refund confirmed = refundRepository.saveAndFlush(refund);
+        BigDecimal cumulativeConfirmed = refundRepository.sumAmountByOrderIdAndPaymentRefundStatus(
+                order.getId(), PaymentRefundStatus.SUCCEEDED);
+        loyaltyPointsService.reverseForConfirmedRefund(order, confirmed,
+                cumulativeConfirmed == null ? BigDecimal.ZERO : cumulativeConfirmed);
+        int purchased = order.getItems() == null ? 0 : order.getItems().stream()
+                .mapToInt(item -> item.getQuantity() == null ? 0 : item.getQuantity()).sum();
+        Integer reserved = order.getId() == null ? 0 : workflowCoordinator.getRefundedQuantity(order.getId());
+        boolean legacyFullRefund = refund.getItems() == null || refund.getItems().isEmpty();
+        order.setStatus(legacyFullRefund || (purchased > 0 && reserved != null && reserved >= purchased)
+                ? OrderStatus.REFUNDED : OrderStatus.PARTIALLY_REFUNDED);
         orderRepository.save(order);
-        return refundRepository.save(refund);
+        return confirmed;
     }
 
 }

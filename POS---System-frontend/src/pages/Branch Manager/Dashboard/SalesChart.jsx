@@ -47,7 +47,7 @@ const SalesChart = ({ selectedMonth, selectedDate, viewMode }) => {
           <ChartContainer config={chartConfig} className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
-                <XAxis dataKey="date" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
+                <XAxis dataKey="date" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={24} tickFormatter={(value) => { const date = new Date(`${value}T00:00:00`); return Number.isNaN(date.valueOf()) ? value : date.toLocaleDateString("en-IN", { day: "numeric", month: "short" }); }} />
                 <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value}`} />
                 <ChartTooltip
                   content={({ active, payload }) => (

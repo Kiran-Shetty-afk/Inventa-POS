@@ -24,6 +24,8 @@ public interface RefundService {
 
     List<Refund> getRefundsByBranch(Long branchId);
 
+    List<Refund> getRefundsByOrder(Long orderId) throws ResourceNotFoundException;
+
     Refund getRefundById(Long id) throws ResourceNotFoundException;
 
     Refund confirmPaymentRefund(Long id);

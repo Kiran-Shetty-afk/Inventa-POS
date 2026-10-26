@@ -1,5 +1,11 @@
 # Brain Changelog
 
+## v2026.10.26-pos-workflow-remediation
+- Hardened partial refunds with item-level allocations, idempotent stock restoration, and explicit payment refund review states; added persistent loyalty transactions.
+- Tightened branch-manager assignment and branch access behavior, and improved cashier/customer, refund, invoice, transaction, and administration workflows.
+- Made fraud and dynamic-pricing ML inference more resilient to intermittent service/rate-limit failures and improved internal service authentication.
+- No database seeding was run as part of this change.
+
 ## v2026.10.24-remediation
 - Updated the security, architecture, API, data, deployment, dependency, testing, and risk knowledge notes for the codebase remediation branch.
 - Documented signed JWT validation, tenant checks, idempotent orders, atomic inventory updates, Razorpay controls, disabled Stripe, production DB validation, and the remaining Saga/migration/decimal/discount risks.

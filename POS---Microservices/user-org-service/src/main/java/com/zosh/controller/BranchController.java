@@ -46,7 +46,7 @@ public class BranchController {
     }
 
     @GetMapping("/store/{storeId}")
-    @PreAuthorize("hasAnyAuthority('ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER')")
     public ResponseEntity<List<BranchDTO>> getAllBranches(
             @RequestHeader("Authorization") String jwt,
             @PathVariable Long storeId) throws UserException {

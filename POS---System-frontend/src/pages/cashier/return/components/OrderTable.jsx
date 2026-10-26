@@ -13,6 +13,8 @@ import { SearchIcon } from "lucide-react";
 import { formatDate } from "../../order/data";
 import { useSelector } from "react-redux";
 
+const returnableStatuses = ["COMPLETED", "PARTIALLY_REFUNDED", "REFUND_PENDING_REVIEW"];
+
 const OrderTable = ({ handleSelectOrder }) => {
   const {
     orders,
@@ -30,7 +32,7 @@ const OrderTable = ({ handleSelectOrder }) => {
           <div className="flex flex-col items-center justify-center h-full text-center text-destructive">
             <span>{error}</span>
           </div>
-        ) : orders.length > 0 ? (
+        ) : orders.some((order) => returnableStatuses.includes(order.status)) ? (
           <Table>
             <TableHeader>
               <TableRow>
@@ -43,7 +45,7 @@ const OrderTable = ({ handleSelectOrder }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order) => (
+              {orders.filter((order) => returnableStatuses.includes(order.status)).map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.id}</TableCell>
                   <TableCell>{formatDate(order.createdAt)}</TableCell>
@@ -52,7 +54,7 @@ const OrderTable = ({ handleSelectOrder }) => {
                   <TableCell>{order.paymentType}</TableCell>
                   <TableCell className="text-right">
                     <Button onClick={() => handleSelectOrder(order)}>
-                      Select for Return
+                      {order.status === "REFUND_PENDING_REVIEW" ? "Review Existing Refund" : "Select for Return"}
                     </Button>
                   </TableCell>
                 </TableRow>

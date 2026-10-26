@@ -120,11 +120,13 @@ const CustomerLookupPage = () => {
       ).unwrap();
 
       setSelectedCustomer(updatedCustomer);
+      const recovered = Math.min(pointsToAdd, Number(selectedCustomer.loyaltyPointsDebt || 0));
+      const available = pointsToAdd - recovered;
       toast({
         title: "Points Added",
-        description: `${pointsToAdd} points added to ${
-          updatedCustomer.fullName || updatedCustomer.name
-        }'s account`,
+        description: recovered > 0
+          ? `${recovered} points cleared a refund adjustment and ${available} points were added to ${updatedCustomer.fullName || updatedCustomer.name}'s balance.`
+          : `${available} points were added to ${updatedCustomer.fullName || updatedCustomer.name}'s balance.`,
       });
 
       setShowAddPointsDialog(false);

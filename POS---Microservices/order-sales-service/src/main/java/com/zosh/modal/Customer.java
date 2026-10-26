@@ -37,6 +37,10 @@ public class Customer {
     @Builder.Default
     private Integer loyaltyPoints = 0;
 
+    @Column(name = "loyalty_points_debt", nullable = false)
+    @Builder.Default
+    private Integer loyaltyPointsDebt = 0;
+
     @Column(nullable = false, updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -51,6 +55,7 @@ public class Customer {
         if (loyaltyPoints == null) {
             loyaltyPoints = 0;
         }
+        if (loyaltyPointsDebt == null) loyaltyPointsDebt = 0;
     }
 
     @Transient

@@ -77,7 +77,7 @@ export const downloadFraudReport = (alert) => {
   doc.setFont("helvetica", "normal");
 doc.text("Amount", 115, 64);
   doc.text(
-  `Rs. ${alert.totalAmount.toLocaleString("en-IN")}`,
+  `Rs. ${Number(alert.totalAmount ?? 0).toLocaleString("en-IN")}`,
   155,
   64
 );
@@ -180,5 +180,5 @@ alert.reason
     { align: "right" }
   );
 
-  doc.save(`Fraud_Report_${alert.orderId}.pdf`);
+  doc.save(`Fraud_Report_${String(alert.orderId ?? "unknown").replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf`);
 };

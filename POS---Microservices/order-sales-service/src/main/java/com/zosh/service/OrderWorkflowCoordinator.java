@@ -10,8 +10,13 @@ import com.zosh.modal.Order;
 import com.zosh.modal.OrderWorkflow;
 import com.zosh.modal.OrderWorkflowStep;
 import com.zosh.modal.Refund;
+import com.zosh.modal.OrderItem;
+import com.zosh.modal.RefundItem;
+import com.zosh.payload.dto.RefundItemDTO;
 import com.zosh.repository.OrderRepository;
 import com.zosh.repository.RefundRepository;
+import com.zosh.repository.RefundItemRepository;
+import com.zosh.service.LoyaltyPointsService;
 import com.zosh.repository.OrderWorkflowRepository;
 import com.zosh.repository.OrderWorkflowStepRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -25,6 +30,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Set;
+import java.math.RoundingMode;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +43,8 @@ public class OrderWorkflowCoordinator {
     private final OrderWorkflowRepository workflowRepository;
     private final OrderWorkflowStepRepository stepRepository;
     private final RefundRepository refundRepository;
+    private final RefundItemRepository refundItemRepository;
+    private final LoyaltyPointsService loyaltyPointsService;
 
     @Transactional
     public Long startPending(Order order, Map<Long, Integer> requestedStock) {
@@ -162,14 +174,7 @@ public class OrderWorkflowCoordinator {
         Order order = orderRepository.findById(workflow.getOrder().getId())
                 .orElseThrow(() -> new EntityNotFoundException("Order not found"));
         if (workflow.getState() != OrderWorkflowState.COMPLETED) {
-            Customer customer = order.getCustomer();
-            if (customer != null) {
-                int current = customer.getLoyaltyPoints() == null ? 0 : customer.getLoyaltyPoints();
-                int earned = order.getTotalAmount() == null || order.getTotalAmount().signum() <= 0
-                        ? 0 : order.getTotalAmount().divideToIntegralValue(BigDecimal.valueOf(100))
-                        .min(BigDecimal.valueOf(Integer.MAX_VALUE)).intValue();
-                customer.setLoyaltyPoints((int) Math.min(Integer.MAX_VALUE, (long) current + earned));
-            }
+            loyaltyPointsService.creditForOrder(order);
             order.setStatus(OrderStatus.COMPLETED);
             workflow.setState(OrderWorkflowState.COMPLETED);
             orderRepository.save(order);
@@ -212,17 +217,63 @@ public class OrderWorkflowCoordinator {
 
     @Transactional
     public Refund startPendingRefund(Long orderId, Refund candidate) {
+        return startPendingRefund(orderId, candidate, null);
+    }
+
+    @Transactional
+    public Refund startPendingRefund(Long orderId, Refund candidate, List<RefundItemDTO> requestedItems) {
         Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found"));
-        Refund existing = refundRepository.findFirstByOrderIdOrderByIdAsc(orderId).orElse(null);
-        if (existing != null) {
-            if (candidate.getIdempotencyKey() != null
-                    && candidate.getIdempotencyKey().equals(existing.getIdempotencyKey())) return existing;
-            throw new IllegalStateException("This order already has a refund record");
+        Refund duplicate = candidate.getIdempotencyKey() == null ? null
+                : refundRepository.findByIdempotencyKey(candidate.getIdempotencyKey()).orElse(null);
+        if (duplicate != null) {
+            if (!orderId.equals(duplicate.getOrder().getId())) {
+                throw new IllegalStateException("The idempotency key belongs to a different order");
+            }
+            return duplicate;
         }
-        if (order.getStatus() != OrderStatus.COMPLETED) {
-            throw new IllegalStateException("Only a completed order can be refunded");
+        if (order.getStatus() != OrderStatus.COMPLETED && order.getStatus() != OrderStatus.PARTIALLY_REFUNDED) {
+            throw new IllegalStateException("This order is not currently eligible for a refund");
         }
+        order = orderRepository.findWithItemsAndCustomerById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+        List<Refund> priorRefunds = refundRepository.findByOrderIdOrderByIdAsc(orderId);
+        if (priorRefunds.stream().anyMatch(prior -> prior.getItems() == null || prior.getItems().isEmpty())) {
+            throw new IllegalStateException("An earlier refund has no item audit; manual reconciliation is required");
+        }
+        List<OrderItem> orderItems = order.getItems() == null ? List.of() : order.getItems().stream()
+                .sorted(Comparator.comparing(OrderItem::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        if (orderItems.isEmpty()) throw new IllegalStateException("Order has no refundable items");
+        Map<Long, Integer> requested = normalizeRequestedQuantities(orderItems, requestedItems);
+        Map<Long, BigDecimal> allocations = calculateFullItemAllocations(order, orderItems);
+        BigDecimal totalRefund = BigDecimal.ZERO.setScale(2);
+        for (OrderItem item : orderItems) {
+            Integer quantity = requested.get(item.getId());
+            if (quantity == null) continue;
+            int purchased = item.getQuantity() == null ? 0 : item.getQuantity();
+            int alreadyReserved = reservedQuantity(item.getId());
+            int remaining = purchased - alreadyReserved;
+            if (quantity <= 0 || quantity > remaining) {
+                throw new IllegalArgumentException("Refund quantity exceeds the remaining quantity for " + item.getProductName());
+            }
+            BigDecimal fullAllocation = allocations.get(item.getId());
+            BigDecimal lineAmount = proportional(fullAllocation, alreadyReserved + quantity, purchased)
+                    .subtract(proportional(fullAllocation, alreadyReserved, purchased))
+                    .setScale(2, RoundingMode.HALF_UP);
+            if (lineAmount.signum() <= 0) throw new IllegalArgumentException("Calculated refund amount must be positive");
+            candidate.addItem(RefundItem.builder().orderItem(item).productId(item.getProductId())
+                    .quantity(quantity).amount(lineAmount).build());
+            totalRefund = totalRefund.add(lineAmount).setScale(2, RoundingMode.HALF_UP);
+        }
+        if (candidate.getItems().isEmpty()) throw new IllegalArgumentException("Select at least one refundable item");
+        BigDecimal confirmedAmount = refundRepository.sumAmountByOrderIdAndPaymentRefundStatus(
+                orderId, PaymentRefundStatus.SUCCEEDED);
+        if (confirmedAmount == null) confirmedAmount = BigDecimal.ZERO;
+        if (totalRefund.add(confirmedAmount).compareTo(order.getTotalAmount()) > 0) {
+            throw new IllegalArgumentException("Refund amount exceeds the order's remaining refundable balance");
+        }
+        candidate.setAmount(totalRefund);
         order.setStatus(OrderStatus.REFUNDING);
         candidate.setOrder(order);
         candidate.setProcessingStatus("PENDING");
@@ -234,6 +285,11 @@ public class OrderWorkflowCoordinator {
     public Refund getRefundForProcessing(Long refundId) {
         return refundRepository.findWithOrderItemsById(refundId)
                 .orElseThrow(() -> new EntityNotFoundException("Refund not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public Integer getRefundedQuantity(Long orderId) {
+        return refundItemRepository.sumReservedQuantityByOrderId(orderId);
     }
 
     @Transactional
@@ -261,6 +317,74 @@ public class OrderWorkflowCoordinator {
         order.setStatus(OrderStatus.REFUND_FAILED);
         refundRepository.save(refund);
         orderRepository.save(order);
+    }
+
+    private Map<Long, Integer> normalizeRequestedQuantities(List<OrderItem> items, List<RefundItemDTO> request) {
+        Map<Long, Integer> requested = new HashMap<>();
+        if (request == null || request.isEmpty()) {
+            for (OrderItem item : items) {
+                int remaining = (item.getQuantity() == null ? 0 : item.getQuantity()) - reservedQuantity(item.getId());
+                if (remaining > 0) requested.put(item.getId(), remaining);
+            }
+            return requested;
+        }
+        Set<Long> validIds = items.stream().map(OrderItem::getId).collect(Collectors.toSet());
+        for (RefundItemDTO line : request) {
+            if (line == null || line.getOrderItemId() == null || line.getQuantity() == null
+                    || !validIds.contains(line.getOrderItemId())
+                    || requested.putIfAbsent(line.getOrderItemId(), line.getQuantity()) != null) {
+                throw new IllegalArgumentException("Refund items must identify unique items from this order");
+            }
+        }
+        return requested;
+    }
+
+    private int reservedQuantity(Long orderItemId) {
+        Integer quantity = refundItemRepository.sumReservedQuantityByOrderItemId(orderItemId);
+        return quantity == null ? 0 : quantity;
+    }
+
+    private Map<Long, BigDecimal> calculateFullItemAllocations(Order order, List<OrderItem> items) {
+        BigDecimal basisTotal = items.stream().map(this::itemBasis).reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (basisTotal.signum() <= 0) throw new IllegalArgumentException("Order has no refundable value");
+        BigDecimal subtotal = order.getSubtotalAmount() == null ? basisTotal : order.getSubtotalAmount();
+        BigDecimal discount = order.getDiscountAmount() == null ? BigDecimal.ZERO : order.getDiscountAmount();
+        BigDecimal tax = order.getTaxAmount() == null ? BigDecimal.ZERO : order.getTaxAmount();
+        BigDecimal total = order.getTotalAmount();
+        if (total == null || total.signum() <= 0) throw new IllegalArgumentException("Order total is not refundable");
+        boolean hasCompleteBreakdown = subtotal.signum() > 0 && subtotal.subtract(discount).add(tax)
+                .setScale(2, RoundingMode.HALF_UP).compareTo(total.setScale(2, RoundingMode.HALF_UP)) == 0;
+        Map<Long, BigDecimal> result = new HashMap<>();
+        BigDecimal assigned = BigDecimal.ZERO.setScale(2);
+        for (int i = 0; i < items.size(); i++) {
+            OrderItem item = items.get(i);
+            BigDecimal basis = itemBasis(item);
+            BigDecimal allocation;
+            if (i == items.size() - 1) {
+                allocation = total.subtract(assigned).setScale(2, RoundingMode.HALF_UP);
+            } else if (hasCompleteBreakdown) {
+                BigDecimal discountShare = discount.multiply(basis).divide(subtotal, 2, RoundingMode.HALF_UP);
+                BigDecimal taxShare = tax.multiply(basis).divide(subtotal, 2, RoundingMode.HALF_UP);
+                allocation = basis.subtract(discountShare).add(taxShare).setScale(2, RoundingMode.HALF_UP);
+            } else {
+                allocation = total.multiply(basis).divide(basisTotal, 2, RoundingMode.HALF_UP);
+            }
+            result.put(item.getId(), allocation);
+            assigned = assigned.add(allocation).setScale(2, RoundingMode.HALF_UP);
+        }
+        return result;
+    }
+
+    private BigDecimal itemBasis(OrderItem item) {
+        if (item.getPrice() != null) return item.getPrice();
+        if (item.getProductPrice() == null || item.getQuantity() == null) return BigDecimal.ZERO;
+        return item.getProductPrice().multiply(BigDecimal.valueOf(item.getQuantity())).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal proportional(BigDecimal total, int quantity, int purchased) {
+        if (quantity <= 0 || purchased <= 0) return BigDecimal.ZERO.setScale(2);
+        if (quantity >= purchased) return total.setScale(2, RoundingMode.HALF_UP);
+        return total.multiply(BigDecimal.valueOf(quantity)).divide(BigDecimal.valueOf(purchased), 2, RoundingMode.HALF_UP);
     }
 
     private OrderWorkflowStep getStep(Long stepId) {

@@ -24,6 +24,15 @@ import { Printer } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { buildCsv, downloadCsvFile } from "@/utils/csvExport";
 
+const formatStatus = (status) => {
+  const normalized = String(status ?? "UNKNOWN").toUpperCase();
+  const labels = {
+    PARTIALLY_REFUNDED: "Partially Refunded",
+    REFUNDED: "Refunded",
+    REFUND_PENDING_REVIEW: "Refund Pending Review",
+  };
+  return labels[normalized] ?? normalized.replaceAll("_", " ");
+};
 
 
 export default function Transactions() {
@@ -51,11 +60,14 @@ export default function Transactions() {
   const totalIncome = orders
     .reduce((sum, t) => {
       const amount = getNumericAmount(t.totalAmount);
-      return amount > 0 ? sum + amount : sum;
+      const status = String(t.status ?? "").toUpperCase();
+      return amount > 0 && !["FAILED", "CANCELLED", "CANCELLING"].includes(status) ? sum + amount : sum;
     }, 0);
 
   const refundExpenses = refundsByBranch.reduce(
-    (sum, refund) => sum + Math.abs(getNumericAmount(refund.amount)),
+    (sum, refund) => String(refund.paymentRefundStatus ?? "").toUpperCase() === "SUCCEEDED"
+      ? sum + Math.abs(getNumericAmount(refund.amount))
+      : sum,
     0
   );
 
@@ -80,7 +92,7 @@ export default function Transactions() {
       createdAt: t.createdAt ?? "",
       cashierId: t.cashierId ?? "",
       customerName: t.customer?.fullName ?? "",
-      amount:
+      amount: ["FAILED", "CANCELLED", "CANCELLING"].includes(String(t.status ?? "").toUpperCase()) ? 0 :
         typeof t.totalAmount === "number"
           ? t.totalAmount
           : Number(t.totalAmount ?? 0),
@@ -240,6 +252,16 @@ export default function Transactions() {
           {selectedTransaction && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
+                {(() => {
+                  const status = String(selectedTransaction.status ?? "UNKNOWN").toUpperCase();
+                  const failed = ["FAILED", "CANCELLED", "CANCELLING"].includes(status);
+                  const refunded = status === "REFUNDED";
+                  const partialRefund = status === "PARTIALLY_REFUNDED";
+                  const pendingRefund = status === "REFUND_PENDING_REVIEW";
+                  const amount = getNumericAmount(selectedTransaction.totalAmount);
+                  return (
+                    <>
+                    <div className="col-span-2 grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Cashier</p>
                   <p>{selectedTransaction.cashierId}</p>
@@ -265,15 +287,15 @@ export default function Transactions() {
                           : "bg-blue-100 text-blue-800"
                       }`}
                     >
-                      {selectedTransaction.status}
+                      {formatStatus(selectedTransaction.status)}
                     </span>
                   </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Status</p>
                   <p>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      {selectedTransaction.status}
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${failed ? "bg-red-100 text-red-800" : refunded ? "bg-emerald-100 text-emerald-800" : partialRefund || pendingRefund ? "bg-amber-100 text-amber-800" : status === "COMPLETED" ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-800"}`}>
+                      {formatStatus(selectedTransaction.status)}
                     </span>
                   </p>
                 </div>
@@ -286,15 +308,9 @@ export default function Transactions() {
                 <div>
                   <p className="text-sm font-medium text-gray-500">Amount</p>
                   <p
-                    className={`font-bold ${
-                      selectedTransaction.totalAmount > 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
+                    className={`font-bold ${failed || refunded ? "text-red-700" : "text-green-700"}`}
                   >
-                    {selectedTransaction.totalAmount > 0
-                      ? `+₹${selectedTransaction.totalAmount.toFixed(2)}`
-                      : `-₹${Math.abs(selectedTransaction.totalAmount).toFixed(2)}`}
+                    {failed ? `₹${amount.toFixed(2)} attempted` : `${refunded ? "−" : "+"}₹${Math.abs(amount).toFixed(2)}`}
                   </p>
                 </div>
               </div>
@@ -302,6 +318,10 @@ export default function Transactions() {
               <div>
                 <p className="text-sm font-medium text-gray-500">Customer Name</p>
                 <p>{selectedTransaction.customer?.fullName}</p>
+              </div>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Additional details based on transaction type */}

@@ -34,9 +34,6 @@ def _decode_jwt_segment(segment: str) -> bytes:
 
 
 def _authorized_claims(authorization: str | None) -> dict:
-    secret = os.getenv("JWT_SECRET", "")
-    if not secret:
-        raise HTTPException(status_code=503, detail="ML authentication is not configured")
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Bearer authentication is required")
     token_parts = authorization[7:].split(".")
@@ -47,6 +44,10 @@ def _authorized_claims(authorization: str | None) -> dict:
         claims = json.loads(_decode_jwt_segment(token_parts[1]))
         if header.get("alg") != "HS256":
             raise ValueError("Unsupported JWT algorithm")
+        is_internal_service = claims.get("iss") == "inventa-pos-internal"
+        secret = os.getenv("INTERNAL_SERVICE_JWT_SECRET", os.getenv("JWT_SECRET", "")) if is_internal_service else os.getenv("JWT_SECRET", "")
+        if not secret:
+            raise HTTPException(status_code=503, detail="ML authentication is not configured")
         signing_input = f"{token_parts[0]}.{token_parts[1]}".encode("ascii")
         expected = hmac.new(secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
         supplied = _decode_jwt_segment(token_parts[2])
@@ -63,7 +64,13 @@ def _authorized_claims(authorization: str | None) -> dict:
             role_set = {role.strip() for role in authorities.split(",") if role.strip()}
         else:
             role_set = set()
-        if not role_set.intersection(ALLOWED_ML_ROLES):
+        valid_internal_service = (
+            is_internal_service
+            and claims.get("sub") == "order-sales-service"
+            and claims.get("email") == "order-sales-service"
+            and role_set == {"ROLE_ORDER_SERVICE"}
+        )
+        if not valid_internal_service and not role_set.intersection(ALLOWED_ML_ROLES):
             raise HTTPException(status_code=403, detail="This role cannot access ML inference")
         return claims
     except HTTPException:
@@ -128,17 +135,23 @@ class InferenceRequestGuard:
         if path.startswith("/predict-"):
             host = scope.get("client")
             client = host[0] if host else "unknown"
+            authorization = headers.get(b"authorization", b"")
+            # Requests arrive through the API gateway, so the remote address is
+            # shared by every browser. Keep quotas isolated per bearer token and
+            # model endpoint without retaining the credential itself.
+            token_fingerprint = hashlib.sha256(authorization).hexdigest() if authorization else "anonymous"
+            quota_key = f"{client}:{path}:{token_fingerprint}"
             now = int(time.time() // 60)
             with self._lock:
                 if len(self._hits) > 10000:
                     self._hits = {key: value for key, value in self._hits.items() if value[0] >= now - 1}
-                window, count = self._hits.get(client, (now, 0))
+                window, count = self._hits.get(quota_key, (now, 0))
                 if window != now:
                     window, count = now, 0
                 if count >= REQUESTS_PER_MINUTE:
                     await self._reject(send, 429, "Inference request limit exceeded")
                     return
-                self._hits[client] = (window, count + 1)
+                self._hits[quota_key] = (window, count + 1)
 
         await self.app(scope, replay_body, send)
 
@@ -233,6 +246,12 @@ class DemandRequest(BaseModel):
             raise ValueError("dailyDemand values must be finite")
         return daily_demand
 
+
+def fallback_fraud_score(total_amount: float, discount_percent: float) -> tuple[int, float]:
+    """Conservative fallback aligned with the branch discount policy ceiling."""
+    probability = 0.85 if total_amount > 10000 and discount_percent >= 15 else 0.05
+    return (1 if probability > 0.5 else 0, probability)
+
 @app.get("/")
 @app.get("/health")
 @app.get("/actuator/health")
@@ -260,9 +279,8 @@ def predict(request: FraudRequest):
         prediction = model.predict(df)[0]
         probability = model.predict_proba(df)[0][1]
     else:
-        # Heuristic fallback if model not loaded
-        probability = 0.85 if request.totalAmount > 10000 and request.discountPercent > 30 else 0.05
-        prediction = 1 if probability > 0.5 else 0
+        # Heuristic fallback if model not loaded.
+        prediction, probability = fallback_fraud_score(request.totalAmount, request.discountPercent)
 
     return {
         "prediction": int(prediction),

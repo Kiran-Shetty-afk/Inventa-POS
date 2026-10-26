@@ -19,6 +19,7 @@ public class CustomerDTO {
     private Long storeId;
     private Long branchId;
     private Integer loyaltyPoints;
+    private Integer loyaltyPointsDebt;
     private String loyaltyStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

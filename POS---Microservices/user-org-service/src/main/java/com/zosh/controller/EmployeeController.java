@@ -58,7 +58,7 @@ public class EmployeeController {
     }
 
     @GetMapping("/store/{storeId}")
-    @PreAuthorize("hasAnyAuthority('ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STORE_ADMIN', 'ROLE_STORE_MANAGER')")
     public ResponseEntity<List<UserDTO>> findStoreEmployees(@PathVariable Long storeId) throws Exception {
         List<UserDTO> employees = employeeService.findStoreEmployees(storeId, null);
         return new ResponseEntity<>(employees, HttpStatus.OK);

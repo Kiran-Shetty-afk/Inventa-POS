@@ -14,6 +14,8 @@ const ReturnReceiptDialog = ({
   showReceiptDialog,
   setShowReceiptDialog,
   selectedOrder,
+  refund,
+  onConfirmCashRefund,
   onPrintAndComplete,
   // returnItems,
   // calculateRefundAmount,
@@ -52,7 +54,7 @@ const ReturnReceiptDialog = ({
           </p>
           <p className="text-sm">
             <span className="font-medium">Customer:</span>{" "}
-            {selectedOrder?.customer.fullName}
+            {selectedOrder?.customer?.fullName || "Walk-in Customer"}
           </p>
         </div>
         <Table className="w-full text-sm mb-4">
@@ -65,16 +67,12 @@ const ReturnReceiptDialog = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {selectedOrder?.items
-              
-              .map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="py-2">{item.product?.name.slice(0, 20)+"..."}</TableCell>
+            {(refund?.items || []).map((item) => (
+                <TableRow key={item.orderItemId}>
+                  <TableCell className="py-2">{item.productName || "Product"}</TableCell>
                   <TableCell className="text-center py-2">{item.quantity}</TableCell>
-                  <TableCell className="text-right py-2">₹{item.product?.sellingPrice?.toFixed(2)}</TableCell>
-                  <TableCell className="text-right py-2">
-                    ₹{(item.product?.sellingPrice * item.quantity)?.toFixed(2)}
-                  </TableCell>
+                  <TableCell className="text-right py-2">—</TableCell>
+                  <TableCell className="text-right py-2">₹{Number(item.amount || 0).toFixed(2)}</TableCell>
                 </TableRow>
               ))}
           </TableBody>
@@ -82,20 +80,20 @@ const ReturnReceiptDialog = ({
         <div className="space-y-1 text-sm mb-4">
           <div className="flex justify-between font-bold border-t pt-1">
             <span>Amount for financial review</span>
-            <span>₹{selectedOrder.totalAmount}</span>
+            <span>₹{Number(refund?.amount || 0).toFixed(2)}</span>
           </div>
           <div className="flex justify-between pt-1">
             <span>Recorded payment method</span>
             <span>
-              {selectedOrder.paymentType}
+              {refund?.paymentType || selectedOrder.paymentType}
             </span>
           </div>
           <p className="pt-2 text-amber-700">
-            Stock restoration is separate from a money refund. No payment refund was issued by this POS.
+            Stock status: {refund?.processingStatus || "PENDING"}. Payment status: {refund?.paymentRefundStatus || "NOT_ISSUED"}. External payments are not transferred by this POS.
           </p>
           <div className="flex justify-between pt-1">
             <span>Return Reason</span>
-            {/* <span>{returnReason === "Other" ? otherReason : returnReason}</span> */}
+            <span>{refund?.reason || "—"}</span>
           </div>
         </div>
         <div className="text-center text-sm mt-6">
@@ -107,6 +105,11 @@ const ReturnReceiptDialog = ({
         </div>
       </div>
       <DialogFooter>
+        {refund?.paymentType === "CASH" && refund?.paymentRefundStatus === "MANUAL_REVIEW_REQUIRED" && (
+          <Button onClick={onConfirmCashRefund} className="bg-emerald-700 hover:bg-emerald-800">
+            Confirm cash handed to customer
+          </Button>
+        )}
         <Button variant="outline" className="gap-2" onClick={onPrintAndComplete}>
           <PrinterIcon className="h-4 w-4" />
           Print & Complete

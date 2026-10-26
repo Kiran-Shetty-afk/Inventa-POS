@@ -8,6 +8,7 @@ import com.zosh.domain.PaymentType;
 import com.zosh.modal.Order;
 import com.zosh.modal.OrderItem;
 import com.zosh.modal.Refund;
+import com.zosh.modal.RefundItem;
 import com.zosh.payload.dto.CurrentUserDTO;
 import com.zosh.payload.dto.RefundDTO;
 import com.zosh.payload.dto.StockOperationClientRequest;
@@ -101,26 +102,35 @@ class RefundServiceImplTest {
         when(userOrgClient.canCurrentUserAccessBranch(3L, null, "ORDER_CREATE")).thenReturn(true);
         when(userOrgClient.getCurrentUserProfile())
                 .thenReturn(new CurrentUserDTO(42L, "cashier@example.test", "Cashier", 8L, 3L));
-        when(refundRepository.findFirstByOrderIdOrderByIdAsc(30L)).thenReturn(Optional.empty());
+        String key = "stable-key-123";
+        when(refundRepository.findByIdempotencyKey("refund:" + key)).thenReturn(Optional.empty());
         when(tokenProvider.authorizationHeader()).thenReturn("Bearer internal");
 
-        Refund pending = Refund.builder().id(45L).order(order).branchId(3L).reason("Damaged product")
-                .paymentType(PaymentType.CARD).processingStatus("PENDING")
-                .paymentRefundStatus(PaymentRefundStatus.NOT_ISSUED).build();
-        Refund completed = Refund.builder().id(45L).order(order).branchId(3L).reason("Damaged product")
-                .paymentType(PaymentType.CARD).processingStatus("COMPLETED")
-                .paymentRefundStatus(PaymentRefundStatus.MANUAL_REVIEW_REQUIRED).build();
-        when(coordinator.startPendingRefund(eq(30L), any(Refund.class))).thenReturn(pending);
+        Refund pending = refundWithItems(item(7L, 1));
+        pending.setId(45L);
+        pending.setOrder(order);
+        pending.setReason("Damaged product");
+        pending.setPaymentType(PaymentType.CARD);
+        Refund completed = refundWithItems(item(7L, 1));
+        completed.setId(45L);
+        completed.setOrder(order);
+        completed.setReason("Damaged product");
+        completed.setPaymentType(PaymentType.CARD);
+        completed.setProcessingStatus("COMPLETED");
+        completed.setPaymentRefundStatus(PaymentRefundStatus.MANUAL_REVIEW_REQUIRED);
+        when(coordinator.startPendingRefund(eq(30L), any(Refund.class), any())).thenReturn(pending);
         when(coordinator.getRefundForProcessing(45L)).thenReturn(pending, completed);
         when(inventoryClient.applyStockOperation(any(), eq("Bearer internal")))
                 .thenReturn(response("refund:45:restore:7", 7L, 1));
 
         Refund result = service.createRefund(RefundDTO.builder().orderId(30L)
-                .reason("Damaged product").paymentType(PaymentType.CASH).build());
+                .reason("Damaged product").idempotencyKey(key)
+                .items(List.of(com.zosh.payload.dto.RefundItemDTO.builder()
+                        .orderItemId(70L).quantity(1).build())).paymentType(PaymentType.CASH).build());
 
         ArgumentCaptor<Refund> candidate = ArgumentCaptor.forClass(Refund.class);
-        verify(coordinator).startPendingRefund(eq(30L), candidate.capture());
-        org.junit.jupiter.api.Assertions.assertEquals("order-refund:30", candidate.getValue().getIdempotencyKey());
+        verify(coordinator).startPendingRefund(eq(30L), candidate.capture(), any());
+        org.junit.jupiter.api.Assertions.assertEquals("refund:" + key, candidate.getValue().getIdempotencyKey());
         org.junit.jupiter.api.Assertions.assertEquals(PaymentType.CARD, candidate.getValue().getPaymentType());
         org.junit.jupiter.api.Assertions.assertEquals(PaymentRefundStatus.NOT_ISSUED,
                 candidate.getValue().getPaymentRefundStatus());
@@ -141,13 +151,15 @@ class RefundServiceImplTest {
         when(userOrgClient.canCurrentUserAccessBranch(3L, null, "ORDER_CREATE")).thenReturn(true);
         when(userOrgClient.getCurrentUserProfile())
                 .thenReturn(new CurrentUserDTO(42L, "cashier@example.test", "Cashier", 8L, 3L));
-        when(refundRepository.findFirstByOrderIdOrderByIdAsc(30L)).thenReturn(Optional.of(existing));
+        String key = "duplicate-key-123";
+        existing.setIdempotencyKey("refund:" + key);
+        when(refundRepository.findByIdempotencyKey("refund:" + key)).thenReturn(Optional.of(existing));
 
         Refund result = service.createRefund(RefundDTO.builder().orderId(30L)
-                .reason("Damaged product").build());
+                .reason("Damaged product").idempotencyKey(key).build());
 
         org.junit.jupiter.api.Assertions.assertSame(existing, result);
-        verify(coordinator, never()).startPendingRefund(any(), any());
+        verify(coordinator, never()).startPendingRefund(any(), any(), any());
         verify(inventoryClient, never()).applyStockOperation(any(), any());
     }
 
@@ -162,14 +174,17 @@ class RefundServiceImplTest {
 
         assertThrows(org.springframework.security.access.AccessDeniedException.class,
                 () -> service.createRefund(RefundDTO.builder().orderId(30L)
-                        .reason("Damaged product").build()));
-        verify(coordinator, never()).startPendingRefund(any(), any());
+                        .reason("Damaged product").idempotencyKey("valid-key-123").build()));
+        verify(coordinator, never()).startPendingRefund(any(), any(), any());
     }
 
     private Refund refundWithItems(OrderItem... items) {
         Order order = Order.builder().id(30L).branchId(3L).status(OrderStatus.REFUNDING)
                 .items(List.of(items)).build();
-        return Refund.builder().id(20L).order(order).branchId(3L)
+        java.util.List<RefundItem> refundItems = java.util.Arrays.stream(items).map(item ->
+                RefundItem.builder().productId(item.getProductId()).quantity(item.getQuantity())
+                        .amount(new BigDecimal("12.50")).orderItem(item).build()).toList();
+        return Refund.builder().id(20L).order(order).branchId(3L).items(refundItems)
                 .amount(new BigDecimal("12.50")).paymentType(PaymentType.CASH)
                 .processingStatus("PENDING").build();
     }

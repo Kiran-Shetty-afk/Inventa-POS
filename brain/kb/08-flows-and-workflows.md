@@ -1,6 +1,6 @@
 # Flows and workflows
 
-Last updated: 2026-10-24
+Last updated: 2026-10-26
 Status: reviewed
 
 ## Confirmed facts
@@ -12,6 +12,7 @@ Status: reviewed
 - Branch employee creation validates branch assignment and session presence, then displays request outcomes and refreshes the employee list.
 - Branch Reports shows demand forecasts and a suggested quantity; after manager confirmation, Inventory/Catalog updates branch on-hand stock directly. This action is not a supplier purchase order.
 - Fraud scoring is requested during order creation. A flagged order is exposed to the assigned Branch Manager, who can resolve the alert without deleting the order.
+- A refund records item-level quantities, restores inventory idempotently, and reports full versus partial refund state separately from whether money was actually returned. Loyalty adjustments are persisted once in the ledger.
 - Super Admin profile and password forms call User/Org persistence endpoints. Password changes require the current password; non-persisted settings are omitted.
 
 ## Important files inspected

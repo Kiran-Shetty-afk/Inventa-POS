@@ -107,6 +107,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
+    @Transactional
     public User updateEmployee(Long employeeId, User employeeDetails) throws Exception {
         User existingEmployee = findEmployeeById(employeeId);
         User currentUser = userService.getCurrentUser();
@@ -131,16 +132,32 @@ public class EmployeeServiceImpl implements EmployeeService {
         // employees in the store or branch they are authorized to manage.
         if (employeeDetails.getVerified() != null) {
             existingEmployee.setVerified(employeeDetails.getVerified());
+            if (Boolean.FALSE.equals(employeeDetails.getVerified())) {
+                clearBranchManagerAssignment(existingEmployee);
+            }
         }
 
         return userRepository.save(existingEmployee);
     }
 
     @Override
+    @Transactional
     public void deleteEmployee(Long employeeId) throws Exception {
         User employee = findEmployeeById(employeeId);
         requireEmployeeAccess(userService.getCurrentUser(), employee);
+        clearBranchManagerAssignment(employee);
         userRepository.delete(employee);
+    }
+
+    private void clearBranchManagerAssignment(User employee) {
+        if (employee == null || employee.getRole() != UserRole.ROLE_BRANCH_MANAGER
+                || employee.getBranch() == null) return;
+        Branch branch = employee.getBranch();
+        if (branch.getManager() != null
+                && java.util.Objects.equals(branch.getManager().getId(), employee.getId())) {
+            branch.setManager(null);
+            branchRepository.save(branch);
+        }
     }
 
     @Override
