@@ -439,7 +439,7 @@ Use a password manager or local cryptographically secure generator for long, uni
 | CORS_ALLOWED_ORIGINS | Optional; localhost origins | Exact comma-separated browser origins |
 | LOCAL_SUPER_ADMIN_EMAIL, LOCAL_SUPER_ADMIN_PASSWORD | Optional | Local bootstrap only on empty user DB |
 | ML_MAX_REQUEST_BYTES | Optional; 262144 | ML body limit |
-| ML_REQUESTS_PER_MINUTE | Optional; 60 | Per-process ML quota |
+| ML_REQUESTS_PER_MINUTE | Optional; 60 | Per bearer token, per inference endpoint and ML process |
 | ORDER_TAX_RATE_PERCENT | Optional; 18 | Checkout tax-rate setting |
 | DB_SSL_MODE | Production profile | Production datasource SSL mode; profile default VERIFY_IDENTITY |
 
