@@ -1,5 +1,10 @@
 # Brain Changelog
 
+## v2026.10.26-demo-seed-expansion
+- Expanded the existing repeatable demo fixture to 500 seeded orders over 90 days, with 75 customers, 40 products, itemized orders, daily cashier shift data, and 28 refunds.
+- Added nine open fraud-alert orders using positive results observed from the authenticated running ML model, and documented that current model inputs do not include repeat-purchase velocity.
+- Kept the existing authentication users, stores, and branches; removed the seed runner's password echo.
+
 ## v2026.10.26-pos-workflow-remediation
 - Hardened partial refunds with item-level allocations, idempotent stock restoration, and explicit payment refund review states; added persistent loyalty transactions.
 - Tightened branch-manager assignment and branch access behavior, and improved cashier/customer, refund, invoice, transaction, and administration workflows.

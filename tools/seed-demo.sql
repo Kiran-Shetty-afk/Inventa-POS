@@ -1,7 +1,31 @@
 -- Development/demo data only. Run through tools/seed-demo.ps1.
--- Stable demo IDs are 1001-1099; records outside this range are untouched.
+-- Stable base demo IDs are 1001-1099. Expanded fixtures use reserved ranges
+-- 200001+ (customers/products), 300001+ (inventory), and 400001+ (sales).
 
 SET FOREIGN_KEY_CHECKS = 0;
+
+DROP TEMPORARY TABLE IF EXISTS demo_seed_digits_hundreds;
+DROP TEMPORARY TABLE IF EXISTS demo_seed_digits_tens;
+DROP TEMPORARY TABLE IF EXISTS demo_seed_digits_ones;
+CREATE TEMPORARY TABLE demo_seed_digits_hundreds (n INT NOT NULL PRIMARY KEY);
+CREATE TEMPORARY TABLE demo_seed_digits_tens (n INT NOT NULL PRIMARY KEY);
+CREATE TEMPORARY TABLE demo_seed_digits_ones (n INT NOT NULL PRIMARY KEY);
+INSERT INTO demo_seed_digits_hundreds (n)
+VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9);
+INSERT INTO demo_seed_digits_tens (n)
+VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9);
+INSERT INTO demo_seed_digits_ones (n)
+VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9);
+
+DROP TEMPORARY TABLE IF EXISTS demo_seed_numbers;
+CREATE TEMPORARY TABLE demo_seed_numbers (n INT NOT NULL PRIMARY KEY);
+INSERT INTO demo_seed_numbers (n)
+SELECT hundreds.n * 100 + tens.n * 10 + ones.n
+FROM demo_seed_digits_hundreds hundreds
+CROSS JOIN demo_seed_digits_tens tens
+CROSS JOIN demo_seed_digits_ones ones;
+
+START TRANSACTION;
 
 USE userdb;
 
@@ -416,6 +440,382 @@ ON DUPLICATE KEY UPDATE
     reservation_state = VALUES(reservation_state),
     restoration_state = VALUES(restoration_state);
 
+-- Expand the same demo fixture without creating authentication users, stores,
+-- or branches. All foreign IDs below point to the existing seeded records.
+USE inventorydb;
+
+INSERT INTO products (
+    id, brand, created_at, description, image, mrp, name, selling_price,
+    sku, store_id, updated_at, category_id
+)
+SELECT
+    200000 + n,
+    'Demo Assortment',
+    NOW(6),
+    CONCAT('Deterministic demo assortment product ', LPAD(n, 2, '0')),
+    CONCAT('https://picsum.photos/seed/demo-assortment-', LPAD(n, 2, '0'), '/640/480'),
+    ROUND(price.selling_price * 1.20, 2),
+    CONCAT('Demo Assortment ', LPAD(n, 2, '0')),
+    price.selling_price,
+    CONCAT('DEMO-ASSORTMENT-', LPAD(n, 3, '0')),
+    1001,
+    NOW(6),
+    1001 + MOD(n - 1, 5)
+FROM (
+    SELECT n,
+        CASE n
+            WHEN 1 THEN 350.00 WHEN 2 THEN 400.00 WHEN 3 THEN 450.00
+            WHEN 4 THEN 475.00 WHEN 5 THEN 525.00 WHEN 6 THEN 550.00
+            WHEN 7 THEN 600.00 WHEN 8 THEN 650.00
+            WHEN 24 THEN 899.00 WHEN 25 THEN 1299.00
+            ELSE ROUND(80 + MOD(n * 47, 671), 2)
+        END AS selling_price
+    FROM userdb.demo_seed_numbers
+    WHERE n BETWEEN 1 AND 25
+) price
+ON DUPLICATE KEY UPDATE
+    brand = VALUES(brand),
+    description = VALUES(description),
+    image = VALUES(image),
+    mrp = VALUES(mrp),
+    name = VALUES(name),
+    selling_price = VALUES(selling_price),
+    store_id = VALUES(store_id),
+    category_id = VALUES(category_id);
+
+DROP TEMPORARY TABLE IF EXISTS demo_seed_branch_slots;
+CREATE TEMPORARY TABLE demo_seed_branch_slots AS
+SELECT n FROM userdb.demo_seed_numbers WHERE n BETWEEN 1 AND 3;
+DROP TEMPORARY TABLE IF EXISTS demo_seed_product_slots;
+CREATE TEMPORARY TABLE demo_seed_product_slots AS
+SELECT n FROM userdb.demo_seed_numbers WHERE n BETWEEN 1 AND 25;
+
+INSERT INTO inventories (id, branch_id, last_updated, quantity, product_id)
+SELECT
+    300000 + ((branch_slot.n - 1) * 25) + product_slot.n,
+    1000 + branch_slot.n,
+    NOW(6),
+    25 + MOD((product_slot.n * 13) + (branch_slot.n * 17), 96),
+    200000 + product_slot.n
+FROM demo_seed_branch_slots branch_slot
+CROSS JOIN demo_seed_product_slots product_slot
+WHERE 1 = 1
+ON DUPLICATE KEY UPDATE
+    branch_id = VALUES(branch_id),
+    last_updated = VALUES(last_updated),
+    quantity = VALUES(quantity),
+    product_id = VALUES(product_id);
+
+UPDATE products_seq SET next_val = GREATEST(next_val, 200026);
+UPDATE inventories_seq SET next_val = GREATEST(next_val, 300076);
+
+USE salesdb;
+
+INSERT INTO customer (
+    id, branch_id, created_at, email, full_name, loyalty_points, phone,
+    store_id, updated_at
+)
+SELECT
+    200000 + n,
+    1001 + MOD(n - 1, 3),
+    NOW(6),
+    CONCAT('customer.', LPAD(14 + n, 3, '0'), '@seed.local'),
+    CONCAT('Demo Customer ', 14 + n),
+    0,
+    CONCAT('+91000000', LPAD(2000 + n, 4, '0')),
+    1001,
+    NOW(6)
+FROM userdb.demo_seed_numbers
+WHERE n BETWEEN 1 AND 61
+ON DUPLICATE KEY UPDATE
+    full_name = VALUES(full_name),
+    branch_id = VALUES(branch_id),
+    store_id = VALUES(store_id);
+
+DROP TEMPORARY TABLE IF EXISTS demo_seed_order_lines;
+DROP TEMPORARY TABLE IF EXISTS demo_seed_line_numbers;
+CREATE TEMPORARY TABLE demo_seed_line_numbers AS
+SELECT n FROM userdb.demo_seed_numbers WHERE n BETWEEN 1 AND 8;
+CREATE TEMPORARY TABLE demo_seed_order_lines AS
+SELECT
+    fixture.n AS order_no,
+    400000 + fixture.n AS order_id,
+    line_slot.n AS line_no,
+    product.id AS product_id,
+    product.name AS product_name,
+    product.sku AS product_sku,
+    product.image AS product_image,
+    product.selling_price AS product_price,
+    CASE
+        WHEN fixture.n >= 30 AND MOD(fixture.n - 30, 50) = 0 THEN 1
+        ELSE 1 + MOD(fixture.n + line_slot.n, 2)
+    END AS quantity,
+    ROUND(product.selling_price * CASE
+        WHEN fixture.n >= 30 AND MOD(fixture.n - 30, 50) = 0 THEN 1
+        ELSE 1 + MOD(fixture.n + line_slot.n, 2)
+    END, 2) AS line_total
+FROM userdb.demo_seed_numbers fixture
+JOIN demo_seed_line_numbers line_slot
+  ON line_slot.n BETWEEN 1 AND CASE
+      WHEN fixture.n >= 30 AND MOD(fixture.n - 30, 50) = 0 THEN 8
+      ELSE 3
+  END
+JOIN inventorydb.products product
+  ON product.id = CASE
+      WHEN fixture.n >= 30 AND MOD(fixture.n - 30, 50) = 0
+          THEN 200000 + line_slot.n
+      ELSE 200001 + MOD((fixture.n * 7) + (line_slot.n * 11), 25)
+  END
+WHERE fixture.n BETWEEN 1 AND 470;
+
+INSERT INTO orders (
+    id, average_item_price, branch_id, cashier_id, created_at, day_of_week,
+    discount_amount, discount_percent, is_fraud, items_count, order_hour,
+    payment_type, risk_score, score, shift, status, total_amount,
+    total_quantity, customer_id, fraud_reason, fraud_status, idempotency_key,
+    subtotal_amount, tax_rate, tax_amount, payment_settlement_status
+)
+SELECT
+    400000 + summary.order_no,
+    summary.average_item_price,
+    1001 + MOD((summary.order_no - 1) + FLOOR((summary.order_no - 1) / 90), 3),
+    CASE WHEN MOD(summary.order_no, 2) = 0 THEN 1003 ELSE 1004 END,
+    DATE_ADD(
+        DATE_SUB(CURDATE(), INTERVAL MOD(summary.order_no - 1, 90) DAY),
+        INTERVAL (CASE WHEN MOD(summary.order_no, 2) = 0 THEN 9 ELSE 18 END) HOUR
+    ) + INTERVAL MOD(summary.order_no * 13, 60) MINUTE,
+    UPPER(DAYNAME(DATE_SUB(CURDATE(), INTERVAL MOD(summary.order_no - 1, 90) DAY))),
+    summary.discount_amount,
+    summary.discount_percent,
+    summary.is_fraud,
+    summary.items_count,
+    CASE WHEN MOD(summary.order_no, 2) = 0 THEN 9 ELSE 18 END,
+    CASE
+        WHEN summary.is_fraud = 1 AND MOD(FLOOR(summary.order_no / 50), 2) = 0 THEN 'CASH'
+        WHEN summary.is_fraud = 1 THEN 'CARD'
+        WHEN MOD(summary.order_no, 3) = 0 THEN 'CASH'
+        WHEN MOD(summary.order_no, 3) = 1 THEN 'CARD'
+        ELSE 'UPI'
+    END,
+    CASE
+        WHEN summary.is_fraud = 1 AND MOD(FLOOR(summary.order_no / 50), 2) = 0 THEN 74.5
+        WHEN summary.is_fraud = 1 THEN 69.0
+        ELSE 0.0
+    END,
+    0,
+    CASE WHEN MOD(summary.order_no, 2) = 0 THEN 'Morning' ELSE 'Evening' END,
+    CASE WHEN summary.order_no BETWEEN 10 AND 447
+              AND MOD(summary.order_no - 10, 19) = 0
+         THEN 'REFUNDED' ELSE 'COMPLETED' END,
+    summary.subtotal_amount + summary.tax_amount - summary.discount_amount,
+    summary.total_quantity,
+    200001 + MOD(summary.order_no - 1, 61),
+    CASE
+        WHEN summary.is_fraud = 1 AND MOD(FLOOR(summary.order_no / 50), 2) = 0
+            THEN 'AI model flagged this order; AI Probability: 74.5%'
+        WHEN summary.is_fraud = 1
+            THEN 'AI model flagged this order; AI Probability: 69.0%'
+        ELSE NULL
+    END,
+    CASE WHEN summary.is_fraud = 1 THEN 'OPEN' ELSE 'NONE' END,
+    CONCAT('00000000-0000-4000-8000-', LPAD(400000 + summary.order_no, 12, '0')),
+    summary.subtotal_amount,
+    18.0000,
+    summary.tax_amount,
+    CASE
+        WHEN summary.is_fraud = 1 AND MOD(FLOOR(summary.order_no / 50), 2) = 0 THEN 'CASH_RECORDED'
+        WHEN summary.is_fraud = 1 THEN 'EXTERNAL_CONFIRMATION_REQUIRED'
+        WHEN MOD(summary.order_no, 3) = 0 THEN 'CASH_RECORDED'
+        ELSE 'EXTERNAL_CONFIRMATION_REQUIRED'
+    END
+FROM (
+    SELECT
+        order_no,
+        COUNT(*) AS items_count,
+        SUM(quantity) AS total_quantity,
+        ROUND(SUM(line_total), 2) AS subtotal_amount,
+        ROUND(SUM(line_total) / SUM(quantity), 6) AS average_item_price,
+        CASE
+            WHEN order_no >= 30 AND MOD(order_no - 30, 50) = 0 THEN 1 ELSE 0
+        END AS is_fraud,
+        CASE
+            WHEN order_no >= 30 AND MOD(order_no - 30, 50) = 0 THEN 0.00
+            ELSE MOD(order_no, 3) * 5.00
+        END AS discount_percent,
+        ROUND(SUM(line_total) * 0.18, 2) AS tax_amount,
+        ROUND(
+            SUM(line_total) *
+            CASE
+                WHEN order_no >= 30 AND MOD(order_no - 30, 50) = 0 THEN 0.00
+                ELSE MOD(order_no, 3) * 5.00
+            END / 100,
+            2
+        ) AS discount_amount
+    FROM demo_seed_order_lines
+    GROUP BY order_no
+) summary
+ON DUPLICATE KEY UPDATE
+    average_item_price = VALUES(average_item_price),
+    branch_id = VALUES(branch_id),
+    cashier_id = VALUES(cashier_id),
+    created_at = VALUES(created_at),
+    day_of_week = VALUES(day_of_week),
+    discount_amount = VALUES(discount_amount),
+    discount_percent = VALUES(discount_percent),
+    is_fraud = VALUES(is_fraud),
+    items_count = VALUES(items_count),
+    order_hour = VALUES(order_hour),
+    payment_type = VALUES(payment_type),
+    risk_score = VALUES(risk_score),
+    shift = VALUES(shift),
+    status = VALUES(status),
+    total_amount = VALUES(total_amount),
+    total_quantity = VALUES(total_quantity),
+    customer_id = VALUES(customer_id),
+    fraud_reason = VALUES(fraud_reason),
+    fraud_status = VALUES(fraud_status),
+    subtotal_amount = VALUES(subtotal_amount),
+    tax_rate = VALUES(tax_rate),
+    tax_amount = VALUES(tax_amount),
+    payment_settlement_status = VALUES(payment_settlement_status);
+
+INSERT INTO order_items (
+    id, price, product_id, product_image, product_name, product_price,
+    product_sku, quantity, order_id
+)
+SELECT
+    500000 + ((order_no - 1) * 8) + line_no,
+    line_total,
+    product_id,
+    product_image,
+    product_name,
+    product_price,
+    product_sku,
+    quantity,
+    order_id
+FROM demo_seed_order_lines
+ON DUPLICATE KEY UPDATE
+    price = VALUES(price),
+    product_id = VALUES(product_id),
+    product_image = VALUES(product_image),
+    product_name = VALUES(product_name),
+    product_price = VALUES(product_price),
+    product_sku = VALUES(product_sku),
+    quantity = VALUES(quantity),
+    order_id = VALUES(order_id);
+
+INSERT INTO refunds (
+    id, amount, branch_id, cashier_id, cashier_name, created_at,
+    payment_type, reason, order_id, shift_report_id, processing_status,
+    payment_refund_status, idempotency_key
+)
+SELECT
+    600001 + FLOOR((fixture.n - 10) / 19),
+    order_row.total_amount,
+    order_row.branch_id,
+    order_row.cashier_id,
+    CASE WHEN order_row.cashier_id = 1003 THEN 'Demo Cashier' ELSE 'Demo Evening Cashier' END,
+    DATE_ADD(order_row.created_at, INTERVAL 1 DAY),
+    order_row.payment_type,
+    CASE MOD(fixture.n, 3)
+        WHEN 0 THEN 'Demo customer return'
+        WHEN 1 THEN 'Damaged item return'
+        ELSE 'Customer changed order'
+    END,
+    order_row.id,
+    700001
+        + DATEDIFF(CURDATE(), DATE(order_row.created_at)) * 6
+        + (order_row.branch_id - 1001) * 2
+        + (order_row.cashier_id - 1003),
+    'COMPLETED',
+    'MANUAL_REVIEW_REQUIRED',
+    CONCAT('00000000-0000-4000-8000-', LPAD(600000 + FLOOR((fixture.n - 10) / 19) + 1, 12, '0'))
+FROM userdb.demo_seed_numbers fixture
+JOIN orders order_row ON order_row.id = 400000 + fixture.n
+WHERE fixture.n BETWEEN 10 AND 447
+  AND MOD(fixture.n - 10, 19) = 0
+ON DUPLICATE KEY UPDATE
+    amount = VALUES(amount),
+    branch_id = VALUES(branch_id),
+    cashier_id = VALUES(cashier_id),
+    cashier_name = VALUES(cashier_name),
+    created_at = VALUES(created_at),
+    payment_type = VALUES(payment_type),
+    reason = VALUES(reason),
+    order_id = VALUES(order_id),
+    shift_report_id = VALUES(shift_report_id),
+    processing_status = VALUES(processing_status),
+    payment_refund_status = VALUES(payment_refund_status);
+
+INSERT INTO refund_items (refund_id, order_item_id, product_id, quantity, amount)
+SELECT
+    refund_row.id,
+    item_row.id,
+    item_row.product_id,
+    item_row.quantity,
+    item_row.price
+FROM refunds refund_row
+JOIN order_items item_row ON item_row.order_id = refund_row.order_id
+WHERE refund_row.id BETWEEN 600001 AND 600024
+ON DUPLICATE KEY UPDATE
+    product_id = VALUES(product_id),
+    quantity = VALUES(quantity),
+    amount = VALUES(amount);
+
+INSERT INTO shift_reports (
+    id, branch_id, branch_name, card_sales, cash_sales, cashier_id,
+    cashier_name, net_sales, shift_end, shift_start, total_orders,
+    total_refunds, total_sales, upi_sales
+)
+SELECT
+    700001
+        + DATEDIFF(CURDATE(), DATE(MIN(order_row.created_at))) * 6
+        + (order_row.branch_id - 1001) * 2
+        + (order_row.cashier_id - 1003),
+    order_row.branch_id,
+    CASE order_row.branch_id
+        WHEN 1001 THEN 'Demo Main Branch'
+        WHEN 1002 THEN 'Demo North Branch'
+        ELSE 'Demo South Branch'
+    END,
+    ROUND(SUM(CASE WHEN order_row.payment_type = 'CARD' THEN order_row.total_amount ELSE 0 END), 2),
+    ROUND(SUM(CASE WHEN order_row.payment_type = 'CASH' THEN order_row.total_amount ELSE 0 END), 2),
+    order_row.cashier_id,
+    CASE WHEN order_row.cashier_id = 1003 THEN 'Demo Cashier' ELSE 'Demo Evening Cashier' END,
+    ROUND(SUM(order_row.total_amount) - SUM(COALESCE(refund_row.amount, 0)), 2),
+    DATE(MIN(order_row.created_at)) + INTERVAL (CASE WHEN order_row.cashier_id = 1003 THEN 12 ELSE 22 END) HOUR,
+    DATE(MIN(order_row.created_at)) + INTERVAL (CASE WHEN order_row.cashier_id = 1003 THEN 6 ELSE 17 END) HOUR,
+    COUNT(DISTINCT order_row.id),
+    ROUND(SUM(COALESCE(refund_row.amount, 0)), 2),
+    ROUND(SUM(order_row.total_amount), 2),
+    ROUND(SUM(CASE WHEN order_row.payment_type = 'UPI' THEN order_row.total_amount ELSE 0 END), 2)
+FROM orders order_row
+LEFT JOIN refunds refund_row
+    ON refund_row.order_id = order_row.id
+   AND refund_row.id BETWEEN 600001 AND 600024
+WHERE order_row.id BETWEEN 400001 AND 400470
+GROUP BY order_row.branch_id, DATE(order_row.created_at), order_row.cashier_id
+ON DUPLICATE KEY UPDATE
+    branch_id = VALUES(branch_id),
+    branch_name = VALUES(branch_name),
+    card_sales = VALUES(card_sales),
+    cash_sales = VALUES(cash_sales),
+    cashier_id = VALUES(cashier_id),
+    cashier_name = VALUES(cashier_name),
+    net_sales = VALUES(net_sales),
+    shift_end = VALUES(shift_end),
+    shift_start = VALUES(shift_start),
+    total_orders = VALUES(total_orders),
+    total_refunds = VALUES(total_refunds),
+    total_sales = VALUES(total_sales),
+    upi_sales = VALUES(upi_sales);
+
+UPDATE orders order_row
+JOIN refunds refund_row ON refund_row.order_id = order_row.id
+SET order_row.status = 'REFUNDED'
+WHERE order_row.id BETWEEN 400001 AND 400470
+  AND refund_row.id BETWEEN 600001 AND 600024;
+
 USE billingdb;
 
 INSERT INTO subscription_plans (
@@ -480,4 +880,13 @@ ON DUPLICATE KEY UPDATE
     user_email = VALUES(user_email),
     user_id = VALUES(user_id);
 
+COMMIT;
 SET FOREIGN_KEY_CHECKS = 1;
+DROP TEMPORARY TABLE IF EXISTS salesdb.demo_seed_order_lines;
+DROP TEMPORARY TABLE IF EXISTS salesdb.demo_seed_line_numbers;
+DROP TEMPORARY TABLE IF EXISTS inventorydb.demo_seed_branch_slots;
+DROP TEMPORARY TABLE IF EXISTS inventorydb.demo_seed_product_slots;
+DROP TEMPORARY TABLE IF EXISTS userdb.demo_seed_numbers;
+DROP TEMPORARY TABLE IF EXISTS userdb.demo_seed_digits_hundreds;
+DROP TEMPORARY TABLE IF EXISTS userdb.demo_seed_digits_tens;
+DROP TEMPORARY TABLE IF EXISTS userdb.demo_seed_digits_ones;

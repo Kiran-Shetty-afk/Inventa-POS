@@ -29,4 +29,4 @@ if ($LASTEXITCODE -ne 0) {
     throw "Demo seeding failed with exit code $LASTEXITCODE."
 }
 
-Write-Host 'Demo seeding completed. Seed login password: password'
+Write-Host 'Demo seeding completed.'
