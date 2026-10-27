@@ -1,6 +1,6 @@
 # Branch-scoped fraud alerts
 
-Last updated: 2026-10-24
+Last updated: 2026-10-28
 Status: reviewed
 
 ## Purpose
@@ -14,6 +14,7 @@ Surface orders flagged by the fraud model to the manager responsible for the ord
 - The API provides `GET /api/fraud/alerts`, `GET /api/fraud/dashboard`, and `PUT /api/fraud/resolve/{id}`.
 - Fraud endpoints require `ROLE_BRANCH_MANAGER` and scope reads and resolution to the branch ID in the authenticated request.
 - The API Gateway routes `/api/fraud/**` to Order/Sales. The Branch Manager UI displays alerts and dashboard counts.
+- Fraud alert downloads use a PDF investigation report with wrapped rule/analysis text and spacing that expands for longer content; unavailable order amount data is shown as `--`.
 
 ## Important files
 
@@ -24,6 +25,7 @@ Surface orders flagged by the fraud model to the manager responsible for the ord
 - `POS---Microservices/api-gateway/src/main/resources/application.yml`
 - `POS---ML/app.py`
 - `POS---System-frontend/src/pages/Branch Manager/Fraud/FraudAlerts.jsx`
+- `POS---System-frontend/src/utils/fraudReport.js`
 
 ## Known limits
 

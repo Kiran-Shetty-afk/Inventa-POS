@@ -1,5 +1,9 @@
 # Brain Changelog
 
+## v2026.10.28-fraud-report-pdf-layout
+- Fixed fraud investigation PDF exports so triggered rules have readable vertical spacing, long rule and analysis text wraps within their cards, and later sections move with expanded content.
+- Show an unavailable order amount as `--` instead of presenting it as zero.
+
 ## v2026.10.27-grafana-process-cpu-panel
 - Fixed ML CPU display by converting the cumulative process CPU counter to a rate and normalizing it by the available CPU count in the Grafana dashboard query.
 - Documented the corrected metric handling in the infrastructure knowledge base.
