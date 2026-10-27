@@ -83,7 +83,7 @@ Features below are supported by current source/configuration. External-provider 
 
 ### Operations
 
-- Eleven Compose services: MySQL, six Java components, ML API, frontend, Prometheus, and Grafana.
+- Eleven Compose services: seven backend applications (four Java business services, Eureka, API Gateway, and ML), plus the frontend, MySQL, Prometheus, and Grafana.
 - Named persistence for MySQL and monitoring data.
 - Application health checks and startup dependencies.
 - Prometheus scraping and provisioned Grafana datasource/dashboard.
