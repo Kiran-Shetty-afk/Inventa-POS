@@ -335,17 +335,6 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Demo Account Info */}
-            <div className="mt-6 rounded-lg bg-muted p-4">
-              <p className="text-center text-sm text-muted-foreground">
-                <strong>Seeded admin:</strong> codewithzosh@gmail.com / codewithzosh
-                <br />
-                <span className="mt-2 inline-block text-xs">
-                  This backend currently seeds only the admin account by default. Cashier and staff
-                  logins must already exist in the database.
-                </span>
-              </p>
-            </div>
           </div>
         )}
 
