@@ -422,7 +422,7 @@
             "uid": "inventa-prometheus"
           },
           "editorMode": "code",
-          "expr": "process_cpu_usage{job=~\"api-gateway|eureka-server|user-org-service|inventory-catalog-service|order-sales-service|billing-analytics-service|ML service\"} or process_cpu_seconds_total{job=~\"api-gateway|eureka-server|user-org-service|inventory-catalog-service|order-sales-service|billing-analytics-service|ML service\"}",
+          "expr": "process_cpu_usage{job=~\"api-gateway|eureka-server|user-org-service|inventory-catalog-service|order-sales-service|billing-analytics-service\"} or (rate(process_cpu_seconds_total{job=\"ML service\"}[1m]) / scalar(max(system_cpu_count)))",
           "legendFormat": "{{job}}",
           "range": true,
           "refId": "A"

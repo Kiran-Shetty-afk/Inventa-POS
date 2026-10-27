@@ -1,5 +1,9 @@
 # Brain Changelog
 
+## v2026.10.27-grafana-process-cpu-panel
+- Fixed ML CPU display by converting the cumulative process CPU counter to a rate and normalizing it by the available CPU count in the Grafana dashboard query.
+- Documented the corrected metric handling in the infrastructure knowledge base.
+
 ## v2026.10.26-demo-seed-expansion
 - Expanded the existing repeatable demo fixture to 500 seeded orders over 90 days, with 75 customers, 40 products, itemized orders, daily cashier shift data, and 28 refunds.
 - Added nine open fraud-alert orders using positive results observed from the authenticated running ML model, and documented that current model inputs do not include repeat-purchase velocity.
